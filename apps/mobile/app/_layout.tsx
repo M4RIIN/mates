@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/infrastructure/api/query-client";
+import { colors } from "@/shared/theme";
 
 export default function RootLayout() {
   return (
@@ -8,10 +9,20 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerBackTitle: "Retour",
-          headerTintColor: "#171717",
+          headerTintColor: colors.ink,
           headerShadowVisible: false,
+          headerStyle: {
+            backgroundColor: colors.background
+          },
+          headerTitleStyle: {
+            color: colors.ink,
+            fontWeight: "900"
+          },
+          animation: "fade_from_bottom",
+          animationDuration: 260,
+          gestureEnabled: true,
           contentStyle: {
-            backgroundColor: "#F7F7F4"
+            backgroundColor: colors.background
           }
         }}
       >

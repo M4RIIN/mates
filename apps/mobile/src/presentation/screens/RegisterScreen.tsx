@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { Link, router } from "expo-router";
 import { UserPlus } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
+import { PageHeader } from "@/presentation/components/PageHeader";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { useRegister } from "@/presentation/hooks/useAuth";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
-import { colors, spacing } from "@/shared/theme";
+import { borders, colors, radii, spacing } from "@/shared/theme";
 
 export function RegisterScreen() {
   const [pseudo, setPseudo] = useState("");
@@ -26,44 +27,56 @@ export function RegisterScreen() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Text style={styles.title}>Créer un compte</Text>
-        <Text style={styles.subtitle}>Ton identifiant public sera généré automatiquement.</Text>
+      <PageHeader eyebrow="Nouveau mate" title="Créer un compte" subtitle="Ton identifiant public sera généré automatiquement." tone="yellow" />
+      <View style={styles.formPanel}>
+        <View pointerEvents="none" style={styles.formAccent} />
+        <TextField label="Pseudo" value={pseudo} onChangeText={setPseudo} placeholder="nicolas" />
+        <TextField label="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry placeholder="8 caractères minimum" />
+        <AppButton
+          title="Créer"
+          onPress={submit}
+          loading={register.isPending}
+          disabled={pseudo.trim().length < 2 || password.length < 8}
+          icon={<UserPlus size={18} color={colors.white} strokeWidth={3} />}
+        />
+        <Link href="/auth/login" style={styles.link}>
+          J’ai déjà un compte
+        </Link>
       </View>
-      <TextField label="Pseudo" value={pseudo} onChangeText={setPseudo} placeholder="nicolas" />
-      <TextField label="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry placeholder="8 caractères minimum" />
-      <AppButton
-        title="Créer"
-        onPress={submit}
-        loading={register.isPending}
-        disabled={pseudo.trim().length < 2 || password.length < 8}
-        icon={<UserPlus size={18} color="#FFFFFF" />}
-      />
-      <Link href="/auth/login" style={styles.link}>
-        J’ai déjà un compte
-      </Link>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: spacing.xs,
-    marginBottom: spacing.md
+  formPanel: {
+    position: "relative",
+    overflow: "hidden",
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.md
   },
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: "900"
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 16
+  formAccent: {
+    position: "absolute",
+    top: -28,
+    right: -12,
+    width: 104,
+    height: 64,
+    borderRadius: radii.md,
+    backgroundColor: colors.yellowSoft,
+    transform: [{ rotate: "-10deg" }]
   },
   link: {
-    color: colors.primary,
-    fontWeight: "700",
+    color: colors.text,
+    fontWeight: "900",
     textAlign: "center",
+    textTransform: "uppercase",
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
     padding: spacing.md
   }
 });

@@ -1,11 +1,12 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { EmptyState } from "@/presentation/components/EmptyState";
 import { ListRow } from "@/presentation/components/ListRow";
+import { PageHeader } from "@/presentation/components/PageHeader";
 import { Screen } from "@/presentation/components/Screen";
 import { useInvitationDetails } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
 import { formatDateTime } from "@/shared/date-format";
-import { colors, spacing } from "@/shared/theme";
+import { borders, colors, radii, spacing } from "@/shared/theme";
 
 export function CreatedInvitationDetailScreen() {
   const id = useRouteId();
@@ -20,13 +21,32 @@ export function CreatedInvitationDetailScreen() {
       {invitation.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
       {invitation.data !== undefined ? (
         <>
-          <Text style={styles.title}>{invitation.data.placeName}</Text>
-          <Text style={styles.subtitle}>{formatDateTime(invitation.data.scheduledAt)}</Text>
-          {invitation.data.placeAddress !== null ? <Text style={styles.address}>{invitation.data.placeAddress}</Text> : null}
+          <PageHeader
+            eyebrow="Invitation créée"
+            title={invitation.data.placeName}
+            subtitle={formatDateTime(invitation.data.scheduledAt)}
+            tone="red"
+            compact
+          />
+          {invitation.data.placeAddress !== null ? (
+            <View style={styles.addressPanel}>
+              <Text style={styles.addressLabel}>Adresse</Text>
+              <Text style={styles.address}>{invitation.data.placeAddress}</Text>
+            </View>
+          ) : null}
           <View style={styles.stats}>
-            <Text style={styles.stat}>Oui {yesCount}</Text>
-            <Text style={styles.stat}>Non {noCount}</Text>
-            <Text style={styles.stat}>Attente {pendingCount}</Text>
+            <View style={[styles.stat, styles.statYes]}>
+              <Text style={styles.statNumber}>{yesCount}</Text>
+              <Text style={styles.statLabel}>Oui</Text>
+            </View>
+            <View style={[styles.stat, styles.statNo]}>
+              <Text style={[styles.statNumber, styles.statTextLight]}>{noCount}</Text>
+              <Text style={[styles.statLabel, styles.statTextLight]}>Non</Text>
+            </View>
+            <View style={[styles.stat, styles.statPending]}>
+              <Text style={[styles.statNumber, styles.statTextLight]}>{pendingCount}</Text>
+              <Text style={[styles.statLabel, styles.statTextLight]}>Attente</Text>
+            </View>
           </View>
           {recipients.length === 0 ? (
             <EmptyState title="Aucun destinataire" subtitle="Ajoute des amis actifs avant la prochaine invitation." />
@@ -57,18 +77,26 @@ function formatRecipientStatus(status: "pending" | "yes" | "no", delayMinutes: n
 }
 
 const styles = StyleSheet.create({
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: "900"
+  addressPanel: {
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.xs
   },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 16,
-    fontWeight: "700"
+  addressLabel: {
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase"
   },
   address: {
-    color: colors.muted
+    color: colors.muted,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "700"
   },
   stats: {
     flexDirection: "row",
@@ -76,13 +104,36 @@ const styles = StyleSheet.create({
   },
   stat: {
     flex: 1,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
+    minHeight: 88,
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
     borderColor: colors.border,
     padding: spacing.sm,
+    justifyContent: "space-between"
+  },
+  statYes: {
+    backgroundColor: colors.yellow
+  },
+  statNo: {
+    backgroundColor: colors.red
+  },
+  statPending: {
+    backgroundColor: colors.primary
+  },
+  statNumber: {
     color: colors.text,
-    fontWeight: "800",
-    textAlign: "center"
+    fontSize: 30,
+    lineHeight: 34,
+    fontWeight: "900"
+  },
+  statLabel: {
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  statTextLight: {
+    color: colors.white
   }
 });

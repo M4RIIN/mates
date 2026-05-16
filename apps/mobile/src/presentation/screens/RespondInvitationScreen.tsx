@@ -3,6 +3,7 @@ import { Alert, ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Check, Clock3, X } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
+import { PageHeader } from "@/presentation/components/PageHeader";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
@@ -10,7 +11,7 @@ import { useInvitationDetails, useRespondToInvitation } from "@/presentation/hoo
 import { useRouteId } from "@/presentation/hooks/useRouteId";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
 import { formatDateTime } from "@/shared/date-format";
-import { colors, spacing } from "@/shared/theme";
+import { borders, colors, radii, spacing } from "@/shared/theme";
 
 export function RespondInvitationScreen() {
   const id = useRouteId();
@@ -63,40 +64,60 @@ export function RespondInvitationScreen() {
       {invitation.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
       {invitation.data !== undefined ? (
         <>
-          <Text style={styles.title}>{invitation.data.placeName}</Text>
-          <Text style={styles.subtitle}>
-            {invitation.data.creator.pseudo} · {formatDateTime(invitation.data.scheduledAt)}
-          </Text>
-          {invitation.data.placeAddress !== null ? <Text style={styles.address}>{invitation.data.placeAddress}</Text> : null}
+          <PageHeader
+            eyebrow={`De ${invitation.data.creator.pseudo}`}
+            title={invitation.data.placeName}
+            subtitle={formatDateTime(invitation.data.scheduledAt)}
+            tone="blue"
+            compact
+          />
+          {invitation.data.placeAddress !== null ? (
+            <View style={styles.addressPanel}>
+              <Text style={styles.addressLabel}>Adresse</Text>
+              <Text style={styles.address}>{invitation.data.placeAddress}</Text>
+            </View>
+          ) : null}
           <View style={styles.current}>
             <Text style={styles.currentLabel}>Ta réponse</Text>
             <Text style={styles.currentValue}>{formatCurrentResponse(myResponse?.responseStatus, myResponse?.delayMinutes)}</Text>
           </View>
-          <AppButton
-            title="Oui"
-            onPress={() => {
-              answerYes().catch((error: unknown) => {
-                Alert.alert("Réponse impossible", getErrorMessage(error));
-              });
-            }}
-            loading={respond.isPending}
-            variant="success"
-            icon={<Check size={18} color="#FFFFFF" />}
-          />
+          <View style={styles.answerRow}>
+            <View style={styles.answerItem}>
+              <AppButton
+                title="Oui"
+                onPress={() => {
+                  answerYes().catch((error: unknown) => {
+                    Alert.alert("Réponse impossible", getErrorMessage(error));
+                  });
+                }}
+                loading={respond.isPending}
+                variant="success"
+                icon={<Check size={18} color={colors.ink} strokeWidth={3} />}
+              />
+            </View>
+            <View style={styles.answerItem}>
+              <AppButton
+                title="Non"
+                onPress={answerNo}
+                loading={respond.isPending}
+                variant="danger"
+                icon={<X size={18} color={colors.white} strokeWidth={3} />}
+              />
+            </View>
+          </View>
           <View style={styles.delayRow}>
             <View style={styles.delayField}>
-              <TextField label="Retard estimé" value={delayText} onChangeText={setDelayText} keyboardType="number-pad" />
+              <TextField label="Retard estimé" value={delayText} onChangeText={setDelayText} keyboardType="number-pad" placeholder="10" />
             </View>
             <View style={styles.delayButton}>
               <AppButton
                 title="Oui + retard"
                 onPress={answerWithDelay}
                 loading={respond.isPending}
-                icon={<Clock3 size={18} color="#FFFFFF" />}
+                icon={<Clock3 size={18} color={colors.white} strokeWidth={3} />}
               />
             </View>
           </View>
-          <AppButton title="Non" onPress={answerNo} loading={respond.isPending} variant="danger" icon={<X size={18} color="#FFFFFF" />} />
         </>
       ) : null}
     </Screen>
@@ -116,35 +137,54 @@ function formatCurrentResponse(status: "pending" | "yes" | "no" | undefined, del
 }
 
 const styles = StyleSheet.create({
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: "900"
+  addressPanel: {
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.xs
   },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 16,
-    fontWeight: "700"
+  addressLabel: {
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase"
   },
   address: {
-    color: colors.muted
+    color: colors.muted,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "700"
   },
   current: {
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderRadius: radii.md,
+    backgroundColor: colors.blueSoft,
+    borderWidth: borders.regular,
     borderColor: colors.border,
     padding: spacing.md,
     gap: spacing.xs
   },
   currentLabel: {
-    color: colors.muted,
-    fontWeight: "700"
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase"
   },
   currentValue: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 24,
+    lineHeight: 28,
     fontWeight: "900"
+  },
+  answerRow: {
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  answerItem: {
+    flex: 1
   },
   delayRow: {
     flexDirection: "row",

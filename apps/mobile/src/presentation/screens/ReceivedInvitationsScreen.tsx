@@ -1,7 +1,8 @@
-import { ActivityIndicator, StyleSheet, Text } from "react-native";
+import { ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { EmptyState } from "@/presentation/components/EmptyState";
 import { ListRow } from "@/presentation/components/ListRow";
+import { PageHeader } from "@/presentation/components/PageHeader";
 import { Screen } from "@/presentation/components/Screen";
 import { useReceivedInvitations } from "@/presentation/hooks/useInvitations";
 import { formatDateTime } from "@/shared/date-format";
@@ -12,7 +13,13 @@ export function ReceivedInvitationsScreen() {
 
   return (
     <Screen>
-      <Text style={styles.title}>Invitations reçues</Text>
+      <PageHeader
+        eyebrow="Inbox"
+        title="Reçues"
+        subtitle={invitations.data !== undefined ? `${invitations.data.length} invitation(s)` : "Chargement"}
+        tone="blue"
+        compact
+      />
       {invitations.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
       {invitations.data?.length === 0 ? <EmptyState title="Aucune invitation reçue" /> : null}
       {invitations.data?.map((invitation) => (
@@ -36,11 +43,3 @@ function formatStatus(status: "pending" | "yes" | "no"): string {
 
   return status === "yes" ? "oui" : "non";
 }
-
-const styles = StyleSheet.create({
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: "900"
-  }
-});

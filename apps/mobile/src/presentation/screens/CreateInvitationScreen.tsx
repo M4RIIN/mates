@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Send } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
@@ -7,12 +7,13 @@ import type { Place } from "@/domain/place/place";
 import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invitation/schedule";
 import { AppButton } from "@/presentation/components/AppButton";
 import { ListRow } from "@/presentation/components/ListRow";
+import { PageHeader } from "@/presentation/components/PageHeader";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
-import { colors, spacing } from "@/shared/theme";
+import { borders, colors, radii, spacing } from "@/shared/theme";
 
 export function CreateInvitationScreen() {
   const [placeQuery, setPlaceQuery] = useState("");
@@ -59,7 +60,7 @@ export function CreateInvitationScreen() {
 
   return (
     <Screen>
-      <Text style={styles.title}>Créer une invitation</Text>
+      <PageHeader eyebrow="Nouveau plan" title="Créer une invitation" subtitle="Lieu, heure, puis envoi à tes amis actifs." tone="red" compact />
       <TextField
         label="Lieu"
         value={placeQuery}
@@ -69,11 +70,16 @@ export function CreateInvitationScreen() {
         }}
         placeholder="bar, restaurant, adresse..."
       />
-      {placeSearch.data?.map((place) => (
-        <ListRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />
-      ))}
+      {placeSearch.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+      {placeSearch.data !== undefined && placeSearch.data.length > 0 ? (
+        <View style={styles.results}>
+          {placeSearch.data.map((place) => (
+            <ListRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />
+          ))}
+        </View>
+      ) : null}
       <TextField
-        label="Adresse custom"
+        label="Adresse"
         value={customAddress}
         onChangeText={setCustomAddress}
         placeholder="Optionnel"
@@ -86,27 +92,39 @@ export function CreateInvitationScreen() {
           variant="danger"
           big
           loading={createInvitation.isPending}
-          icon={<Send size={36} color="#FFFFFF" />}
+          disabled={placeQuery.trim().length === 0}
+          icon={<Send size={36} color={colors.white} strokeWidth={3} />}
         />
       </View>
-      <Text style={styles.muted}>L’invitation partira à tous tes amis actifs.</Text>
+      <Text style={styles.muted}>Envoi à tous tes amis actifs.</Text>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: "900"
+  results: {
+    gap: spacing.sm,
+    borderLeftWidth: borders.heavy,
+    borderLeftColor: colors.primary,
+    paddingLeft: spacing.sm
   },
   buttonZone: {
     alignItems: "center",
     justifyContent: "center"
   },
   muted: {
-    color: colors.muted,
+    alignSelf: "center",
+    color: colors.text,
+    borderRadius: radii.pill,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.yellowSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    fontSize: 12,
     textAlign: "center",
-    marginTop: -spacing.md
+    marginTop: -spacing.sm
   }
 });
