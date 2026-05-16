@@ -12,6 +12,8 @@
     "db:generate": "pnpm --filter @mates/api db:generate",
     "db:migrate": "pnpm --filter @mates/api db:migrate",
     "build:api": "pnpm --filter @mates/api... build",
-    "start:api": "pnpm --filter @mates/api start"
+    "start:api": "pnpm --filter @mates/api start",
+    "build:mobile": "pnpm --filter @mates/mobile... build",
+    "start:mobile": "pnpm --filter @mates/mobile start"
   }
 }
