@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Mates",
+    "slug": "mates",
+    "scheme": "mates",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": ["expo-router", "expo-notifications"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mates.app"
+    },
+    "android": {
+      "package": "com.mates.app"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}

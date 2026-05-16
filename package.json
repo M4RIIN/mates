@@ -1,0 +1,15 @@
+{
+  "name": "mates",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm --filter @mates/shared build && pnpm -r typecheck",
+    "test": "pnpm --filter @mates/shared build && pnpm -r test",
+    "dev:api": "pnpm --filter @mates/shared build && pnpm --filter @mates/api dev",
+    "dev:mobile": "pnpm --filter @mates/shared build && pnpm --filter @mates/mobile start",
+    "db:generate": "pnpm --filter @mates/api db:generate",
+    "db:migrate": "pnpm --filter @mates/api db:migrate"
+  }
+}

@@ -1,0 +1,142 @@
+import { z } from "zod";
+
+export const publicTagSchema = z
+  .string()
+  .min(7)
+  .max(37)
+  .regex(/^[A-Za-z0-9_.-]{2,32}#[0-9]{4}$/, "Expected format pseudo#1234");
+
+export const pseudoSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(32)
+  .regex(/^[A-Za-z0-9_.-]+$/, "Pseudo can contain letters, numbers, dots, underscores and hyphens");
+
+export const passwordSchema = z.string().min(8).max(128);
+
+export const isoDateTimeSchema = z.string().datetime({ offset: true });
+
+export const responseStatusSchema = z.enum(["pending", "yes", "no"]);
+export type ResponseStatus = z.infer<typeof responseStatusSchema>;
+
+export const platformSchema = z.enum(["ios", "android", "web", "unknown"]);
+export type PushPlatform = z.infer<typeof platformSchema>;
+
+export const registerRequestSchema = z.object({
+  pseudo: pseudoSchema,
+  password: passwordSchema
+});
+export type RegisterRequest = z.infer<typeof registerRequestSchema>;
+
+export const loginRequestSchema = z.object({
+  identifier: z.string().trim().min(2).max(64),
+  password: passwordSchema
+});
+export type LoginRequest = z.infer<typeof loginRequestSchema>;
+
+export const currentUserSchema = z.object({
+  id: z.string().uuid(),
+  pseudo: pseudoSchema,
+  publicTag: publicTagSchema,
+  createdAt: isoDateTimeSchema
+});
+export type CurrentUserDto = z.infer<typeof currentUserSchema>;
+
+export const publicUserSchema = z.object({
+  id: z.string().uuid(),
+  pseudo: pseudoSchema,
+  publicTag: publicTagSchema
+});
+export type PublicUserDto = z.infer<typeof publicUserSchema>;
+
+export const authResponseSchema = z.object({
+  token: z.string().min(1),
+  user: currentUserSchema
+});
+export type AuthResponse = z.infer<typeof authResponseSchema>;
+
+export const registerPushTokenRequestSchema = z.object({
+  token: z.string().min(8).max(4096),
+  platform: platformSchema
+});
+export type RegisterPushTokenRequest = z.infer<typeof registerPushTokenRequestSchema>;
+
+export const addFriendRequestSchema = z.object({
+  publicTag: publicTagSchema
+});
+export type AddFriendRequest = z.infer<typeof addFriendRequestSchema>;
+
+export const friendSchema = publicUserSchema.extend({
+  friendshipCreatedAt: isoDateTimeSchema
+});
+export type FriendDto = z.infer<typeof friendSchema>;
+
+export const placeInputSchema = z.object({
+  placeName: z.string().trim().min(1).max(160),
+  placeAddress: z.string().trim().max(240).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional()
+});
+export type PlaceInput = z.infer<typeof placeInputSchema>;
+
+export const createInvitationRequestSchema = placeInputSchema.extend({
+  scheduledAt: isoDateTimeSchema
+});
+export type CreateInvitationRequest = z.infer<typeof createInvitationRequestSchema>;
+
+export const respondToInvitationRequestSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("yes"),
+    delayMinutes: z.number().int().min(0).max(24 * 60).optional()
+  }),
+  z.object({
+    status: z.literal("no"),
+    delayMinutes: z.undefined().optional()
+  })
+]);
+export type RespondToInvitationRequest = z.infer<typeof respondToInvitationRequestSchema>;
+
+export const invitationRecipientSchema = z.object({
+  id: z.string().uuid(),
+  user: publicUserSchema,
+  responseStatus: responseStatusSchema,
+  delayMinutes: z.number().int().min(0).nullable(),
+  respondedAt: isoDateTimeSchema.nullable()
+});
+export type InvitationRecipientDto = z.infer<typeof invitationRecipientSchema>;
+
+export const invitationDetailsSchema = z.object({
+  id: z.string().uuid(),
+  creator: publicUserSchema,
+  placeName: z.string(),
+  placeAddress: z.string().nullable(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  scheduledAt: isoDateTimeSchema,
+  createdAt: isoDateTimeSchema,
+  recipients: z.array(invitationRecipientSchema)
+});
+export type InvitationDetailsDto = z.infer<typeof invitationDetailsSchema>;
+
+export const receivedInvitationSchema = invitationDetailsSchema.extend({
+  myResponse: invitationRecipientSchema
+});
+export type ReceivedInvitationDto = z.infer<typeof receivedInvitationSchema>;
+
+export const invitationListSchema = z.array(invitationDetailsSchema);
+export const receivedInvitationListSchema = z.array(receivedInvitationSchema);
+
+export const userSearchQuerySchema = z.object({
+  tag: publicTagSchema
+});
+export type UserSearchQuery = z.infer<typeof userSearchQuerySchema>;
+
+export const apiErrorSchema = z.object({
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    details: z.unknown().optional()
+  })
+});
+export type ApiErrorDto = z.infer<typeof apiErrorSchema>;

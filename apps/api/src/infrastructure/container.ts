@@ -1,0 +1,109 @@
+import type { AddFriendUseCase } from "../application/use-cases/add-friend.use-case.js";
+import { AddFriendUseCase as AddFriend } from "../application/use-cases/add-friend.use-case.js";
+import type { CreateInvitationUseCase } from "../application/use-cases/create-invitation.use-case.js";
+import { CreateInvitationUseCase as CreateInvitation } from "../application/use-cases/create-invitation.use-case.js";
+import type { GetCurrentUserUseCase } from "../application/use-cases/get-current-user.use-case.js";
+import { GetCurrentUserUseCase as GetCurrentUser } from "../application/use-cases/get-current-user.use-case.js";
+import type { GetInvitationDetailsUseCase } from "../application/use-cases/get-invitation-details.use-case.js";
+import { GetInvitationDetailsUseCase as GetInvitationDetails } from "../application/use-cases/get-invitation-details.use-case.js";
+import type { ListCreatedInvitationsUseCase } from "../application/use-cases/list-created-invitations.use-case.js";
+import { ListCreatedInvitationsUseCase as ListCreatedInvitations } from "../application/use-cases/list-created-invitations.use-case.js";
+import type { ListFriendsUseCase } from "../application/use-cases/list-friends.use-case.js";
+import { ListFriendsUseCase as ListFriends } from "../application/use-cases/list-friends.use-case.js";
+import type { ListReceivedInvitationsUseCase } from "../application/use-cases/list-received-invitations.use-case.js";
+import { ListReceivedInvitationsUseCase as ListReceivedInvitations } from "../application/use-cases/list-received-invitations.use-case.js";
+import type { LoginUserUseCase } from "../application/use-cases/login-user.use-case.js";
+import { LoginUserUseCase as LoginUser } from "../application/use-cases/login-user.use-case.js";
+import type { RegisterPushTokenUseCase } from "../application/use-cases/register-push-token.use-case.js";
+import { RegisterPushTokenUseCase as RegisterPushToken } from "../application/use-cases/register-push-token.use-case.js";
+import type { RegisterUserUseCase } from "../application/use-cases/register-user.use-case.js";
+import { RegisterUserUseCase as RegisterUser } from "../application/use-cases/register-user.use-case.js";
+import type { RespondToInvitationUseCase } from "../application/use-cases/respond-to-invitation.use-case.js";
+import { RespondToInvitationUseCase as RespondToInvitation } from "../application/use-cases/respond-to-invitation.use-case.js";
+import type { SearchUserByPublicTagUseCase } from "../application/use-cases/search-user-by-public-tag.use-case.js";
+import { SearchUserByPublicTagUseCase as SearchUserByPublicTag } from "../application/use-cases/search-user-by-public-tag.use-case.js";
+import type { SendInvitationToFriendsUseCase } from "../application/use-cases/send-invitation-to-friends.use-case.js";
+import { SendInvitationToFriendsUseCase as SendInvitationToFriends } from "../application/use-cases/send-invitation-to-friends.use-case.js";
+import type { TokenService } from "../application/ports/token-service.js";
+import { createDb } from "./db/client.js";
+import { ConsoleNotificationGateway } from "./notifications/console-notification.gateway.js";
+import { FirebaseCloudMessagingGateway } from "./notifications/firebase-cloud-messaging.gateway.js";
+import { PostgresFriendshipRepository } from "./repositories/postgres-friendship.repository.js";
+import { PostgresInvitationRepository } from "./repositories/postgres-invitation.repository.js";
+import { PostgresPushTokenRepository } from "./repositories/postgres-push-token.repository.js";
+import { PostgresUserRepository } from "./repositories/postgres-user.repository.js";
+import { BcryptPasswordHasher } from "./security/bcrypt-password-hasher.js";
+import { JoseTokenService } from "./security/jose-token-service.js";
+
+export type AppUseCases = {
+  registerUser: RegisterUserUseCase;
+  loginUser: LoginUserUseCase;
+  getCurrentUser: GetCurrentUserUseCase;
+  addFriend: AddFriendUseCase;
+  listFriends: ListFriendsUseCase;
+  searchUserByPublicTag: SearchUserByPublicTagUseCase;
+  createInvitation: CreateInvitationUseCase;
+  sendInvitationToFriends: SendInvitationToFriendsUseCase;
+  respondToInvitation: RespondToInvitationUseCase;
+  getInvitationDetails: GetInvitationDetailsUseCase;
+  listReceivedInvitations: ListReceivedInvitationsUseCase;
+  listCreatedInvitations: ListCreatedInvitationsUseCase;
+  registerPushToken: RegisterPushTokenUseCase;
+};
+
+export type AppContainer = {
+  tokenService: TokenService;
+  useCases: AppUseCases;
+};
+
+function requireEnv(env: NodeJS.ProcessEnv, key: string): string {
+  const value = env[key];
+  if (value === undefined || value.trim().length === 0) {
+    throw new Error(`Missing required environment variable ${key}`);
+  }
+
+  return value;
+}
+
+export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
+  const db = createDb(requireEnv(env, "DATABASE_URL"));
+
+  const users = new PostgresUserRepository(db);
+  const friendships = new PostgresFriendshipRepository(db);
+  const invitations = new PostgresInvitationRepository(db);
+  const pushTokens = new PostgresPushTokenRepository(db);
+  const passwordHasher = new BcryptPasswordHasher();
+  const tokenService = new JoseTokenService(
+    requireEnv(env, "JWT_SECRET"),
+    Number.parseInt(env.JWT_EXPIRES_IN_DAYS ?? "30", 10)
+  );
+  const notifications =
+    env.NOTIFICATION_PROVIDER === "firebase"
+      ? new FirebaseCloudMessagingGateway(env.FIREBASE_SERVICE_ACCOUNT_JSON)
+      : new ConsoleNotificationGateway();
+
+  return {
+    tokenService,
+    useCases: {
+      registerUser: new RegisterUser(users, passwordHasher, tokenService),
+      loginUser: new LoginUser(users, passwordHasher, tokenService),
+      getCurrentUser: new GetCurrentUser(users),
+      addFriend: new AddFriend(users, friendships),
+      listFriends: new ListFriends(friendships),
+      searchUserByPublicTag: new SearchUserByPublicTag(users),
+      createInvitation: new CreateInvitation(invitations),
+      sendInvitationToFriends: new SendInvitationToFriends(
+        invitations,
+        friendships,
+        users,
+        pushTokens,
+        notifications
+      ),
+      respondToInvitation: new RespondToInvitation(invitations),
+      getInvitationDetails: new GetInvitationDetails(invitations),
+      listReceivedInvitations: new ListReceivedInvitations(invitations),
+      listCreatedInvitations: new ListCreatedInvitations(invitations),
+      registerPushToken: new RegisterPushToken(pushTokens)
+    }
+  };
+}
