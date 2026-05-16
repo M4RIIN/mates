@@ -10,6 +10,8 @@
     "dev:api": "pnpm --filter @mates/shared build && pnpm --filter @mates/api dev",
     "dev:mobile": "pnpm --filter @mates/shared build && pnpm --filter @mates/mobile start",
     "db:generate": "pnpm --filter @mates/api db:generate",
-    "db:migrate": "pnpm --filter @mates/api db:migrate"
+    "db:migrate": "pnpm --filter @mates/api db:migrate",
+    "build:api": "pnpm --filter @mates/api... build",
+    "start:api": "pnpm --filter @mates/api start"
   }
 }
