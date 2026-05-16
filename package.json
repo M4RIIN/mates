@@ -14,6 +14,7 @@
     "build:api": "pnpm --filter @mates/api... build",
     "start:api": "pnpm --filter @mates/api start",
     "build:mobile": "pnpm --filter @mates/mobile... build",
-    "start:mobile": "pnpm --filter @mates/mobile start"
+    "start:mobile": "pnpm --filter @mates/mobile start",
+    "migrate:api": "pnpm --filter @mates/api db:migrate"
   }
 }
