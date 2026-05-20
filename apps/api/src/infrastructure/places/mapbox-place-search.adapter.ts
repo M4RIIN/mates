@@ -27,6 +27,7 @@ export class MapboxPlaceSearchAdapter implements PlaceSearchPort {
     const url = new URL("https://api.mapbox.com/search/geocode/v6/forward");
     url.searchParams.set("q", trimmedQuery);
     url.searchParams.set("access_token", this.accessToken);
+    url.searchParams.set("limit", "6");
     url.searchParams.set("session_token", "server");
 
     const response = await fetch(url);
@@ -40,11 +41,19 @@ export class MapboxPlaceSearchAdapter implements PlaceSearchPort {
 
       return {
         id: feature.id,
-        name: feature.properties?.name ?? "Lieu sans nom",
-        address: feature.properties?.full_address ?? null,
+        name: truncate(feature.properties?.name ?? "Lieu sans nom", 160),
+        address: toNullableTruncatedValue(feature.properties?.full_address ?? null, 240),
         longitude: coordinates?.[0] ?? null,
         latitude: coordinates?.[1] ?? null
       };
     });
   }
+}
+
+function toNullableTruncatedValue(value: string | null, maxLength: number): string | null {
+  return value !== null ? truncate(value, maxLength) : null;
+}
+
+function truncate(value: string, maxLength: number): string {
+  return value.length > maxLength ? value.slice(0, maxLength) : value;
 }

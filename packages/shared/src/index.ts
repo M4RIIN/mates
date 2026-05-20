@@ -80,6 +80,25 @@ export const placeInputSchema = z.object({
 });
 export type PlaceInput = z.infer<typeof placeInputSchema>;
 
+export const placeCandidateSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1).max(160),
+  address: z.string().trim().max(240).nullable(),
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable()
+});
+export type PlaceCandidateDto = z.infer<typeof placeCandidateSchema>;
+
+export const placeSearchQuerySchema = z.object({
+  q: z.string().trim().min(2).max(120)
+});
+export type PlaceSearchQuery = z.infer<typeof placeSearchQuerySchema>;
+
+export const placeSearchResponseSchema = z.object({
+  places: z.array(placeCandidateSchema)
+});
+export type PlaceSearchResponse = z.infer<typeof placeSearchResponseSchema>;
+
 export const createInvitationRequestSchema = placeInputSchema.extend({
   scheduledAt: isoDateTimeSchema
 });

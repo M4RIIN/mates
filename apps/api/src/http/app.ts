@@ -8,6 +8,7 @@ import { registerAuthRoutes } from "./routes/auth-routes.js";
 import { registerFriendRoutes } from "./routes/friend-routes.js";
 import { registerInvitationRoutes } from "./routes/invitation-routes.js";
 import { registerMeRoutes } from "./routes/me-routes.js";
+import { registerPlaceRoutes } from "./routes/place-routes.js";
 import { registerUserRoutes } from "./routes/user-routes.js";
 import type { AppBindings } from "./types.js";
 
@@ -38,6 +39,7 @@ export function createHttpApp(container: AppContainer): Hono<AppBindings> {
   registerMeRoutes(app, container);
   registerUserRoutes(app, container);
   registerFriendRoutes(app, container);
+  registerPlaceRoutes(app, container);
   registerInvitationRoutes(app, container);
 
   app.notFound((context) => {

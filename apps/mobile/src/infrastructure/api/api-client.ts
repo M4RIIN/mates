@@ -4,6 +4,7 @@ import {
   friendSchema,
   invitationDetailsSchema,
   invitationListSchema,
+  placeSearchResponseSchema,
   publicUserSchema,
   receivedInvitationListSchema,
   type AddFriendRequest,
@@ -12,6 +13,7 @@ import {
   type CurrentUserDto,
   type FriendDto,
   type InvitationDetailsDto,
+  type PlaceCandidateDto,
   type PublicUserDto,
   type ReceivedInvitationDto,
   type RegisterPushTokenRequest,
@@ -63,6 +65,12 @@ export class ApiClient {
   searchUser(publicTag: string): Promise<PublicUserDto | null> {
     return this.request("GET", `/users/search?tag=${encodeURIComponent(publicTag)}`, searchUserResponseSchema).then(
       (response) => response.user
+    );
+  }
+
+  searchPlaces(query: string): Promise<PlaceCandidateDto[]> {
+    return this.request("GET", `/places/search?q=${encodeURIComponent(query)}`, placeSearchResponseSchema).then(
+      (response) => response.places
     );
   }
 

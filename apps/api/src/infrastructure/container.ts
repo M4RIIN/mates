@@ -22,13 +22,19 @@ import type { RespondToInvitationUseCase } from "../application/use-cases/respon
 import { RespondToInvitationUseCase as RespondToInvitation } from "../application/use-cases/respond-to-invitation.use-case.js";
 import type { SearchUserByPublicTagUseCase } from "../application/use-cases/search-user-by-public-tag.use-case.js";
 import { SearchUserByPublicTagUseCase as SearchUserByPublicTag } from "../application/use-cases/search-user-by-public-tag.use-case.js";
+import type { SearchPlacesUseCase } from "../application/use-cases/search-places.use-case.js";
+import { SearchPlacesUseCase as SearchPlaces } from "../application/use-cases/search-places.use-case.js";
 import type { SendInvitationToFriendsUseCase } from "../application/use-cases/send-invitation-to-friends.use-case.js";
 import { SendInvitationToFriendsUseCase as SendInvitationToFriends } from "../application/use-cases/send-invitation-to-friends.use-case.js";
+import type { PlaceSearchPort } from "../application/ports/place-search-port.js";
 import type { TokenService } from "../application/ports/token-service.js";
 import { createDb } from "./db/client.js";
 import { ConsoleNotificationGateway } from "./notifications/console-notification.gateway.js";
 import { ExpoPushNotificationGateway } from "./notifications/expo-push-notification.gateway.js";
 import { FirebaseCloudMessagingGateway } from "./notifications/firebase-cloud-messaging.gateway.js";
+import { MapboxPlaceSearchAdapter } from "./places/mapbox-place-search.adapter.js";
+import { MockPlaceSearchAdapter } from "./places/mock-place-search.adapter.js";
+import { PhotonPlaceSearchAdapter } from "./places/photon-place-search.adapter.js";
 import { PostgresFriendshipRepository } from "./repositories/postgres-friendship.repository.js";
 import { PostgresInvitationRepository } from "./repositories/postgres-invitation.repository.js";
 import { PostgresPushTokenRepository } from "./repositories/postgres-push-token.repository.js";
@@ -50,6 +56,7 @@ export type AppUseCases = {
   listReceivedInvitations: ListReceivedInvitationsUseCase;
   listCreatedInvitations: ListCreatedInvitationsUseCase;
   registerPushToken: RegisterPushTokenUseCase;
+  searchPlaces: SearchPlacesUseCase;
 };
 
 export type AppContainer = {
@@ -66,6 +73,25 @@ function requireEnv(env: NodeJS.ProcessEnv, key: string): string {
   return value;
 }
 
+function optionalEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
+  const value = env[key]?.trim();
+  return value !== undefined && value.length > 0 ? value : undefined;
+}
+
+function createPlaceSearchAdapter(env: NodeJS.ProcessEnv): PlaceSearchPort {
+  const provider = optionalEnv(env, "PLACES_PROVIDER") ?? "photon";
+  if (provider === "mock") {
+    return new MockPlaceSearchAdapter();
+  }
+
+  const mapboxAccessToken = optionalEnv(env, "MAPBOX_ACCESS_TOKEN");
+  if (provider === "mapbox" && mapboxAccessToken !== undefined) {
+    return new MapboxPlaceSearchAdapter(mapboxAccessToken);
+  }
+
+  return new PhotonPlaceSearchAdapter(optionalEnv(env, "PHOTON_BASE_URL"), optionalEnv(env, "PHOTON_LANGUAGE") ?? "fr");
+}
+
 export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
   const db = createDb(requireEnv(env, "DATABASE_URL"));
 
@@ -73,6 +99,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
   const friendships = new PostgresFriendshipRepository(db);
   const invitations = new PostgresInvitationRepository(db);
   const pushTokens = new PostgresPushTokenRepository(db);
+  const placeSearch = createPlaceSearchAdapter(env);
   const passwordHasher = new BcryptPasswordHasher();
   const tokenService = new JoseTokenService(
     requireEnv(env, "JWT_SECRET"),
@@ -106,7 +133,8 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
       getInvitationDetails: new GetInvitationDetails(invitations),
       listReceivedInvitations: new ListReceivedInvitations(invitations),
       listCreatedInvitations: new ListCreatedInvitations(invitations),
-      registerPushToken: new RegisterPushToken(pushTokens)
+      registerPushToken: new RegisterPushToken(pushTokens),
+      searchPlaces: new SearchPlaces(placeSearch)
     }
   };
 }

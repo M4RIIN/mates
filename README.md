@@ -33,6 +33,11 @@ JWT_EXPIRES_IN_DAYS=30
 # console | expo | firebase
 NOTIFICATION_PROVIDER=console
 FIREBASE_SERVICE_ACCOUNT_JSON=
+# photon | mapbox | mock
+PLACES_PROVIDER=photon
+PHOTON_BASE_URL=https://photon.komoot.io
+PHOTON_LANGUAGE=fr
+# Requis uniquement avec PLACES_PROVIDER=mapbox
 MAPBOX_ACCESS_TOKEN=
 ```
 
@@ -40,7 +45,7 @@ Mobile, fichier `apps/mobile/.env` :
 
 ```bash
 EXPO_PUBLIC_API_URL=http://localhost:3000
-EXPO_PUBLIC_PLACES_PROVIDER=mock
+EXPO_PUBLIC_PLACES_PROVIDER=api
 EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=
 ```
 
@@ -93,10 +98,10 @@ Configurer EAS et les variables de production :
 pnpm dlx eas-cli@latest login
 pnpm dlx eas-cli@latest init
 pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://api.example.com --environment production --visibility plaintext
-pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_PLACES_PROVIDER --value mock --environment production --visibility plaintext
+pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_PLACES_PROVIDER --value api --environment production --visibility plaintext
 ```
 
-Si Mapbox est utilisé en production, ajouter aussi :
+Si Mapbox est appelé directement depuis le mobile en production, ajouter aussi :
 
 ```bash
 pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN --value <mapbox-token> --environment production --visibility sensitive
@@ -126,7 +131,7 @@ Le backend sépare strictement :
 - `domain/` : règles métier pures, erreurs métier, génération du `publicTag`, règles d’invitation.
 - `application/use-cases/` : orchestration métier. Les use cases ne dépendent que de ports.
 - `application/ports/` : interfaces repositories, JWT, hashing, notifications, lieux.
-- `infrastructure/` : Drizzle/PostgreSQL, bcrypt, jose JWT, Firebase Cloud Messaging, Mapbox/mock.
+- `infrastructure/` : Drizzle/PostgreSQL, bcrypt, jose JWT, Firebase Cloud Messaging, Photon/Mapbox/mock.
 - `http/` : Hono, middleware JWT, validation Zod, sérialisation HTTP.
 
 Les routes Hono valident les entrées puis appellent un use case. Elles ne contiennent pas de logique métier.
@@ -135,8 +140,8 @@ Le mobile suit la même séparation :
 
 - `domain/` : types et règles locales sans Expo.
 - `application/` : ports côté client, notamment la recherche de lieux.
-- `infrastructure/` : client API typé, storage Zustand, Expo Notifications, adapters Mapbox/mock.
+- `infrastructure/` : client API typé, storage Zustand, Expo Notifications, adapters API/Mapbox/mock.
 - `presentation/` : composants, hooks Query/Zustand, écrans.
 - `app/` : routes Expo Router fines.
 
-Les appels HTTP sont typés via les schémas Zod de `packages/shared`. Les lieux utilisent `MockPlaceSearchProvider` par défaut et `MapboxPlaceSearchProvider` avec `EXPO_PUBLIC_PLACES_PROVIDER=mapbox`.
+Les appels HTTP sont typés via les schémas Zod de `packages/shared`. Les lieux utilisent l’API par défaut via `EXPO_PUBLIC_PLACES_PROVIDER=api`. Côté API, `PLACES_PROVIDER=photon` utilise l’API publique Photon/Komoot sans clé. Ce service est gratuit mais soumis au fair use, donc l’autocomplete mobile est débouncé. `PLACES_PROVIDER=mock` force les résultats locaux, et `PLACES_PROVIDER=mapbox` utilise Mapbox avec `MAPBOX_ACCESS_TOKEN`. Le mobile peut encore appeler Mapbox directement avec `EXPO_PUBLIC_PLACES_PROVIDER=mapbox` et `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN`.
