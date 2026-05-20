@@ -7,18 +7,28 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "plugins": ["expo-router", "expo-notifications"],
+    "plugins": [
+      "expo-router",
+      "expo-notifications"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mates.app"
+      "bundleIdentifier": "com.lagrange.mates",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.mates.app"
+      "package": "com.lagrange.mates"
     },
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "55b47406-99b4-4af7-a683-305cd1238eed"
       }
-    }
+    },
+    "owner": "nclmarin"
   }
 }

@@ -27,6 +27,7 @@ import { SendInvitationToFriendsUseCase as SendInvitationToFriends } from "../ap
 import type { TokenService } from "../application/ports/token-service.js";
 import { createDb } from "./db/client.js";
 import { ConsoleNotificationGateway } from "./notifications/console-notification.gateway.js";
+import { ExpoPushNotificationGateway } from "./notifications/expo-push-notification.gateway.js";
 import { FirebaseCloudMessagingGateway } from "./notifications/firebase-cloud-messaging.gateway.js";
 import { PostgresFriendshipRepository } from "./repositories/postgres-friendship.repository.js";
 import { PostgresInvitationRepository } from "./repositories/postgres-invitation.repository.js";
@@ -78,9 +79,11 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
     Number.parseInt(env.JWT_EXPIRES_IN_DAYS ?? "30", 10)
   );
   const notifications =
-    env.NOTIFICATION_PROVIDER === "firebase"
-      ? new FirebaseCloudMessagingGateway(env.FIREBASE_SERVICE_ACCOUNT_JSON)
-      : new ConsoleNotificationGateway();
+    env.NOTIFICATION_PROVIDER === "expo"
+      ? new ExpoPushNotificationGateway()
+      : env.NOTIFICATION_PROVIDER === "firebase"
+        ? new FirebaseCloudMessagingGateway(env.FIREBASE_SERVICE_ACCOUNT_JSON)
+        : new ConsoleNotificationGateway();
 
   return {
     tokenService,

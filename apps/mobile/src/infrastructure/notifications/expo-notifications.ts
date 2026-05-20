@@ -1,4 +1,5 @@
 import * as Device from "expo-device";
+import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import type { PushPlatform } from "@mates/shared";
@@ -38,12 +39,23 @@ export async function getDevicePushToken(): Promise<DevicePushToken | null> {
     });
   }
 
-  const devicePushToken = await Notifications.getDevicePushTokenAsync();
+  const projectId = getExpoProjectId();
+  const expoPushToken = await Notifications.getExpoPushTokenAsync({ projectId });
 
   return {
-    token: String(devicePushToken.data),
+    token: expoPushToken.data,
     platform: toPushPlatform(Platform.OS)
   };
+}
+
+function getExpoProjectId(): string {
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+
+  if (typeof projectId !== "string" || projectId.trim().length === 0) {
+    throw new Error("Expo project ID not found for push notification registration");
+  }
+
+  return projectId;
 }
 
 function toPushPlatform(platform: string): PushPlatform {

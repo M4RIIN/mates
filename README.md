@@ -30,6 +30,7 @@ PORT=3000
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/mates
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN_DAYS=30
+# console | expo | firebase
 NOTIFICATION_PROVIDER=console
 FIREBASE_SERVICE_ACCOUNT_JSON=
 MAPBOX_ACCESS_TOKEN=
@@ -43,7 +44,7 @@ EXPO_PUBLIC_PLACES_PROVIDER=mock
 EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=
 ```
 
-`NOTIFICATION_PROVIDER=console` utilise un adapter mock. `NOTIFICATION_PROVIDER=firebase` active Firebase Admin via `FIREBASE_SERVICE_ACCOUNT_JSON` ou les credentials par défaut du runtime.
+`NOTIFICATION_PROVIDER=console` utilise un adapter mock. `NOTIFICATION_PROVIDER=expo` envoie les notifications via Expo Push Service, adapté aux builds iOS/TestFlight Expo. `NOTIFICATION_PROVIDER=firebase` active Firebase Admin via `FIREBASE_SERVICE_ACCOUNT_JSON` ou les credentials par défaut du runtime.
 
 ## Base de données
 
@@ -70,6 +71,45 @@ pnpm dev:mobile
 ```
 
 Sur simulateur Android, remplacer `EXPO_PUBLIC_API_URL=http://localhost:3000` par `http://10.0.2.2:3000` si l’API tourne sur la machine hôte.
+
+## Déploiement iOS TestFlight
+
+L'app mobile utilise EAS depuis `apps/mobile`. Les commandes EAS doivent être lancées depuis ce dossier :
+
+```bash
+cd apps/mobile
+```
+
+Pré-requis :
+
+- Un compte Apple Developer actif.
+- Une app créée dans App Store Connect avec le bundle identifier `com.lagrange.mates`.
+- Un compte Expo connecté via EAS CLI.
+- Une API accessible publiquement en HTTPS pour `EXPO_PUBLIC_API_URL`.
+
+Configurer EAS et les variables de production :
+
+```bash
+pnpm dlx eas-cli@latest login
+pnpm dlx eas-cli@latest init
+pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://api.example.com --environment production --visibility plaintext
+pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_PLACES_PROVIDER --value mock --environment production --visibility plaintext
+```
+
+Si Mapbox est utilisé en production, ajouter aussi :
+
+```bash
+pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN --value <mapbox-token> --environment production --visibility sensitive
+```
+
+Construire l'archive iOS puis l'envoyer sur App Store Connect/TestFlight :
+
+```bash
+pnpm dlx eas-cli@latest build --platform ios --profile production
+pnpm dlx eas-cli@latest submit --platform ios --profile production --latest
+```
+
+Lors du premier build, laisser EAS gérer les certificats et profils Apple si tu n'as pas déjà tes propres credentials iOS. Après traitement par Apple, ouvrir App Store Connect > Mates > TestFlight, ajouter le build à un groupe de testeurs internes, puis inviter les testeurs.
 
 ## Tests
 
