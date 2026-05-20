@@ -1,7 +1,7 @@
 {
   "name": "mates",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "build": "pnpm -r build",
@@ -15,6 +15,7 @@
     "start:api": "pnpm --filter @mates/api start",
     "build:mobile": "pnpm --filter @mates/mobile... build",
     "start:mobile": "pnpm --filter @mates/mobile start",
+    "deploy:ios:testflight": "pnpm build:mobile && cd apps/mobile && pnpm dlx eas-cli@latest build --platform ios --profile production --auto-submit",
     "migrate:api": "pnpm --filter @mates/api db:migrate"
   }
 }
