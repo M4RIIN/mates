@@ -3,7 +3,7 @@
     "name": "Mates",
     "slug": "mates",
     "scheme": "mates",
-    "version": "0.1.1s",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
