@@ -10,13 +10,15 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-location"
     ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lagrange.mates",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Mates utilise ta position pour limiter la recherche de lieux au pays dans lequel tu te trouves.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [

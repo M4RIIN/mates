@@ -6,6 +6,11 @@ export type PlaceCandidate = {
   longitude: number | null;
 };
 
+export type PlaceSearchOptions = {
+  countryCode?: string;
+  limit?: number;
+};
+
 export interface PlaceSearchPort {
-  search(query: string): Promise<PlaceCandidate[]>;
+  search(query: string, options?: PlaceSearchOptions): Promise<PlaceCandidate[]>;
 }

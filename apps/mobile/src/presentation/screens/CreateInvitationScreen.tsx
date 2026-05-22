@@ -6,8 +6,8 @@ import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invitation/schedule";
 import { AppButton } from "@/presentation/components/AppButton";
-import { ListRow } from "@/presentation/components/ListRow";
 import { PageHeader } from "@/presentation/components/PageHeader";
+import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
@@ -71,10 +71,10 @@ export function CreateInvitationScreen() {
         placeholder="bar, restaurant, adresse..."
       />
       {placeSearch.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
-      {placeSearch.data !== undefined && placeSearch.data.length > 0 ? (
+      {placeSearch.data !== undefined && placeSearch.data.length > 0 && selectedPlace === null ? (
         <View style={styles.results}>
           {placeSearch.data.map((place) => (
-            <ListRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />
+            <PlaceResultRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />
           ))}
         </View>
       ) : null}
@@ -103,10 +103,7 @@ export function CreateInvitationScreen() {
 
 const styles = StyleSheet.create({
   results: {
-    gap: spacing.sm,
-    borderLeftWidth: borders.heavy,
-    borderLeftColor: colors.primary,
-    paddingLeft: spacing.sm
+    gap: spacing.xxs
   },
   buttonZone: {
     alignItems: "center",

@@ -113,7 +113,14 @@ export const placeCandidateSchema = z.object({
 export type PlaceCandidateDto = z.infer<typeof placeCandidateSchema>;
 
 export const placeSearchQuerySchema = z.object({
-  q: z.string().trim().min(2).max(120)
+  q: z.string().trim().min(2).max(120),
+  countryCode: z
+    .string()
+    .trim()
+    .regex(/^[a-z]{2}$/i)
+    .transform((value) => value.toUpperCase())
+    .optional(),
+  limit: z.coerce.number().int().min(1).max(10).default(8)
 });
 export type PlaceSearchQuery = z.infer<typeof placeSearchQuerySchema>;
 

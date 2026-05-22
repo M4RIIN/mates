@@ -1,4 +1,4 @@
-import type { PlaceCandidate, PlaceSearchPort } from "../../application/ports/place-search-port.js";
+import type { PlaceCandidate, PlaceSearchOptions, PlaceSearchPort } from "../../application/ports/place-search-port.js";
 
 type MapboxFeature = {
   id: string;
@@ -18,7 +18,7 @@ type MapboxSearchResponse = {
 export class MapboxPlaceSearchAdapter implements PlaceSearchPort {
   constructor(private readonly accessToken: string) {}
 
-  async search(query: string): Promise<PlaceCandidate[]> {
+  async search(query: string, options: PlaceSearchOptions = {}): Promise<PlaceCandidate[]> {
     const trimmedQuery = query.trim();
     if (trimmedQuery.length === 0) {
       return [];
@@ -27,8 +27,11 @@ export class MapboxPlaceSearchAdapter implements PlaceSearchPort {
     const url = new URL("https://api.mapbox.com/search/geocode/v6/forward");
     url.searchParams.set("q", trimmedQuery);
     url.searchParams.set("access_token", this.accessToken);
-    url.searchParams.set("limit", "6");
+    url.searchParams.set("limit", String(toLimit(options.limit)));
     url.searchParams.set("session_token", "server");
+    if (options.countryCode !== undefined) {
+      url.searchParams.set("country", options.countryCode.toLowerCase());
+    }
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -48,6 +51,10 @@ export class MapboxPlaceSearchAdapter implements PlaceSearchPort {
       };
     });
   }
+}
+
+function toLimit(value: number | undefined): number {
+  return Math.min(10, Math.max(1, value ?? 8));
 }
 
 function toNullableTruncatedValue(value: string | null, maxLength: number): string | null {

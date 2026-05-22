@@ -1,4 +1,4 @@
-import type { PlaceSearchProvider } from "@/application/places/place-search-provider";
+import type { PlaceSearchOptions, PlaceSearchProvider } from "@/application/places/place-search-provider";
 import type { Place } from "@/domain/place/place";
 
 const MOCK_PLACES: Place[] = [
@@ -26,12 +26,12 @@ const MOCK_PLACES: Place[] = [
 ];
 
 export class MockPlaceSearchProvider implements PlaceSearchProvider {
-  async search(query: string): Promise<Place[]> {
+  async search(query: string, options: PlaceSearchOptions = {}): Promise<Place[]> {
     const normalizedQuery = query.trim().toLowerCase();
     if (normalizedQuery.length < 2) {
       return [];
     }
 
-    return MOCK_PLACES.filter((place) => place.name.toLowerCase().includes(normalizedQuery));
+    return MOCK_PLACES.filter((place) => place.name.toLowerCase().includes(normalizedQuery)).slice(0, options.limit ?? 8);
   }
 }

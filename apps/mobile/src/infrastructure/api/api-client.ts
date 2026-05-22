@@ -80,8 +80,16 @@ export class ApiClient {
     );
   }
 
-  searchPlaces(query: string): Promise<PlaceCandidateDto[]> {
-    return this.request("GET", `/places/search?q=${encodeURIComponent(query)}`, placeSearchResponseSchema).then(
+  searchPlaces(query: string, options: { countryCode?: string; limit?: number } = {}): Promise<PlaceCandidateDto[]> {
+    const params = new URLSearchParams({ q: query });
+    if (options.countryCode !== undefined) {
+      params.set("countryCode", options.countryCode);
+    }
+    if (options.limit !== undefined) {
+      params.set("limit", String(options.limit));
+    }
+
+    return this.request("GET", `/places/search?${params.toString()}`, placeSearchResponseSchema).then(
       (response) => response.places
     );
   }

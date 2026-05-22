@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { GestureResponderHandlers } from "react-native";
-import { ActivityIndicator, Alert, Animated, Easing, PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
 import { router } from "expo-router";
 import { Bell, Inbox, Send, Settings, User, Users, X } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invitation/schedule";
-import { ListRow } from "@/presentation/components/ListRow";
+import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
@@ -241,11 +241,16 @@ export function HomeScreen() {
           />
           {placeSearch.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
           {placeSearch.data !== undefined && placeSearch.data.length > 0 && selectedPlace === null ? (
-            <View style={styles.results}>
-              {placeSearch.data.slice(0, 2).map((place) => (
-                <ListRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={[styles.results, isWide ? styles.resultsWide : null]}
+              contentContainerStyle={styles.resultsContent}
+            >
+              {placeSearch.data.slice(0, 6).map((place) => (
+                <PlaceResultRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />
               ))}
-            </View>
+            </ScrollView>
           ) : null}
           <View style={styles.fieldRow}>
             <View style={styles.fieldFlex}>
@@ -546,14 +551,18 @@ const styles = StyleSheet.create({
   },
   results: {
     position: "absolute",
-    top: 94,
+    top: 108,
     left: spacing.sm,
     right: spacing.sm,
-    zIndex: 10,
-    gap: spacing.xs,
-    borderLeftWidth: borders.heavy,
-    borderLeftColor: colors.primary,
-    paddingLeft: spacing.xs
+    maxHeight: 340,
+    zIndex: 10
+  },
+  resultsContent: {
+    gap: spacing.xxs
+  },
+  resultsWide: {
+    left: spacing.md,
+    right: spacing.md
   },
   fieldRow: {
     flexDirection: "row",

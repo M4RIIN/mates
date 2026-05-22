@@ -1,4 +1,4 @@
-import type { PlaceSearchProvider } from "@/application/places/place-search-provider";
+import type { PlaceSearchOptions, PlaceSearchProvider } from "@/application/places/place-search-provider";
 import type { Place } from "@/domain/place/place";
 
 type MapboxFeature = {
@@ -19,7 +19,7 @@ type MapboxResponse = {
 export class MapboxPlaceSearchProvider implements PlaceSearchProvider {
   constructor(private readonly accessToken: string) {}
 
-  async search(query: string): Promise<Place[]> {
+  async search(query: string, options: PlaceSearchOptions = {}): Promise<Place[]> {
     const trimmedQuery = query.trim();
     if (trimmedQuery.length < 2) {
       return [];
@@ -28,7 +28,10 @@ export class MapboxPlaceSearchProvider implements PlaceSearchProvider {
     const url = new URL("https://api.mapbox.com/search/geocode/v6/forward");
     url.searchParams.set("q", trimmedQuery);
     url.searchParams.set("access_token", this.accessToken);
-    url.searchParams.set("limit", "6");
+    url.searchParams.set("limit", String(toLimit(options.limit)));
+    if (options.countryCode !== undefined) {
+      url.searchParams.set("country", options.countryCode.toLowerCase());
+    }
 
     const response = await fetch(url.toString());
     if (!response.ok) {
@@ -48,4 +51,8 @@ export class MapboxPlaceSearchProvider implements PlaceSearchProvider {
       };
     });
   }
+}
+
+function toLimit(value: number | undefined): number {
+  return Math.min(10, Math.max(1, value ?? 8));
 }

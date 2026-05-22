@@ -1,4 +1,4 @@
-import type { PlaceCandidate, PlaceSearchPort } from "../../application/ports/place-search-port.js";
+import type { PlaceCandidate, PlaceSearchOptions, PlaceSearchPort } from "../../application/ports/place-search-port.js";
 
 const DEFAULT_PLACES: PlaceCandidate[] = [
   {
@@ -18,12 +18,12 @@ const DEFAULT_PLACES: PlaceCandidate[] = [
 ];
 
 export class MockPlaceSearchAdapter implements PlaceSearchPort {
-  async search(query: string): Promise<PlaceCandidate[]> {
+  async search(query: string, options: PlaceSearchOptions = {}): Promise<PlaceCandidate[]> {
     const normalizedQuery = query.trim().toLowerCase();
     if (normalizedQuery.length === 0) {
       return [];
     }
 
-    return DEFAULT_PLACES.filter((place) => place.name.toLowerCase().includes(normalizedQuery));
+    return DEFAULT_PLACES.filter((place) => place.name.toLowerCase().includes(normalizedQuery)).slice(0, options.limit ?? 8);
   }
 }
