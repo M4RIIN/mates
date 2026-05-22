@@ -2,6 +2,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { EmptyState } from "@/presentation/components/EmptyState";
 import { ListRow } from "@/presentation/components/ListRow";
 import { PageHeader } from "@/presentation/components/PageHeader";
+import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { useInvitationDetails } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
@@ -28,12 +29,13 @@ export function CreatedInvitationDetailScreen() {
             tone="red"
             compact
           />
-          {invitation.data.placeAddress !== null ? (
-            <View style={styles.addressPanel}>
-              <Text style={styles.addressLabel}>Adresse</Text>
-              <Text style={styles.address}>{invitation.data.placeAddress}</Text>
-            </View>
-          ) : null}
+          <PlaceVenuePanel
+            title={invitation.data.placeName}
+            address={invitation.data.placeAddress}
+            latitude={invitation.data.latitude}
+            longitude={invitation.data.longitude}
+            showReserveButton
+          />
           <View style={styles.stats}>
             <View style={[styles.stat, styles.statYes]}>
               <Text style={styles.statNumber}>{yesCount}</Text>
@@ -77,27 +79,6 @@ function formatRecipientStatus(status: "pending" | "yes" | "no", delayMinutes: n
 }
 
 const styles = StyleSheet.create({
-  addressPanel: {
-    borderRadius: radii.md,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    gap: spacing.xs
-  },
-  addressLabel: {
-    color: colors.text,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  address: {
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700"
-  },
   stats: {
     flexDirection: "row",
     gap: spacing.sm

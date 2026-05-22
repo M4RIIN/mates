@@ -19,6 +19,11 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Mates utilise ta position pour limiter la recherche de lieux au pays dans lequel tu te trouves.",
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps",
+          "waze",
+          "uber"
+        ],
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [

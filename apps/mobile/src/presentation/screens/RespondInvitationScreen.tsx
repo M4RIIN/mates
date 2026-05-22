@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { Check, Clock3, X } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
 import { PageHeader } from "@/presentation/components/PageHeader";
+import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
@@ -71,12 +72,12 @@ export function RespondInvitationScreen() {
             tone="blue"
             compact
           />
-          {invitation.data.placeAddress !== null ? (
-            <View style={styles.addressPanel}>
-              <Text style={styles.addressLabel}>Adresse</Text>
-              <Text style={styles.address}>{invitation.data.placeAddress}</Text>
-            </View>
-          ) : null}
+          <PlaceVenuePanel
+            title={invitation.data.placeName}
+            address={invitation.data.placeAddress}
+            latitude={invitation.data.latitude}
+            longitude={invitation.data.longitude}
+          />
           <View style={styles.current}>
             <Text style={styles.currentLabel}>Ta réponse</Text>
             <Text style={styles.currentValue}>{formatCurrentResponse(myResponse?.responseStatus, myResponse?.delayMinutes)}</Text>
@@ -137,27 +138,6 @@ function formatCurrentResponse(status: "pending" | "yes" | "no" | undefined, del
 }
 
 const styles = StyleSheet.create({
-  addressPanel: {
-    borderRadius: radii.md,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    gap: spacing.xs
-  },
-  addressLabel: {
-    color: colors.text,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  address: {
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700"
-  },
   current: {
     borderRadius: radii.md,
     backgroundColor: colors.blueSoft,

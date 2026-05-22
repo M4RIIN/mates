@@ -57,6 +57,7 @@ export function Screen({ children, scroll = true, contentStyle }: ScreenProps) {
         decelerationRate="fast"
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
         showsVerticalScrollIndicator={false}
       >
         <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>

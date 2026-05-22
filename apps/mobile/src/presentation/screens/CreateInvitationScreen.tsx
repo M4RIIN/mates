@@ -8,6 +8,7 @@ import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invita
 import { AppButton } from "@/presentation/components/AppButton";
 import { PageHeader } from "@/presentation/components/PageHeader";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
+import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
@@ -77,6 +78,15 @@ export function CreateInvitationScreen() {
             <PlaceResultRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />
           ))}
         </View>
+      ) : null}
+      {selectedPlace !== null ? (
+        <PlaceVenuePanel
+          title={selectedPlace.name}
+          address={selectedPlace.address}
+          latitude={selectedPlace.latitude}
+          longitude={selectedPlace.longitude}
+          compact
+        />
       ) : null}
       <TextField
         label="Adresse"

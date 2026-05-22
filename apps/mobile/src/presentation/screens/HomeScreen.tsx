@@ -7,6 +7,7 @@ import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invitation/schedule";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
+import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
@@ -209,7 +210,7 @@ export function HomeScreen() {
   });
 
   return (
-    <Screen scroll={false} contentStyle={[styles.screen, isWide ? styles.screenWide : null, isShort ? styles.screenShort : null]}>
+    <Screen contentStyle={[styles.screen, isWide ? styles.screenWide : null, isShort ? styles.screenShort : null]}>
       <View style={styles.topBar}>
         <Pressable accessibilityRole="button" onPress={() => setMenuOpen((value) => !value)} style={styles.gearButton}>
           {menuOpen ? <X size={22} color={colors.ink} strokeWidth={3} /> : <Settings size={22} color={colors.ink} strokeWidth={3} />}
@@ -227,7 +228,7 @@ export function HomeScreen() {
       <View style={[styles.cockpit, isWide ? styles.cockpitWide : null]}>
         <View style={[styles.formPanel, isWide ? styles.formPanelWide : null]}>
           <View pointerEvents="none" style={styles.formGlow} />
-          <Text style={styles.sectionLabel}>Mission</Text>
+          <Text style={styles.sectionLabel}>Rencard</Text>
           <TextField
             compact
             label="Lieu"
@@ -251,6 +252,15 @@ export function HomeScreen() {
                 <PlaceResultRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />
               ))}
             </ScrollView>
+          ) : null}
+          {selectedPlace !== null ? (
+            <PlaceVenuePanel
+              title={selectedPlace.name}
+              address={selectedPlace.address}
+              latitude={selectedPlace.latitude}
+              longitude={selectedPlace.longitude}
+              compact
+            />
           ) : null}
           <View style={styles.fieldRow}>
             <View style={styles.fieldFlex}>
