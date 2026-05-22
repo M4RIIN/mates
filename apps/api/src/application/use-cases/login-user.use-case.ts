@@ -22,6 +22,10 @@ export class LoginUserUseCase {
       throw AppErrors.invalidCredentials();
     }
 
+    if (user.passwordHash === null) {
+      throw AppErrors.invalidCredentials();
+    }
+
     const isValidPassword = await this.passwordHasher.verify(input.password, user.passwordHash);
     if (!isValidPassword) {
       throw AppErrors.invalidCredentials();

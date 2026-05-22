@@ -16,5 +16,8 @@ function resolveOptionalEnv(value: string | undefined): string | undefined {
 export const appConfig = {
   apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000",
   placesProvider: resolvePlacesProvider(process.env.EXPO_PUBLIC_PLACES_PROVIDER),
-  mapboxAccessToken: resolveOptionalEnv(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN)
+  mapboxAccessToken: resolveOptionalEnv(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN),
+  googleWebClientId: resolveOptionalEnv(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID),
+  googleIosClientId: resolveOptionalEnv(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID),
+  googleAndroidClientId: resolveOptionalEnv(process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID)
 } as const;

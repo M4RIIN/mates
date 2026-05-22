@@ -1,5 +1,6 @@
 import {
   authResponseSchema,
+  googleAuthResponseSchema,
   currentUserSchema,
   friendSchema,
   invitationDetailsSchema,
@@ -9,9 +10,12 @@ import {
   receivedInvitationListSchema,
   type AddFriendRequest,
   type AuthResponse,
+  type CompleteGoogleProfileRequest,
   type CreateInvitationRequest,
   type CurrentUserDto,
   type FriendDto,
+  type GoogleAuthRequest,
+  type GoogleAuthResponse,
   type InvitationDetailsDto,
   type PlaceCandidateDto,
   type PublicUserDto,
@@ -52,6 +56,14 @@ export class ApiClient {
 
   login(input: { identifier: string; password: string }): Promise<AuthResponse> {
     return this.request("POST", "/auth/login", authResponseSchema, input);
+  }
+
+  authenticateWithGoogle(input: GoogleAuthRequest): Promise<GoogleAuthResponse> {
+    return this.request("POST", "/auth/google", googleAuthResponseSchema, input);
+  }
+
+  completeGoogleProfile(input: CompleteGoogleProfileRequest): Promise<AuthResponse> {
+    return this.request("POST", "/auth/google/complete-profile", authResponseSchema, input);
   }
 
   me(): Promise<CurrentUserDto> {

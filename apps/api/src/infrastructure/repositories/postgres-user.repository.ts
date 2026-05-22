@@ -9,6 +9,7 @@ function toUserRecord(row: typeof users.$inferSelect): UserRecord {
     pseudo: row.pseudo,
     publicTag: row.publicTag,
     passwordHash: row.passwordHash,
+    googleSub: row.googleSub,
     createdAt: row.createdAt
   };
 }
@@ -30,7 +31,8 @@ export class PostgresUserRepository implements UserRepository {
       .values({
         pseudo: input.pseudo,
         publicTag: input.publicTag,
-        passwordHash: input.passwordHash
+        passwordHash: input.passwordHash ?? null,
+        googleSub: input.googleSub ?? null
       })
       .returning();
 
@@ -48,6 +50,11 @@ export class PostgresUserRepository implements UserRepository {
 
   async findByPublicTag(publicTag: string): Promise<UserRecord | null> {
     const [user] = await this.db.select().from(users).where(eq(users.publicTag, publicTag)).limit(1);
+    return user === undefined ? null : toUserRecord(user);
+  }
+
+  async findByGoogleSub(googleSub: string): Promise<UserRecord | null> {
+    const [user] = await this.db.select().from(users).where(eq(users.googleSub, googleSub)).limit(1);
     return user === undefined ? null : toUserRecord(user);
   }
 

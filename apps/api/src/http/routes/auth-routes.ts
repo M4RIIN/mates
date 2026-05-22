@@ -1,10 +1,27 @@
 import type { Hono } from "hono";
-import { loginRequestSchema, registerRequestSchema } from "@mates/shared";
+import {
+  completeGoogleProfileRequestSchema,
+  googleAuthRequestSchema,
+  loginRequestSchema,
+  registerRequestSchema
+} from "@mates/shared";
 import type { AppContainer } from "../../infrastructure/container.js";
 import { parseJsonBody } from "../validators/parse-request.js";
 import type { AppBindings } from "../types.js";
 
 export function registerAuthRoutes(app: Hono<AppBindings>, container: AppContainer): void {
+  app.post("/auth/google", async (context) => {
+    const body = await parseJsonBody(googleAuthRequestSchema, context);
+    const response = await container.useCases.authenticateGoogle.execute(body);
+    return context.json(response);
+  });
+
+  app.post("/auth/google/complete-profile", async (context) => {
+    const body = await parseJsonBody(completeGoogleProfileRequestSchema, context);
+    const response = await container.useCases.completeGoogleProfile.execute(body);
+    return context.json(response, 201);
+  });
+
   app.post("/auth/register", async (context) => {
     const body = await parseJsonBody(registerRequestSchema, context);
     const response = await container.useCases.registerUser.execute(body);

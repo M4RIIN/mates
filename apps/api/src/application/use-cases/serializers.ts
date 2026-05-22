@@ -1,4 +1,5 @@
 import type {
+  AuthResponse,
   InvitationDetailsDto,
   InvitationRecipientDto,
   ReceivedInvitationDto
@@ -8,6 +9,19 @@ import type {
   InvitationParticipantRecord,
   ReceivedInvitationRecord
 } from "../ports/invitation-repository.js";
+import type { UserRecord } from "../ports/user-repository.js";
+
+export function toAuthResponse(user: UserRecord, token: string): AuthResponse {
+  return {
+    token,
+    user: {
+      id: user.id,
+      pseudo: user.pseudo,
+      publicTag: user.publicTag,
+      createdAt: user.createdAt.toISOString()
+    }
+  };
+}
 
 function toInvitationRecipientDto(recipient: InvitationParticipantRecord): InvitationRecipientDto {
   return {

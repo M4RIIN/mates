@@ -30,6 +30,11 @@ PORT=3000
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/mates
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN_DAYS=30
+# Renseigner GOOGLE_CLIENT_IDS ou les variables par plateforme.
+GOOGLE_CLIENT_IDS=
+GOOGLE_WEB_CLIENT_ID=
+GOOGLE_IOS_CLIENT_ID=
+GOOGLE_ANDROID_CLIENT_ID=
 # console | expo | firebase
 NOTIFICATION_PROVIDER=console
 FIREBASE_SERVICE_ACCOUNT_JSON=
@@ -45,6 +50,9 @@ Mobile, fichier `apps/mobile/.env` :
 
 ```bash
 EXPO_PUBLIC_API_URL=http://localhost:3000
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
 EXPO_PUBLIC_PLACES_PROVIDER=api
 EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=
 ```
@@ -98,6 +106,7 @@ Configurer EAS et les variables de production :
 pnpm dlx eas-cli@latest login
 pnpm dlx eas-cli@latest init
 pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://api.example.com --environment production --visibility plaintext
+pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID --value <ios-client-id> --environment production --visibility plaintext
 pnpm dlx eas-cli@latest env:create --name EXPO_PUBLIC_PLACES_PROVIDER --value api --environment production --visibility plaintext
 ```
 
@@ -122,7 +131,7 @@ Lors du premier build, laisser EAS gérer les certificats et profils Apple si tu
 pnpm --filter @mates/api test
 ```
 
-Les tests unitaires couvrent la génération du `publicTag`, la contrainte d’invitation dans la journée courante, les réponses oui/non avec retard, et l’impossibilité de répondre à une invitation non reçue.
+Les tests unitaires couvrent la génération du `publicTag`, le flux Google avec profil à compléter, la contrainte d’invitation dans la journée courante, les réponses oui/non avec retard, et l’impossibilité de répondre à une invitation non reçue.
 
 ## Architecture
 

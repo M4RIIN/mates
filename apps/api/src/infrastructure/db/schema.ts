@@ -22,11 +22,13 @@ export const users = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     pseudo: text("pseudo").notNull(),
     publicTag: text("public_tag").notNull(),
-    passwordHash: text("password_hash").notNull(),
+    passwordHash: text("password_hash"),
+    googleSub: text("google_sub"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
-    publicTagUniqueIdx: uniqueIndex("users_public_tag_unique_idx").on(table.publicTag)
+    publicTagUniqueIdx: uniqueIndex("users_public_tag_unique_idx").on(table.publicTag),
+    googleSubUniqueIdx: uniqueIndex("users_google_sub_unique_idx").on(table.googleSub)
   })
 );
 

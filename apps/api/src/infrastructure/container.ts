@@ -1,5 +1,9 @@
 import type { AddFriendUseCase } from "../application/use-cases/add-friend.use-case.js";
 import { AddFriendUseCase as AddFriend } from "../application/use-cases/add-friend.use-case.js";
+import type { AuthenticateGoogleUseCase } from "../application/use-cases/authenticate-google.use-case.js";
+import { AuthenticateGoogleUseCase as AuthenticateGoogle } from "../application/use-cases/authenticate-google.use-case.js";
+import type { CompleteGoogleProfileUseCase } from "../application/use-cases/complete-google-profile.use-case.js";
+import { CompleteGoogleProfileUseCase as CompleteGoogleProfile } from "../application/use-cases/complete-google-profile.use-case.js";
 import type { CreateInvitationUseCase } from "../application/use-cases/create-invitation.use-case.js";
 import { CreateInvitationUseCase as CreateInvitation } from "../application/use-cases/create-invitation.use-case.js";
 import type { GetCurrentUserUseCase } from "../application/use-cases/get-current-user.use-case.js";
@@ -40,11 +44,14 @@ import { PostgresInvitationRepository } from "./repositories/postgres-invitation
 import { PostgresPushTokenRepository } from "./repositories/postgres-push-token.repository.js";
 import { PostgresUserRepository } from "./repositories/postgres-user.repository.js";
 import { BcryptPasswordHasher } from "./security/bcrypt-password-hasher.js";
+import { GoogleIdentityTokenVerifier } from "./security/google-identity-token-verifier.js";
 import { JoseTokenService } from "./security/jose-token-service.js";
 
 export type AppUseCases = {
   registerUser: RegisterUserUseCase;
   loginUser: LoginUserUseCase;
+  authenticateGoogle: AuthenticateGoogleUseCase;
+  completeGoogleProfile: CompleteGoogleProfileUseCase;
   getCurrentUser: GetCurrentUserUseCase;
   addFriend: AddFriendUseCase;
   listFriends: ListFriendsUseCase;
@@ -78,6 +85,26 @@ function optionalEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
   return value !== undefined && value.length > 0 ? value : undefined;
 }
 
+function requireGoogleClientIds(env: NodeJS.ProcessEnv): string[] {
+  const clientIds = [
+    optionalEnv(env, "GOOGLE_WEB_CLIENT_ID") ?? optionalEnv(env, "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"),
+    optionalEnv(env, "GOOGLE_IOS_CLIENT_ID") ?? optionalEnv(env, "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID"),
+    optionalEnv(env, "GOOGLE_ANDROID_CLIENT_ID") ?? optionalEnv(env, "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID"),
+    ...(optionalEnv(env, "GOOGLE_CLIENT_IDS")?.split(",") ?? [])
+  ]
+    .map((clientId) => clientId?.trim())
+    .filter((clientId): clientId is string => clientId !== undefined && clientId.length > 0);
+
+  const uniqueClientIds = [...new Set(clientIds)];
+  if (uniqueClientIds.length === 0) {
+    throw new Error(
+      "Missing required environment variable GOOGLE_CLIENT_IDS or GOOGLE_WEB_CLIENT_ID/GOOGLE_IOS_CLIENT_ID/GOOGLE_ANDROID_CLIENT_ID"
+    );
+  }
+
+  return uniqueClientIds;
+}
+
 function createPlaceSearchAdapter(env: NodeJS.ProcessEnv): PlaceSearchPort {
   const provider = optionalEnv(env, "PLACES_PROVIDER") ?? "photon";
   if (provider === "mock") {
@@ -105,6 +132,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
     requireEnv(env, "JWT_SECRET"),
     Number.parseInt(env.JWT_EXPIRES_IN_DAYS ?? "30", 10)
   );
+  const googleIdentity = new GoogleIdentityTokenVerifier(requireGoogleClientIds(env));
   const notifications =
     env.NOTIFICATION_PROVIDER === "expo"
       ? new ExpoPushNotificationGateway()
@@ -117,6 +145,8 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
     useCases: {
       registerUser: new RegisterUser(users, passwordHasher, tokenService),
       loginUser: new LoginUser(users, passwordHasher, tokenService),
+      authenticateGoogle: new AuthenticateGoogle(users, googleIdentity, tokenService),
+      completeGoogleProfile: new CompleteGoogleProfile(users, googleIdentity, tokenService),
       getCurrentUser: new GetCurrentUser(users),
       addFriend: new AddFriend(users, friendships),
       listFriends: new ListFriends(friendships),

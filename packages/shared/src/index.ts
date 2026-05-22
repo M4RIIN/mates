@@ -56,6 +56,29 @@ export const authResponseSchema = z.object({
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 
+export const googleIdTokenSchema = z.string().trim().min(1).max(8192);
+
+export const googleAuthRequestSchema = z.object({
+  idToken: googleIdTokenSchema
+});
+export type GoogleAuthRequest = z.infer<typeof googleAuthRequestSchema>;
+
+export const completeGoogleProfileRequestSchema = z.object({
+  idToken: googleIdTokenSchema,
+  pseudo: pseudoSchema
+});
+export type CompleteGoogleProfileRequest = z.infer<typeof completeGoogleProfileRequestSchema>;
+
+export const googleAuthResponseSchema = z.discriminatedUnion("status", [
+  authResponseSchema.extend({
+    status: z.literal("authenticated")
+  }),
+  z.object({
+    status: z.literal("profile_required")
+  })
+]);
+export type GoogleAuthResponse = z.infer<typeof googleAuthResponseSchema>;
+
 export const registerPushTokenRequestSchema = z.object({
   token: z.string().min(8).max(4096),
   platform: platformSchema

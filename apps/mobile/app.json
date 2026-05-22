@@ -9,13 +9,21 @@
     "newArchEnabled": true,
     "plugins": [
       "expo-router",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-web-browser"
     ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lagrange.mates",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.737416761863-9p9r3edga5er24bha5s2rf29p9lkul4m"
+            ]
+          }
+        ]
       }
     },
     "android": {
