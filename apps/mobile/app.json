@@ -4,6 +4,7 @@
     "slug": "mates",
     "scheme": "mates",
     "version": "0.1.1",
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -14,6 +15,7 @@
       "expo-location"
     ],
     "ios": {
+      "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.lagrange.mates",
       "infoPlist": {
