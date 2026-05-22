@@ -108,6 +108,10 @@ export class ApiClient {
     return this.request("GET", "/friends/requests/received", z.array(friendRequestSchema));
   }
 
+  listSentFriendRequests(): Promise<FriendRequestDto[]> {
+    return this.request("GET", "/friends/requests/sent", z.array(friendRequestSchema));
+  }
+
   acceptFriendRequest(id: string): Promise<FriendDto> {
     return this.request("POST", `/friends/requests/${id}/accept`, friendSchema);
   }

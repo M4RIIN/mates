@@ -24,6 +24,7 @@ export interface FriendshipRepository {
   findActiveFriendship(userId: string, friendId: string): Promise<FriendshipRecord | null>;
   createPendingFriendRequest(requesterId: string, addresseeId: string): Promise<FriendshipRecord>;
   listReceivedPendingRequests(userId: string): Promise<FriendRequestRecord[]>;
+  listSentPendingRequests(userId: string): Promise<FriendRequestRecord[]>;
   acceptFriendRequest(friendshipId: string, addresseeId: string): Promise<FriendshipRecord | null>;
   listActiveFriends(userId: string): Promise<FriendRecord[]>;
 }

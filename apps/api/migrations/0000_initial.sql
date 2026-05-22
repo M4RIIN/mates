@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TYPE friendship_status AS ENUM ('active', 'blocked');
+CREATE TYPE friendship_status AS ENUM ('pending', 'active', 'blocked');
 CREATE TYPE response_status AS ENUM ('pending', 'yes', 'no');
 CREATE TYPE push_platform AS ENUM ('ios', 'android', 'web', 'unknown');
 
@@ -29,7 +29,7 @@ CREATE TABLE friendships (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   requester_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   addressee_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  status friendship_status NOT NULL DEFAULT 'active',
+  status friendship_status NOT NULL DEFAULT 'pending',
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT friendships_no_self CHECK (requester_id <> addressee_id)
 );

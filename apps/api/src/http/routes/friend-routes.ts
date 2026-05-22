@@ -31,6 +31,11 @@ export function registerFriendRoutes(app: Hono<AppBindings>, container: AppConta
     return context.json(requests);
   });
 
+  app.get("/friends/requests/sent", auth, async (context) => {
+    const requests = await container.useCases.listSentFriendRequests.execute(context.get("currentUserId"));
+    return context.json(requests);
+  });
+
   app.post("/friends/requests/:id/accept", auth, async (context) => {
     const friendshipId = parseParam(idParamSchema, context.req.param("id"));
     const friend = await container.useCases.acceptFriendRequest.execute({

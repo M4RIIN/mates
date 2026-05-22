@@ -20,6 +20,7 @@ export function useAddFriend() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["friends"] });
       await queryClient.invalidateQueries({ queryKey: ["friends", "requests", "received"] });
+      await queryClient.invalidateQueries({ queryKey: ["friends", "requests", "sent"] });
     }
   });
 }
@@ -33,6 +34,15 @@ export function useReceivedFriendRequests() {
   });
 }
 
+export function useSentFriendRequests() {
+  const api = useApiClient();
+
+  return useQuery({
+    queryKey: ["friends", "requests", "sent"],
+    queryFn: () => api.listSentFriendRequests()
+  });
+}
+
 export function useAcceptFriendRequest() {
   const api = useApiClient();
   const queryClient = useQueryClient();
@@ -42,6 +52,7 @@ export function useAcceptFriendRequest() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["friends"] });
       await queryClient.invalidateQueries({ queryKey: ["friends", "requests", "received"] });
+      await queryClient.invalidateQueries({ queryKey: ["friends", "requests", "sent"] });
     }
   });
 }

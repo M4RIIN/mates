@@ -109,6 +109,44 @@ export class PostgresFriendshipRepository implements FriendshipRepository {
     });
   }
 
+  async listSentPendingRequests(userId: string): Promise<FriendRequestRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(friendships)
+      .where(and(eq(friendships.status, "pending"), eq(friendships.requesterId, userId)));
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const userIds = [...new Set(rows.flatMap((row) => [row.requesterId, row.addresseeId]))];
+    const relatedUsers = await this.db.select().from(users).where(inArray(users.id, userIds));
+    const usersById = new Map(
+      relatedUsers.map((user) => [
+        user.id,
+        {
+          id: user.id,
+          pseudo: user.pseudo,
+          publicTag: user.publicTag
+        }
+      ])
+    );
+
+    return rows.map((row) => {
+      const requester = usersById.get(row.requesterId);
+      const addressee = usersById.get(row.addresseeId);
+      if (requester === undefined || addressee === undefined) {
+        throw new Error("Friend request lookup failed");
+      }
+
+      return {
+        ...toFriendshipRecord(row),
+        requester,
+        addressee
+      };
+    });
+  }
+
   async acceptFriendRequest(friendshipId: string, addresseeId: string): Promise<FriendshipRecord | null> {
     const [updated] = await this.db
       .update(friendships)

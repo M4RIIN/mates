@@ -6,12 +6,18 @@ import { EmptyState } from "@/presentation/components/EmptyState";
 import { ListRow } from "@/presentation/components/ListRow";
 import { PageHeader } from "@/presentation/components/PageHeader";
 import { Screen } from "@/presentation/components/Screen";
-import { useAcceptFriendRequest, useFriends, useReceivedFriendRequests } from "@/presentation/hooks/useFriends";
+import {
+  useAcceptFriendRequest,
+  useFriends,
+  useReceivedFriendRequests,
+  useSentFriendRequests
+} from "@/presentation/hooks/useFriends";
 import { colors, spacing } from "@/shared/theme";
 
 export function FriendsScreen() {
   const friends = useFriends();
-  const requests = useReceivedFriendRequests();
+  const receivedRequests = useReceivedFriendRequests();
+  const sentRequests = useSentFriendRequests();
   const acceptFriendRequest = useAcceptFriendRequest();
 
   return (
@@ -30,11 +36,12 @@ export function FriendsScreen() {
         icon={<UserPlus size={18} color={colors.ink} strokeWidth={3} />}
       />
       {friends.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
-      {requests.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
-      {requests.data !== undefined && requests.data.length > 0 ? (
+      {receivedRequests.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+      {sentRequests.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+      {receivedRequests.data !== undefined && receivedRequests.data.length > 0 ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Demandes reçues</Text>
-          {requests.data.map((request) => (
+          {receivedRequests.data.map((request) => (
             <View key={request.id} style={styles.requestRow}>
               <ListRow title={request.requester.pseudo} subtitle={request.requester.publicTag} />
               <AppButton
@@ -48,7 +55,21 @@ export function FriendsScreen() {
           ))}
         </View>
       ) : null}
-      {friends.data?.length === 0 ? (
+      {sentRequests.data !== undefined && sentRequests.data.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Demandes en attente</Text>
+          {sentRequests.data.map((request) => (
+            <ListRow
+              key={request.id}
+              title={request.addressee.pseudo}
+              subtitle={`${request.addressee.publicTag} · En attente`}
+            />
+          ))}
+        </View>
+      ) : null}
+      {friends.data?.length === 0 &&
+      (receivedRequests.data?.length ?? 0) === 0 &&
+      (sentRequests.data?.length ?? 0) === 0 ? (
         <EmptyState title="Aucun ami actif" subtitle="Ajoute un identifiant public pour envoyer tes invitations." />
       ) : null}
       {friends.data?.map((friend) => (

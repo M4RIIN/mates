@@ -18,6 +18,8 @@ import type { ListFriendsUseCase } from "../application/use-cases/list-friends.u
 import { ListFriendsUseCase as ListFriends } from "../application/use-cases/list-friends.use-case.js";
 import type { ListReceivedFriendRequestsUseCase } from "../application/use-cases/list-received-friend-requests.use-case.js";
 import { ListReceivedFriendRequestsUseCase as ListReceivedFriendRequests } from "../application/use-cases/list-received-friend-requests.use-case.js";
+import type { ListSentFriendRequestsUseCase } from "../application/use-cases/list-sent-friend-requests.use-case.js";
+import { ListSentFriendRequestsUseCase as ListSentFriendRequests } from "../application/use-cases/list-sent-friend-requests.use-case.js";
 import type { ListReceivedInvitationsUseCase } from "../application/use-cases/list-received-invitations.use-case.js";
 import { ListReceivedInvitationsUseCase as ListReceivedInvitations } from "../application/use-cases/list-received-invitations.use-case.js";
 import type { LoginUserUseCase } from "../application/use-cases/login-user.use-case.js";
@@ -36,6 +38,8 @@ import type { SendInvitationToFriendsUseCase } from "../application/use-cases/se
 import { SendInvitationToFriendsUseCase as SendInvitationToFriends } from "../application/use-cases/send-invitation-to-friends.use-case.js";
 import type { PlaceSearchPort } from "../application/ports/place-search-port.js";
 import type { TokenService } from "../application/ports/token-service.js";
+import type { GoogleIdentityVerifier } from "../application/ports/google-identity-verifier.js";
+import { AppErrors } from "../domain/shared/app-error.js";
 import { createDb } from "./db/client.js";
 import { ConsoleNotificationGateway } from "./notifications/console-notification.gateway.js";
 import { ExpoPushNotificationGateway } from "./notifications/expo-push-notification.gateway.js";
@@ -61,6 +65,7 @@ export type AppUseCases = {
   acceptFriendRequest: AcceptFriendRequestUseCase;
   listFriends: ListFriendsUseCase;
   listReceivedFriendRequests: ListReceivedFriendRequestsUseCase;
+  listSentFriendRequests: ListSentFriendRequestsUseCase;
   searchUserByPublicTag: SearchUserByPublicTagUseCase;
   createInvitation: CreateInvitationUseCase;
   sendInvitationToFriends: SendInvitationToFriendsUseCase;
@@ -72,7 +77,13 @@ export type AppUseCases = {
   searchPlaces: SearchPlacesUseCase;
 };
 
+export type AuthConfig = {
+  passwordAuthEnabled: boolean;
+  googleAuthEnabled: boolean;
+};
+
 export type AppContainer = {
+  auth: AuthConfig;
   tokenService: TokenService;
   useCases: AppUseCases;
 };
@@ -89,6 +100,24 @@ function requireEnv(env: NodeJS.ProcessEnv, key: string): string {
 function optionalEnv(env: NodeJS.ProcessEnv, key: string): string | undefined {
   const value = env[key]?.trim();
   return value !== undefined && value.length > 0 ? value : undefined;
+}
+
+function booleanEnv(env: NodeJS.ProcessEnv, key: string, defaultValue: boolean): boolean {
+  const value = optionalEnv(env, key);
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  const normalizedValue = value.toLowerCase();
+  if (normalizedValue === "true" || normalizedValue === "1" || normalizedValue === "yes" || normalizedValue === "on") {
+    return true;
+  }
+
+  if (normalizedValue === "false" || normalizedValue === "0" || normalizedValue === "no" || normalizedValue === "off") {
+    return false;
+  }
+
+  throw new Error(`Invalid boolean environment variable ${key}: ${value}`);
 }
 
 function requireGoogleClientIds(env: NodeJS.ProcessEnv): string[] {
@@ -127,6 +156,10 @@ function createPlaceSearchAdapter(env: NodeJS.ProcessEnv): PlaceSearchPort {
 
 export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
   const db = createDb(requireEnv(env, "DATABASE_URL"));
+  const auth = {
+    passwordAuthEnabled: booleanEnv(env, "AUTH_PASSWORD_ENABLED", true),
+    googleAuthEnabled: booleanEnv(env, "AUTH_GOOGLE_ENABLED", true)
+  } satisfies AuthConfig;
 
   const users = new PostgresUserRepository(db);
   const friendships = new PostgresFriendshipRepository(db);
@@ -138,7 +171,13 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
     requireEnv(env, "JWT_SECRET"),
     Number.parseInt(env.JWT_EXPIRES_IN_DAYS ?? "30", 10)
   );
-  const googleIdentity = new GoogleIdentityTokenVerifier(requireGoogleClientIds(env));
+  const googleIdentity: GoogleIdentityVerifier = auth.googleAuthEnabled
+    ? new GoogleIdentityTokenVerifier(requireGoogleClientIds(env))
+    : {
+        verifyIdToken: async () => {
+          throw AppErrors.forbidden("Google authentication is disabled");
+        }
+      };
   const notifications =
     env.NOTIFICATION_PROVIDER === "expo"
       ? new ExpoPushNotificationGateway()
@@ -147,6 +186,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
         : new ConsoleNotificationGateway();
 
   return {
+    auth,
     tokenService,
     useCases: {
       registerUser: new RegisterUser(users, passwordHasher, tokenService),
@@ -158,6 +198,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
       acceptFriendRequest: new AcceptFriendRequest(friendships, users),
       listFriends: new ListFriends(friendships),
       listReceivedFriendRequests: new ListReceivedFriendRequests(friendships),
+      listSentFriendRequests: new ListSentFriendRequests(friendships),
       searchUserByPublicTag: new SearchUserByPublicTag(users),
       createInvitation: new CreateInvitation(invitations),
       sendInvitationToFriends: new SendInvitationToFriends(
