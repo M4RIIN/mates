@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/infrastructure/api/query-client";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
+import { useNotificationNavigation } from "@/presentation/hooks/usePushNotifications";
 import { colors } from "@/shared/theme";
 
 export default function RootLayout() {
@@ -9,6 +10,7 @@ export default function RootLayout() {
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const isAuthenticated = hasHydrated && token !== null;
   const isGuest = hasHydrated && token === null;
+  useNotificationNavigation();
 
   return (
     <QueryClientProvider client={queryClient}>

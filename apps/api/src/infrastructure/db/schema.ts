@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
-export const friendshipStatusEnum = pgEnum("friendship_status", ["active", "blocked"]);
+export const friendshipStatusEnum = pgEnum("friendship_status", ["pending", "active", "blocked"]);
 export const responseStatusEnum = pgEnum("response_status", ["pending", "yes", "no"]);
 export const pushPlatformEnum = pgEnum("push_platform", ["ios", "android", "web", "unknown"]);
 
@@ -59,7 +59,7 @@ export const friendships = pgTable(
     addresseeId: uuid("addressee_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    status: friendshipStatusEnum("status").notNull().default("active"),
+    status: friendshipStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({

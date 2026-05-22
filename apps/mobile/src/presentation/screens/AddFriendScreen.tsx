@@ -19,9 +19,10 @@ export function AddFriendScreen() {
   async function submit() {
     try {
       await addFriend.mutateAsync({ publicTag: publicTag.trim() });
+      Alert.alert("Demande envoyée", "Ton ami recevra une notification et devra accepter la demande.");
       router.back();
     } catch (error: unknown) {
-      Alert.alert("Ajout impossible", getErrorMessage(error));
+      Alert.alert("Envoi impossible", getErrorMessage(error));
     }
   }
 
@@ -36,7 +37,7 @@ export function AddFriendScreen() {
         {search.data === null ? <Text style={styles.muted}>Aucun utilisateur trouvé.</Text> : null}
       </View>
       <AppButton
-        title="Ajouter"
+        title="Envoyer la demande"
         onPress={submit}
         loading={addFriend.isPending}
         disabled={publicTag.trim().length < 7}

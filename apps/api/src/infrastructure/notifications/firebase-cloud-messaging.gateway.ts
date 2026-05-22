@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import type {
+  FriendRequestCreatedNotification,
   InvitationCreatedNotification,
   NotificationGateway
 } from "../../application/ports/notification-gateway.js";
@@ -39,6 +40,25 @@ export class FirebaseCloudMessagingGateway implements NotificationGateway {
         type: "invitation.created",
         invitationId: notification.invitationId,
         scheduledAt: notification.scheduledAt.toISOString()
+      }
+    });
+  }
+
+  async sendFriendRequestCreated(tokens: PushTokenRecord[], notification: FriendRequestCreatedNotification): Promise<void> {
+    if (tokens.length === 0) {
+      return;
+    }
+
+    await admin.messaging().sendEachForMulticast({
+      tokens: tokens.map((token) => token.token),
+      notification: {
+        title: `${notification.requesterPseudo} veut t'ajouter`,
+        body: `Demande d'ami de ${notification.requesterTag}`
+      },
+      data: {
+        type: "friend.requested",
+        friendshipId: notification.friendshipId,
+        requesterTag: notification.requesterTag
       }
     });
   }

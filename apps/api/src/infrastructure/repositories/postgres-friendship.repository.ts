@@ -1,6 +1,7 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import type {
   FriendRecord,
+  FriendRequestRecord,
   FriendshipRecord,
   FriendshipRepository
 } from "../../application/ports/friendship-repository.js";
@@ -20,6 +21,21 @@ function toFriendshipRecord(row: typeof friendships.$inferSelect): FriendshipRec
 export class PostgresFriendshipRepository implements FriendshipRepository {
   constructor(private readonly db: AppDb) {}
 
+  async findConnection(userId: string, otherUserId: string): Promise<FriendshipRecord | null> {
+    const [friendship] = await this.db
+      .select()
+      .from(friendships)
+      .where(
+        or(
+          and(eq(friendships.requesterId, userId), eq(friendships.addresseeId, otherUserId)),
+          and(eq(friendships.requesterId, otherUserId), eq(friendships.addresseeId, userId))
+        )
+      )
+      .limit(1);
+
+    return friendship === undefined ? null : toFriendshipRecord(friendship);
+  }
+
   async findActiveFriendship(userId: string, friendId: string): Promise<FriendshipRecord | null> {
     const [friendship] = await this.db
       .select()
@@ -38,13 +54,13 @@ export class PostgresFriendshipRepository implements FriendshipRepository {
     return friendship === undefined ? null : toFriendshipRecord(friendship);
   }
 
-  async addActiveFriendship(requesterId: string, addresseeId: string): Promise<FriendshipRecord> {
+  async createPendingFriendRequest(requesterId: string, addresseeId: string): Promise<FriendshipRecord> {
     const [created] = await this.db
       .insert(friendships)
       .values({
         requesterId,
         addresseeId,
-        status: "active"
+        status: "pending"
       })
       .returning();
 
@@ -53,6 +69,60 @@ export class PostgresFriendshipRepository implements FriendshipRepository {
     }
 
     return toFriendshipRecord(created);
+  }
+
+  async listReceivedPendingRequests(userId: string): Promise<FriendRequestRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(friendships)
+      .where(and(eq(friendships.status, "pending"), eq(friendships.addresseeId, userId)));
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const userIds = [...new Set(rows.flatMap((row) => [row.requesterId, row.addresseeId]))];
+    const relatedUsers = await this.db.select().from(users).where(inArray(users.id, userIds));
+    const usersById = new Map(
+      relatedUsers.map((user) => [
+        user.id,
+        {
+          id: user.id,
+          pseudo: user.pseudo,
+          publicTag: user.publicTag
+        }
+      ])
+    );
+
+    return rows.map((row) => {
+      const requester = usersById.get(row.requesterId);
+      const addressee = usersById.get(row.addresseeId);
+      if (requester === undefined || addressee === undefined) {
+        throw new Error("Friend request lookup failed");
+      }
+
+      return {
+        ...toFriendshipRecord(row),
+        requester,
+        addressee
+      };
+    });
+  }
+
+  async acceptFriendRequest(friendshipId: string, addresseeId: string): Promise<FriendshipRecord | null> {
+    const [updated] = await this.db
+      .update(friendships)
+      .set({ status: "active" })
+      .where(
+        and(
+          eq(friendships.id, friendshipId),
+          eq(friendships.addresseeId, addresseeId),
+          eq(friendships.status, "pending")
+        )
+      )
+      .returning();
+
+    return updated === undefined ? null : toFriendshipRecord(updated);
   }
 
   async listActiveFriends(userId: string): Promise<FriendRecord[]> {

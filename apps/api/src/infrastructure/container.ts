@@ -1,5 +1,7 @@
 import type { AddFriendUseCase } from "../application/use-cases/add-friend.use-case.js";
 import { AddFriendUseCase as AddFriend } from "../application/use-cases/add-friend.use-case.js";
+import type { AcceptFriendRequestUseCase } from "../application/use-cases/accept-friend-request.use-case.js";
+import { AcceptFriendRequestUseCase as AcceptFriendRequest } from "../application/use-cases/accept-friend-request.use-case.js";
 import type { AuthenticateGoogleUseCase } from "../application/use-cases/authenticate-google.use-case.js";
 import { AuthenticateGoogleUseCase as AuthenticateGoogle } from "../application/use-cases/authenticate-google.use-case.js";
 import type { CompleteGoogleProfileUseCase } from "../application/use-cases/complete-google-profile.use-case.js";
@@ -14,6 +16,8 @@ import type { ListCreatedInvitationsUseCase } from "../application/use-cases/lis
 import { ListCreatedInvitationsUseCase as ListCreatedInvitations } from "../application/use-cases/list-created-invitations.use-case.js";
 import type { ListFriendsUseCase } from "../application/use-cases/list-friends.use-case.js";
 import { ListFriendsUseCase as ListFriends } from "../application/use-cases/list-friends.use-case.js";
+import type { ListReceivedFriendRequestsUseCase } from "../application/use-cases/list-received-friend-requests.use-case.js";
+import { ListReceivedFriendRequestsUseCase as ListReceivedFriendRequests } from "../application/use-cases/list-received-friend-requests.use-case.js";
 import type { ListReceivedInvitationsUseCase } from "../application/use-cases/list-received-invitations.use-case.js";
 import { ListReceivedInvitationsUseCase as ListReceivedInvitations } from "../application/use-cases/list-received-invitations.use-case.js";
 import type { LoginUserUseCase } from "../application/use-cases/login-user.use-case.js";
@@ -54,7 +58,9 @@ export type AppUseCases = {
   completeGoogleProfile: CompleteGoogleProfileUseCase;
   getCurrentUser: GetCurrentUserUseCase;
   addFriend: AddFriendUseCase;
+  acceptFriendRequest: AcceptFriendRequestUseCase;
   listFriends: ListFriendsUseCase;
+  listReceivedFriendRequests: ListReceivedFriendRequestsUseCase;
   searchUserByPublicTag: SearchUserByPublicTagUseCase;
   createInvitation: CreateInvitationUseCase;
   sendInvitationToFriends: SendInvitationToFriendsUseCase;
@@ -148,8 +154,10 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
       authenticateGoogle: new AuthenticateGoogle(users, googleIdentity, tokenService),
       completeGoogleProfile: new CompleteGoogleProfile(users, googleIdentity, tokenService),
       getCurrentUser: new GetCurrentUser(users),
-      addFriend: new AddFriend(users, friendships),
+      addFriend: new AddFriend(users, friendships, pushTokens, notifications),
+      acceptFriendRequest: new AcceptFriendRequest(friendships, users),
       listFriends: new ListFriends(friendships),
+      listReceivedFriendRequests: new ListReceivedFriendRequests(friendships),
       searchUserByPublicTag: new SearchUserByPublicTag(users),
       createInvitation: new CreateInvitation(invitations),
       sendInvitationToFriends: new SendInvitationToFriends(

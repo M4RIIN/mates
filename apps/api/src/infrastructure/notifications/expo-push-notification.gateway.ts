@@ -1,4 +1,5 @@
 import type {
+  FriendRequestCreatedNotification,
   InvitationCreatedNotification,
   NotificationGateway
 } from "../../application/ports/notification-gateway.js";
@@ -44,6 +45,29 @@ export class ExpoPushNotificationGateway implements NotificationGateway {
         type: "invitation.created",
         invitationId: notification.invitationId,
         scheduledAt: notification.scheduledAt.toISOString()
+      }
+    }));
+
+    for (let index = 0; index < messages.length; index += EXPO_BATCH_SIZE) {
+      await this.sendBatch(messages.slice(index, index + EXPO_BATCH_SIZE));
+    }
+  }
+
+  async sendFriendRequestCreated(tokens: PushTokenRecord[], notification: FriendRequestCreatedNotification): Promise<void> {
+    const expoTokens = tokens.map((token) => token.token).filter(isExpoPushToken);
+    if (expoTokens.length === 0) {
+      return;
+    }
+
+    const messages = expoTokens.map<ExpoPushMessage>((token) => ({
+      to: token,
+      sound: "default",
+      title: `${notification.requesterPseudo} veut t'ajouter`,
+      body: `Demande d'ami de ${notification.requesterTag}`,
+      data: {
+        type: "friend.requested",
+        friendshipId: notification.friendshipId,
+        requesterTag: notification.requesterTag
       }
     }));
 

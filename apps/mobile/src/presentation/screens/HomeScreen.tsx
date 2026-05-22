@@ -218,7 +218,7 @@ export function HomeScreen() {
         <View style={styles.identity}>
           <Text style={styles.identityLabel}>Mates</Text>
           <Text numberOfLines={1} style={styles.identityValue}>
-            {user?.pseudo ?? "Accueil"}
+            {user?.pseudo !== undefined && user.publicTag !== undefined ? `${user.pseudo} · ${user.publicTag}` : user?.pseudo ?? "Accueil"}
           </Text>
         </View>
       </View>

@@ -3,6 +3,7 @@ import {
   googleAuthResponseSchema,
   currentUserSchema,
   friendSchema,
+  friendRequestSchema,
   invitationDetailsSchema,
   invitationListSchema,
   placeSearchResponseSchema,
@@ -14,6 +15,7 @@ import {
   type CreateInvitationRequest,
   type CurrentUserDto,
   type FriendDto,
+  type FriendRequestDto,
   type GoogleAuthRequest,
   type GoogleAuthResponse,
   type InvitationDetailsDto,
@@ -94,12 +96,20 @@ export class ApiClient {
     );
   }
 
-  addFriend(input: AddFriendRequest): Promise<FriendDto> {
-    return this.request("POST", "/friends", friendSchema, input);
+  addFriend(input: AddFriendRequest): Promise<FriendRequestDto> {
+    return this.request("POST", "/friends", friendRequestSchema, input);
   }
 
   listFriends(): Promise<FriendDto[]> {
     return this.request("GET", "/friends", z.array(friendSchema));
+  }
+
+  listReceivedFriendRequests(): Promise<FriendRequestDto[]> {
+    return this.request("GET", "/friends/requests/received", z.array(friendRequestSchema));
+  }
+
+  acceptFriendRequest(id: string): Promise<FriendDto> {
+    return this.request("POST", `/friends/requests/${id}/accept`, friendSchema);
   }
 
   createInvitation(input: CreateInvitationRequest): Promise<InvitationDetailsDto> {

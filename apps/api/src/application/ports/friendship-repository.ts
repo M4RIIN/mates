@@ -1,6 +1,6 @@
 import type { PublicUserRecord } from "./user-repository.js";
 
-export type FriendshipStatus = "active" | "blocked";
+export type FriendshipStatus = "pending" | "active" | "blocked";
 
 export type FriendshipRecord = {
   id: string;
@@ -14,8 +14,16 @@ export type FriendRecord = PublicUserRecord & {
   friendshipCreatedAt: Date;
 };
 
+export type FriendRequestRecord = FriendshipRecord & {
+  requester: PublicUserRecord;
+  addressee: PublicUserRecord;
+};
+
 export interface FriendshipRepository {
+  findConnection(userId: string, otherUserId: string): Promise<FriendshipRecord | null>;
   findActiveFriendship(userId: string, friendId: string): Promise<FriendshipRecord | null>;
-  addActiveFriendship(requesterId: string, addresseeId: string): Promise<FriendshipRecord>;
+  createPendingFriendRequest(requesterId: string, addresseeId: string): Promise<FriendshipRecord>;
+  listReceivedPendingRequests(userId: string): Promise<FriendRequestRecord[]>;
+  acceptFriendRequest(friendshipId: string, addresseeId: string): Promise<FriendshipRecord | null>;
   listActiveFriends(userId: string): Promise<FriendRecord[]>;
 }

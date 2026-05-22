@@ -15,6 +15,13 @@
       "when": 1779408000000,
       "tag": "0001_google_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779494400000,
+      "tag": "0002_friend_requests",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,8 @@ export const isoDateTimeSchema = z.string().datetime({ offset: true });
 
 export const responseStatusSchema = z.enum(["pending", "yes", "no"]);
 export type ResponseStatus = z.infer<typeof responseStatusSchema>;
+export const friendshipStatusSchema = z.enum(["pending", "active", "blocked"]);
+export type FriendshipStatus = z.infer<typeof friendshipStatusSchema>;
 
 export const platformSchema = z.enum(["ios", "android", "web", "unknown"]);
 export type PushPlatform = z.infer<typeof platformSchema>;
@@ -89,6 +91,15 @@ export const addFriendRequestSchema = z.object({
   publicTag: publicTagSchema
 });
 export type AddFriendRequest = z.infer<typeof addFriendRequestSchema>;
+
+export const friendRequestSchema = z.object({
+  id: z.string().uuid(),
+  requester: publicUserSchema,
+  addressee: publicUserSchema,
+  status: friendshipStatusSchema,
+  createdAt: isoDateTimeSchema
+});
+export type FriendRequestDto = z.infer<typeof friendRequestSchema>;
 
 export const friendSchema = publicUserSchema.extend({
   friendshipCreatedAt: isoDateTimeSchema
