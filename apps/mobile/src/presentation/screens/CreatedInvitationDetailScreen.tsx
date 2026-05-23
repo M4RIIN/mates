@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { Inbox, Send, Settings, User, Users, X } from "lucide-react-native";
 import { Ban } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
 import { EmptyState } from "@/presentation/components/EmptyState";
@@ -8,7 +10,8 @@ import { PageHeader } from "@/presentation/components/PageHeader";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
-import { useCancelInvitation, useInvitationDetails } from "@/presentation/hooks/useInvitations";
+import { useReceivedFriendRequests } from "@/presentation/hooks/useFriends";
+import { useCancelInvitation, useInvitationDetails, useReceivedInvitations } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
 import { formatDateTime, formatTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
@@ -17,8 +20,12 @@ export function CreatedInvitationDetailScreen() {
   const id = useRouteId();
   const invitation = useInvitationDetails(id);
   const cancelInvitation = useCancelInvitation(id ?? "");
+  const receivedInvitations = useReceivedInvitations();
+  const receivedFriendRequests = useReceivedFriendRequests();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const recipients = invitation.data?.recipients ?? [];
+  const notificationCount = (receivedInvitations.data?.length ?? 0) + (receivedFriendRequests.data?.length ?? 0);
   const yesCount = recipients.filter((recipient) => recipient.responseStatus === "yes").length;
   const noCount = recipients.filter((recipient) => recipient.responseStatus === "no").length;
   const pendingCount = recipients.filter((recipient) => recipient.responseStatus === "pending").length;
@@ -50,6 +57,23 @@ export function CreatedInvitationDetailScreen() {
 
   return (
     <Screen>
+      <View style={styles.topBar}>
+        <Pressable accessibilityRole="button" onPress={() => setMenuOpen((value) => !value)} style={styles.gearButton}>
+          {menuOpen ? <X size={22} color={colors.ink} strokeWidth={3} /> : <Settings size={22} color={colors.ink} strokeWidth={3} />}
+          {notificationCount > 0 ? (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>{formatNotificationCount(notificationCount)}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </View>
+      {menuOpen ? (
+        <FluxMenu
+          onClose={() => setMenuOpen(false)}
+          receivedInvitationCount={receivedInvitations.data?.length ?? 0}
+          receivedFriendRequestCount={receivedFriendRequests.data?.length ?? 0}
+        />
+      ) : null}
       <CancelInvitationDialog
         open={cancelDialogOpen}
         loading={cancelInvitation.isPending}
@@ -127,6 +151,57 @@ export function CreatedInvitationDetailScreen() {
   );
 }
 
+function FluxMenu({
+  onClose,
+  receivedInvitationCount,
+  receivedFriendRequestCount
+}: {
+  onClose: () => void;
+  receivedInvitationCount: number;
+  receivedFriendRequestCount: number;
+}) {
+  const items = [
+    { label: "Reçues", icon: Inbox, href: "/invitations/received", badgeCount: receivedInvitationCount },
+    { label: "Créées", icon: Send, href: "/invitations/created", badgeCount: 0 },
+    { label: "Amis", icon: Users, href: "/friends", badgeCount: receivedFriendRequestCount },
+    { label: "Profil", icon: User, href: "/profile", badgeCount: 0 }
+  ] as const;
+
+  return (
+    <View style={styles.menuPanel}>
+      <View style={styles.menuHeader}>
+        <Text style={styles.menuTitle}>Flux</Text>
+        <View style={styles.menuRule} />
+      </View>
+      <View style={styles.menuItems}>
+        {items.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <Pressable
+              key={item.href}
+              accessibilityRole="button"
+              onPress={() => {
+                onClose();
+                router.push(item.href);
+              }}
+              style={styles.menuItem}
+            >
+              <Icon size={18} color={colors.ink} strokeWidth={3} />
+              <Text style={styles.menuItemText}>{item.label}</Text>
+              {item.badgeCount > 0 ? (
+                <View style={styles.menuItemBadge}>
+                  <Text style={styles.menuItemBadgeText}>{formatNotificationCount(item.badgeCount)}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function CancelInvitationDialog({
   open,
   loading,
@@ -171,7 +246,115 @@ function formatRecipientStatus(status: "pending" | "yes" | "no", delayMinutes: n
   return delayMinutes === null ? "Oui" : `Oui · retard ${delayMinutes} min`;
 }
 
+function formatNotificationCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
 const styles = StyleSheet.create({
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "flex-start"
+  },
+  gearButton: {
+    position: "relative",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.yellow,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 0,
+    elevation: 2
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.red,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4
+  },
+  notificationBadgeText: {
+    color: colors.white,
+    fontSize: 11,
+    lineHeight: 12,
+    fontWeight: "900"
+  },
+  menuPanel: {
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceStrong,
+    padding: spacing.md,
+    gap: spacing.sm
+  },
+  menuHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  menuTitle: {
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  menuRule: {
+    flex: 1,
+    height: borders.regular,
+    backgroundColor: colors.border
+  },
+  menuItems: {
+    gap: spacing.xs
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  menuItemText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  menuItemBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.red,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5
+  },
+  menuItemBadgeText: {
+    color: colors.white,
+    fontSize: 11,
+    lineHeight: 12,
+    fontWeight: "900"
+  },
   timeHero: {
     borderRadius: radii.md,
     borderWidth: borders.heavy,

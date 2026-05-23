@@ -247,7 +247,13 @@ export function HomeScreen() {
         </Pressable>
       </View>
 
-      {menuOpen ? <FluxMenu onClose={() => setMenuOpen(false)} /> : null}
+      {menuOpen ? (
+        <FluxMenu
+          onClose={() => setMenuOpen(false)}
+          receivedInvitationCount={receivedInvitations.data?.length ?? 0}
+          receivedFriendRequestCount={receivedFriendRequests.data?.length ?? 0}
+        />
+      ) : null}
 
       <View style={[styles.cockpit, isWide ? styles.cockpitWide : null]}>
         <View style={[styles.formPanel, isWide ? styles.formPanelWide : null]}>
@@ -345,12 +351,20 @@ function formatNotificationCount(count: number): string {
   return count > 99 ? "99+" : String(count);
 }
 
-function FluxMenu({ onClose }: { onClose: () => void }) {
+function FluxMenu({
+  onClose,
+  receivedInvitationCount,
+  receivedFriendRequestCount
+}: {
+  onClose: () => void;
+  receivedInvitationCount: number;
+  receivedFriendRequestCount: number;
+}) {
   const items = [
-    { label: "Reçues", icon: Inbox, href: "/invitations/received" },
-    { label: "Créées", icon: Send, href: "/invitations/created" },
-    { label: "Amis", icon: Users, href: "/friends" },
-    { label: "Profil", icon: User, href: "/profile" }
+    { label: "Reçues", icon: Inbox, href: "/invitations/received", badgeCount: receivedInvitationCount },
+    { label: "Créées", icon: Send, href: "/invitations/created", badgeCount: 0 },
+    { label: "Amis", icon: Users, href: "/friends", badgeCount: receivedFriendRequestCount },
+    { label: "Profil", icon: User, href: "/profile", badgeCount: 0 }
   ] as const;
 
   return (
@@ -375,6 +389,11 @@ function FluxMenu({ onClose }: { onClose: () => void }) {
             >
               <Icon size={18} color={colors.ink} strokeWidth={3} />
               <Text style={styles.menuItemText}>{item.label}</Text>
+              {item.badgeCount > 0 ? (
+                <View style={styles.menuItemBadge}>
+                  <Text style={styles.menuItemBadgeText}>{formatNotificationCount(item.badgeCount)}</Text>
+                </View>
+              ) : null}
             </Pressable>
           );
         })}
@@ -564,11 +583,29 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   menuItemText: {
+    flex: 1,
     color: colors.text,
     fontSize: 13,
     lineHeight: 17,
     fontWeight: "900",
     textTransform: "uppercase"
+  },
+  menuItemBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.red,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5
+  },
+  menuItemBadgeText: {
+    color: colors.white,
+    fontSize: 11,
+    lineHeight: 12,
+    fontWeight: "900"
   },
   cockpit: {
     flex: 1,
