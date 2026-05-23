@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Check, Clock3, X } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
+import { syncInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { PageHeader } from "@/presentation/components/PageHeader";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
@@ -18,9 +19,25 @@ export function RespondInvitationScreen() {
   const id = useRouteId();
   const user = useAuthStore((state) => state.user);
   const [delayText, setDelayText] = useState("10");
+  const [isEditingDecision, setIsEditingDecision] = useState(false);
   const invitation = useInvitationDetails(id);
   const respond = useRespondToInvitation(id ?? "");
   const myResponse = invitation.data?.recipients.find((recipient) => recipient.user.id === user?.id);
+  const hasAnswered = myResponse !== undefined && myResponse.responseStatus !== "pending";
+
+  useEffect(() => {
+    setIsEditingDecision(!hasAnswered);
+  }, [hasAnswered, id]);
+
+  useEffect(() => {
+    if (invitation.data === undefined) {
+      return;
+    }
+
+    syncInvitationLiveActivity(invitation.data, myResponse?.responseStatus, myResponse?.delayMinutes).catch((error: unknown) => {
+      console.warn("Failed to sync invitation Live Activity", error);
+    });
+  }, [invitation.data, myResponse?.responseStatus, myResponse?.delayMinutes]);
 
   async function answerYes(delayMinutes?: number) {
     if (id === undefined) {
@@ -29,6 +46,9 @@ export function RespondInvitationScreen() {
 
     try {
       await respond.mutateAsync(delayMinutes === undefined ? { status: "yes" } : { status: "yes", delayMinutes });
+      if (invitation.data !== undefined) {
+        await syncInvitationLiveActivity(invitation.data, "yes", delayMinutes);
+      }
       router.back();
     } catch (error: unknown) {
       Alert.alert("Réponse impossible", getErrorMessage(error));
@@ -42,6 +62,9 @@ export function RespondInvitationScreen() {
 
     try {
       await respond.mutateAsync({ status: "no" });
+      if (invitation.data !== undefined) {
+        await syncInvitationLiveActivity(invitation.data, "no", null);
+      }
       router.back();
     } catch (error: unknown) {
       Alert.alert("Réponse impossible", getErrorMessage(error));
@@ -92,7 +115,14 @@ export function RespondInvitationScreen() {
             <Text style={styles.currentLabel}>Ta réponse</Text>
             <Text style={styles.currentValue}>{formatCurrentResponse(myResponse?.responseStatus, myResponse?.delayMinutes)}</Text>
           </View>
-          {invitation.data.canceledAt === null ? (
+          {invitation.data.canceledAt === null && hasAnswered && !isEditingDecision ? (
+            <AppButton
+              title="Changer ma décision"
+              onPress={() => setIsEditingDecision(true)}
+              variant="secondary"
+            />
+          ) : null}
+          {invitation.data.canceledAt === null && isEditingDecision ? (
             <>
               <View style={styles.answerRow}>
                 <View style={styles.answerItem}>

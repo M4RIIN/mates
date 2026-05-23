@@ -12,7 +12,13 @@
       "expo-router",
       "expo-notifications",
       "expo-web-browser",
-      "expo-location"
+      "expo-location",
+      [
+        "expo-widgets",
+        {
+          "groupIdentifier": "group.com.lagrange.mates"
+        }
+      ]
     ],
     "ios": {
       "icon": "./assets/icon.png",
