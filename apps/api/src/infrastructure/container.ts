@@ -8,6 +8,10 @@ import type { CompleteGoogleProfileUseCase } from "../application/use-cases/comp
 import { CompleteGoogleProfileUseCase as CompleteGoogleProfile } from "../application/use-cases/complete-google-profile.use-case.js";
 import type { CreateInvitationUseCase } from "../application/use-cases/create-invitation.use-case.js";
 import { CreateInvitationUseCase as CreateInvitation } from "../application/use-cases/create-invitation.use-case.js";
+import type { CancelInvitationUseCase } from "../application/use-cases/cancel-invitation.use-case.js";
+import { CancelInvitationUseCase as CancelInvitation } from "../application/use-cases/cancel-invitation.use-case.js";
+import type { GetActiveCreatedInvitationUseCase } from "../application/use-cases/get-active-created-invitation.use-case.js";
+import { GetActiveCreatedInvitationUseCase as GetActiveCreatedInvitation } from "../application/use-cases/get-active-created-invitation.use-case.js";
 import type { GetCurrentUserUseCase } from "../application/use-cases/get-current-user.use-case.js";
 import { GetCurrentUserUseCase as GetCurrentUser } from "../application/use-cases/get-current-user.use-case.js";
 import type { GetInvitationDetailsUseCase } from "../application/use-cases/get-invitation-details.use-case.js";
@@ -69,8 +73,10 @@ export type AppUseCases = {
   searchUserByPublicTag: SearchUserByPublicTagUseCase;
   createInvitation: CreateInvitationUseCase;
   sendInvitationToFriends: SendInvitationToFriendsUseCase;
+  cancelInvitation: CancelInvitationUseCase;
   respondToInvitation: RespondToInvitationUseCase;
   getInvitationDetails: GetInvitationDetailsUseCase;
+  getActiveCreatedInvitation: GetActiveCreatedInvitationUseCase;
   listReceivedInvitations: ListReceivedInvitationsUseCase;
   listCreatedInvitations: ListCreatedInvitationsUseCase;
   registerPushToken: RegisterPushTokenUseCase;
@@ -208,8 +214,10 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
         pushTokens,
         notifications
       ),
+      cancelInvitation: new CancelInvitation(invitations, pushTokens, notifications),
       respondToInvitation: new RespondToInvitation(invitations),
       getInvitationDetails: new GetInvitationDetails(invitations),
+      getActiveCreatedInvitation: new GetActiveCreatedInvitation(invitations),
       listReceivedInvitations: new ListReceivedInvitations(invitations),
       listCreatedInvitations: new ListCreatedInvitations(invitations),
       registerPushToken: new RegisterPushToken(pushTokens),

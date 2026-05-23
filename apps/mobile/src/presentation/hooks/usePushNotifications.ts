@@ -59,7 +59,7 @@ export function useNotificationNavigation() {
       }
 
       handledNotificationRef.current = notificationId;
-      if (type === "invitation.created") {
+      if (type === "invitation.created" || type === "invitation.cancelled") {
         const invitationId = response?.notification.request.content.data?.invitationId;
         if (typeof invitationId !== "string" || invitationId.trim().length === 0) {
           return;

@@ -4,11 +4,13 @@ import type {
   InvitationDetailsRecord,
   InvitationRecipientRecord,
   InvitationRepository,
+  InvitationRecord,
   ReceivedInvitationRecord,
   UpdateInvitationResponseInput
 } from "../src/application/ports/invitation-repository.js";
 import { CreateInvitationUseCase } from "../src/application/use-cases/create-invitation.use-case.js";
 import { RespondToInvitationUseCase } from "../src/application/use-cases/respond-to-invitation.use-case.js";
+import { SendInvitationToFriendsUseCase } from "../src/application/use-cases/send-invitation-to-friends.use-case.js";
 import { AppError } from "../src/domain/shared/app-error.js";
 import { normalizeInvitationResponse } from "../src/domain/invitation/invitation-rules.js";
 import { generatePublicTag } from "../src/domain/user/public-tag.js";
@@ -22,7 +24,8 @@ function createInvitationRepository(overrides: Partial<InvitationRepository> = {
     create: async (input: CreateInvitationRecordInput) => ({
       ...input,
       id: INVITATION_ID,
-      createdAt: new Date("2026-05-16T08:00:00.000Z")
+      createdAt: new Date("2026-05-16T08:00:00.000Z"),
+      canceledAt: null
     }),
     addRecipients: async () => undefined,
     findRecipient: async () => null,
@@ -34,9 +37,42 @@ function createInvitationRepository(overrides: Partial<InvitationRepository> = {
       delayMinutes: input.delayMinutes,
       respondedAt: input.respondedAt
     }),
+    cancel: async (invitationId: string, canceledAt: Date): Promise<InvitationRecord> => ({
+      id: invitationId,
+      creatorId: USER_ID,
+      placeName: "Cafe Central",
+      placeAddress: null,
+      latitude: null,
+      longitude: null,
+      scheduledAt: new Date("2026-05-16T20:30:00.000Z"),
+      createdAt: new Date("2026-05-16T08:00:00.000Z"),
+      canceledAt
+    }),
     getDetails: async (): Promise<InvitationDetailsRecord | null> => null,
+    findActiveByCreator: async (): Promise<InvitationDetailsRecord | null> => null,
     listCreatedByUser: async (): Promise<InvitationDetailsRecord[]> => [],
     listReceivedByUser: async (): Promise<ReceivedInvitationRecord[]> => [],
+    ...overrides
+  };
+}
+
+function buildInvitationDetails(overrides: Partial<InvitationDetailsRecord> = {}): InvitationDetailsRecord {
+  return {
+    id: INVITATION_ID,
+    creatorId: "99999999-9999-4999-8999-999999999999",
+    creator: {
+      id: "99999999-9999-4999-8999-999999999999",
+      pseudo: "lea",
+      publicTag: "lea#1234"
+    },
+    placeName: "Cafe Central",
+    placeAddress: null,
+    latitude: null,
+    longitude: null,
+    scheduledAt: new Date("2026-05-16T20:30:00.000Z"),
+    createdAt: new Date("2026-05-16T08:00:00.000Z"),
+    canceledAt: null,
+    recipients: [],
     ...overrides
   };
 }
@@ -103,6 +139,7 @@ describe("invitation responses", () => {
   it("prevents responding to an invitation not received by the user", async () => {
     const useCase = new RespondToInvitationUseCase(
       createInvitationRepository({
+        getDetails: async (): Promise<InvitationDetailsRecord | null> => buildInvitationDetails(),
         findRecipient: async (): Promise<InvitationRecipientRecord | null> => null
       })
     );
@@ -122,6 +159,7 @@ describe("invitation responses", () => {
   it("lets a recipient update their response", async () => {
     const useCase = new RespondToInvitationUseCase(
       createInvitationRepository({
+        getDetails: async (): Promise<InvitationDetailsRecord | null> => buildInvitationDetails(),
         findRecipient: async (): Promise<InvitationRecipientRecord | null> => ({
           id: RECIPIENT_ID,
           invitationId: INVITATION_ID,
@@ -144,6 +182,67 @@ describe("invitation responses", () => {
       id: RECIPIENT_ID,
       responseStatus: "yes",
       delayMinutes: 20
+    });
+  });
+
+  it("blocks responses to a cancelled invitation", async () => {
+    const useCase = new RespondToInvitationUseCase(
+      createInvitationRepository({
+        getDetails: async (): Promise<InvitationDetailsRecord | null> =>
+          buildInvitationDetails({
+            canceledAt: new Date("2026-05-16T09:30:00.000Z")
+          })
+      })
+    );
+
+    await expect(
+      useCase.execute({
+        invitationId: INVITATION_ID,
+        userId: USER_ID,
+        status: "yes"
+      })
+    ).rejects.toMatchObject({
+      code: "INVITATION_CANCELLED"
+    });
+  });
+});
+
+describe("active invitation rules", () => {
+  it("prevents creating a second active invitation", async () => {
+    const useCase = new SendInvitationToFriendsUseCase(
+      createInvitationRepository({
+        findActiveByCreator: async (): Promise<InvitationDetailsRecord | null> =>
+          buildInvitationDetails({
+            creatorId: USER_ID,
+            creator: {
+              id: USER_ID,
+              pseudo: "nicolas",
+              publicTag: "nicolas#0047"
+            }
+          })
+      }),
+      { listActiveFriends: async () => [] },
+      { findById: async () => ({ id: USER_ID, pseudo: "nicolas", publicTag: "nicolas#0047", createdAt: new Date() }) },
+      { listByUserIds: async () => [] },
+      {
+        sendInvitationCreated: async () => undefined,
+        sendInvitationCancelled: async () => undefined,
+        sendFriendRequestCreated: async () => undefined
+      }
+    );
+
+    await expect(
+      useCase.execute({
+        creatorId: USER_ID,
+        placeName: "Autre lieu",
+        scheduledAt: "2026-05-16T21:00:00.000Z",
+        now: new Date("2026-05-16T10:00:00.000Z")
+      })
+    ).rejects.toMatchObject({
+      code: "INVITATION_ALREADY_ACTIVE",
+      details: {
+        invitationId: INVITATION_ID
+      }
     });
   });
 });

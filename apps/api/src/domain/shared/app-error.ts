@@ -7,6 +7,8 @@ export type AppErrorCode =
   | "CONFLICT"
   | "FORBIDDEN"
   | "INVITATION_DATE_NOT_TODAY"
+  | "INVITATION_ALREADY_ACTIVE"
+  | "INVITATION_CANCELLED"
   | "INVALID_INVITATION_RESPONSE"
   | "PUBLIC_TAG_GENERATION_FAILED";
 
@@ -34,6 +36,9 @@ export const AppErrors = {
   forbidden: (message = "Forbidden") => new AppError("FORBIDDEN", message, 403),
   invitationDateNotToday: () =>
     new AppError("INVITATION_DATE_NOT_TODAY", "Invitation time must be during the current day", 400),
+  invitationAlreadyActive: (invitationId: string) =>
+    new AppError("INVITATION_ALREADY_ACTIVE", "You already have an active invitation", 409, { invitationId }),
+  invitationCancelled: () => new AppError("INVITATION_CANCELLED", "Invitation has been cancelled", 409),
   invalidInvitationResponse: (message: string) => new AppError("INVALID_INVITATION_RESPONSE", message, 400),
   publicTagGenerationFailed: () =>
     new AppError("PUBLIC_TAG_GENERATION_FAILED", "Could not generate a unique public tag", 500)

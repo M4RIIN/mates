@@ -85,6 +85,7 @@ export const invitations = pgTable(
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    canceledAt: timestamp("canceled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({

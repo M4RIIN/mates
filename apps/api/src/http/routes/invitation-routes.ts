@@ -31,6 +31,11 @@ export function registerInvitationRoutes(app: Hono<AppBindings>, container: AppC
     return context.json(invitations);
   });
 
+  app.get("/invitations/created/active", auth, async (context) => {
+    const invitation = await container.useCases.getActiveCreatedInvitation.execute(context.get("currentUserId"));
+    return context.json({ invitation });
+  });
+
   app.get("/invitations/:id", auth, async (context) => {
     const invitationId = parseParam(idParamSchema, context.req.param("id"));
     const invitation = await container.useCases.getInvitationDetails.execute({
@@ -58,5 +63,15 @@ export function registerInvitationRoutes(app: Hono<AppBindings>, container: AppC
       delayMinutes: response.delayMinutes,
       respondedAt: response.respondedAt?.toISOString() ?? null
     });
+  });
+
+  app.post("/invitations/:id/cancel", auth, async (context) => {
+    const invitationId = parseParam(idParamSchema, context.req.param("id"));
+    const invitation = await container.useCases.cancelInvitation.execute({
+      invitationId,
+      requesterId: context.get("currentUserId")
+    });
+
+    return context.json(invitation);
   });
 }

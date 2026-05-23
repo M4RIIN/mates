@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import type {
   CreateInvitationRecordInput,
   InvitationDetailsRecord,
@@ -9,6 +9,7 @@ import type {
   ReceivedInvitationRecord,
   UpdateInvitationResponseInput
 } from "../../application/ports/invitation-repository.js";
+import { endOfLocalDay, startOfLocalDay } from "../../domain/shared/date.js";
 import type { PublicUserRecord } from "../../application/ports/user-repository.js";
 import type { AppDb } from "../db/client.js";
 import { invitationRecipients, invitations, users } from "../db/schema.js";
@@ -22,7 +23,8 @@ function toInvitationRecord(row: typeof invitations.$inferSelect): InvitationRec
     latitude: row.latitude,
     longitude: row.longitude,
     scheduledAt: row.scheduledAt,
-    createdAt: row.createdAt
+    createdAt: row.createdAt,
+    canceledAt: row.canceledAt
   };
 }
 
@@ -57,7 +59,8 @@ export class PostgresInvitationRepository implements InvitationRepository {
         placeAddress: input.placeAddress,
         latitude: input.latitude,
         longitude: input.longitude,
-        scheduledAt: input.scheduledAt
+        scheduledAt: input.scheduledAt,
+        canceledAt: null
       })
       .returning();
 
@@ -115,6 +118,22 @@ export class PostgresInvitationRepository implements InvitationRepository {
     return toRecipientRecord(updated);
   }
 
+  async cancel(invitationId: string, canceledAt: Date): Promise<InvitationRecord> {
+    const [updated] = await this.db
+      .update(invitations)
+      .set({
+        canceledAt
+      })
+      .where(eq(invitations.id, invitationId))
+      .returning();
+
+    if (updated === undefined) {
+      throw new Error("Invitation cancel failed");
+    }
+
+    return toInvitationRecord(updated);
+  }
+
   async getDetails(invitationId: string): Promise<InvitationDetailsRecord | null> {
     const [invitationRow] = await this.db.select().from(invitations).where(eq(invitations.id, invitationId)).limit(1);
     if (invitationRow === undefined) {
@@ -158,6 +177,28 @@ export class PostgresInvitationRepository implements InvitationRepository {
       creator: toPublicUserRecord(creatorRow),
       recipients
     };
+  }
+
+  async findActiveByCreator(userId: string, now: Date): Promise<InvitationDetailsRecord | null> {
+    const [row] = await this.db
+      .select({ id: invitations.id })
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.creatorId, userId),
+          isNull(invitations.canceledAt),
+          gte(invitations.scheduledAt, startOfLocalDay(now)),
+          lt(invitations.scheduledAt, endOfLocalDay(now))
+        )
+      )
+      .orderBy(desc(invitations.createdAt))
+      .limit(1);
+
+    if (row === undefined) {
+      return null;
+    }
+
+    return this.getDetails(row.id);
   }
 
   async listCreatedByUser(userId: string): Promise<InvitationDetailsRecord[]> {

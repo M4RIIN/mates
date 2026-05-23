@@ -57,8 +57,9 @@ export function openDirectionsChooser(place: PlaceLinkInput): void {
 }
 
 export async function openTheFork(place: PlaceLinkInput): Promise<void> {
-  const query = [place.name, place.address].filter(isPresent).join(" ");
-  const url = `https://www.thefork.fr/search?query=${encodeURIComponent(query.length > 0 ? query : place.name)}`;
+  const city = extractCity(place.address);
+  const query = [place.name, city, "the fork"].filter(isPresent).join(" ");
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query.length > 0 ? query : `${place.name} the fork`)}`;
   await Linking.openURL(url);
 }
 
@@ -120,4 +121,27 @@ function toDestination(place: PlaceLinkInput): string {
 
 function isPresent(value: string | null | undefined): value is string {
   return value !== undefined && value !== null && value.trim().length > 0;
+}
+
+function extractCity(address: string | null | undefined): string | null {
+  if (!isPresent(address)) {
+    return null;
+  }
+
+  const segments = address
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+
+  if (segments.length === 0) {
+    return null;
+  }
+
+  const citySegment = segments.length >= 2 ? segments.at(-2) : segments.at(-1);
+  if (citySegment === undefined) {
+    return null;
+  }
+
+  const withoutPostalCode = citySegment.replace(/\b\d{4,6}\b/g, " ").replace(/\s+/g, " ").trim();
+  return withoutPostalCode.length > 0 ? withoutPostalCode : citySegment;
 }

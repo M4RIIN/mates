@@ -1,10 +1,12 @@
 import admin from "firebase-admin";
 import type {
   FriendRequestCreatedNotification,
+  InvitationCancelledNotification,
   InvitationCreatedNotification,
   NotificationGateway
 } from "../../application/ports/notification-gateway.js";
 import type { PushTokenRecord } from "../../application/ports/push-token-repository.js";
+import { formatFrenchTime } from "../../domain/shared/date.js";
 
 export class FirebaseCloudMessagingGateway implements NotificationGateway {
   constructor(serviceAccountJson: string | undefined) {
@@ -30,14 +32,37 @@ export class FirebaseCloudMessagingGateway implements NotificationGateway {
       return;
     }
 
+    const scheduledTime = formatFrenchTime(notification.scheduledAt);
+
     await admin.messaging().sendEachForMulticast({
       tokens: tokens.map((token) => token.token),
       notification: {
         title: `${notification.creatorPseudo} t'invite`,
-        body: `${notification.placeName} aujourd'hui`
+        body: `${notification.placeName} aujourd'hui a ${scheduledTime}`
       },
       data: {
         type: "invitation.created",
+        invitationId: notification.invitationId,
+        scheduledAt: notification.scheduledAt.toISOString()
+      }
+    });
+  }
+
+  async sendInvitationCancelled(tokens: PushTokenRecord[], notification: InvitationCancelledNotification): Promise<void> {
+    if (tokens.length === 0) {
+      return;
+    }
+
+    const scheduledTime = formatFrenchTime(notification.scheduledAt);
+
+    await admin.messaging().sendEachForMulticast({
+      tokens: tokens.map((token) => token.token),
+      notification: {
+        title: `${notification.creatorPseudo} a annulé l'invitation`,
+        body: `${notification.placeName} prevu a ${scheduledTime}`
+      },
+      data: {
+        type: "invitation.cancelled",
         invitationId: notification.invitationId,
         scheduledAt: notification.scheduledAt.toISOString()
       }

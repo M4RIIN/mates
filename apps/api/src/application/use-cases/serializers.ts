@@ -43,6 +43,7 @@ export function toInvitationDetailsDto(invitation: InvitationDetailsRecord): Inv
     longitude: invitation.longitude,
     scheduledAt: invitation.scheduledAt.toISOString(),
     createdAt: invitation.createdAt.toISOString(),
+    canceledAt: invitation.canceledAt?.toISOString() ?? null,
     recipients: invitation.recipients.map(toInvitationRecipientDto)
   };
 }

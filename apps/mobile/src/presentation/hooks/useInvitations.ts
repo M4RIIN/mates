@@ -11,6 +11,15 @@ export function useCreatedInvitations() {
   });
 }
 
+export function useActiveCreatedInvitation() {
+  const api = useApiClient();
+
+  return useQuery({
+    queryKey: ["invitations", "created", "active"],
+    queryFn: () => api.getActiveCreatedInvitation()
+  });
+}
+
 export function useReceivedInvitations() {
   const api = useApiClient();
 
@@ -39,6 +48,7 @@ export function useCreateInvitation() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["invitations", "created"] }),
+        queryClient.invalidateQueries({ queryKey: ["invitations", "created", "active"] }),
         queryClient.invalidateQueries({ queryKey: ["invitations", "received"] })
       ]);
     }
@@ -54,8 +64,26 @@ export function useRespondToInvitation(id: string) {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["invitations", id] }),
+        queryClient.invalidateQueries({ queryKey: ["invitations", "created", "active"] }),
         queryClient.invalidateQueries({ queryKey: ["invitations", "received"] }),
         queryClient.invalidateQueries({ queryKey: ["invitations", "created"] })
+      ]);
+    }
+  });
+}
+
+export function useCancelInvitation(id: string) {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.cancelInvitation(id),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["invitations", id] }),
+        queryClient.invalidateQueries({ queryKey: ["invitations", "created"] }),
+        queryClient.invalidateQueries({ queryKey: ["invitations", "created", "active"] }),
+        queryClient.invalidateQueries({ queryKey: ["invitations", "received"] })
       ]);
     }
   });

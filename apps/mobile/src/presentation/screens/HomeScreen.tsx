@@ -5,15 +5,17 @@ import { router } from "expo-router";
 import { Bell, Inbox, Send, Settings, User, Users, X } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
+import { ApiClientError } from "@/infrastructure/api/api-client";
 import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invitation/schedule";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
-import { useAuthStore } from "@/infrastructure/storage/auth-store";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCurrentUser } from "@/presentation/hooks/useAuth";
-import { useCreateInvitation } from "@/presentation/hooks/useInvitations";
+import { useReceivedFriendRequests } from "@/presentation/hooks/useFriends";
+import { useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
+import { useReceivedInvitations } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
 import { useRegisterPushNotifications } from "@/presentation/hooks/usePushNotifications";
 import { borders, colors, layout, radii, spacing } from "@/shared/theme";
@@ -27,7 +29,6 @@ export function HomeScreen() {
   const isNarrow = width <= layout.compactWidth;
   const isShort = height < 740;
   const effectiveGuardTravel = Math.max(84, Math.min(guardTravel, width - 230));
-  const user = useAuthStore((state) => state.user);
   const [menuOpen, setMenuOpen] = useState(false);
   const [placeQuery, setPlaceQuery] = useState("");
   const [customAddress, setCustomAddress] = useState("");
@@ -39,9 +40,18 @@ export function HomeScreen() {
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const vibrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdStartedAt = useRef<number | null>(null);
+  const activeInvitation = useActiveCreatedInvitation();
+  const receivedInvitations = useReceivedInvitations();
+  const receivedFriendRequests = useReceivedFriendRequests();
   const placeSearch = usePlaceSearch(placeQuery);
   const createInvitation = useCreateInvitation();
-  const canArm = placeQuery.trim().length > 0 && timeText.trim().length > 0 && !createInvitation.isPending;
+  const notificationCount = (receivedInvitations.data?.length ?? 0) + (receivedFriendRequests.data?.length ?? 0);
+  const canArm =
+    placeQuery.trim().length > 0 &&
+    timeText.trim().length > 0 &&
+    !createInvitation.isPending &&
+    activeInvitation.data === null &&
+    !activeInvitation.isLoading;
   const canLaunch = canArm && isArmed;
 
   useCurrentUser();
@@ -55,6 +65,12 @@ export function HomeScreen() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (activeInvitation.data !== null && activeInvitation.data !== undefined) {
+      router.replace({ pathname: "/invitations/created/[id]", params: { id: activeInvitation.data.id } });
+    }
+  }, [activeInvitation.data]);
 
   function resetSafety() {
     stopVibrationRamp();
@@ -126,6 +142,15 @@ export function HomeScreen() {
       resetSafety();
       router.push({ pathname: "/invitations/created/[id]", params: { id: invitation.id } });
     } catch (error: unknown) {
+      if (error instanceof ApiClientError && error.code === "INVITATION_ALREADY_ACTIVE") {
+        const invitationId = getInvitationIdFromError(error.details);
+        resetSafety();
+        if (invitationId !== undefined) {
+          router.replace({ pathname: "/invitations/created/[id]", params: { id: invitationId } });
+          return;
+        }
+      }
+
       Alert.alert("Envoi impossible", getErrorMessage(error));
       resetSafety();
     }
@@ -214,13 +239,12 @@ export function HomeScreen() {
       <View style={styles.topBar}>
         <Pressable accessibilityRole="button" onPress={() => setMenuOpen((value) => !value)} style={styles.gearButton}>
           {menuOpen ? <X size={22} color={colors.ink} strokeWidth={3} /> : <Settings size={22} color={colors.ink} strokeWidth={3} />}
+          {notificationCount > 0 ? (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>{formatNotificationCount(notificationCount)}</Text>
+            </View>
+          ) : null}
         </Pressable>
-        <View style={styles.identity}>
-          <Text style={styles.identityLabel}>Mates</Text>
-          <Text numberOfLines={1} style={styles.identityValue}>
-            {user?.pseudo !== undefined && user.publicTag !== undefined ? `${user.pseudo} · ${user.publicTag}` : user?.pseudo ?? "Accueil"}
-          </Text>
-        </View>
       </View>
 
       {menuOpen ? <FluxMenu onClose={() => setMenuOpen(false)} /> : null}
@@ -240,6 +264,7 @@ export function HomeScreen() {
             }}
             placeholder="bar, restaurant, adresse..."
           />
+          {activeInvitation.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
           {placeSearch.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
           {placeSearch.data !== undefined && placeSearch.data.length > 0 && selectedPlace === null ? (
             <ScrollView
@@ -259,6 +284,7 @@ export function HomeScreen() {
               address={selectedPlace.address}
               latitude={selectedPlace.latitude}
               longitude={selectedPlace.longitude}
+              showTransportActions={false}
               compact
             />
           ) : null}
@@ -294,10 +320,29 @@ export function HomeScreen() {
 
       <View style={styles.statusLine}>
         <Bell size={17} color={colors.ink} strokeWidth={3} />
-        <Text style={styles.statusText}>{isArmed ? "Protection retirée" : "Swipe la protection, puis maintien"}</Text>
+        <Text style={styles.statusText}>
+          {activeInvitation.data !== null && activeInvitation.data !== undefined
+            ? "Invitation deja en cours"
+            : isArmed
+              ? "Protection retirée"
+              : "Swipe la protection, puis maintien"}
+        </Text>
       </View>
     </Screen>
   );
+}
+
+function getInvitationIdFromError(details: unknown): string | undefined {
+  if (typeof details !== "object" || details === null) {
+    return undefined;
+  }
+
+  const invitationId = (details as { invitationId?: unknown }).invitationId;
+  return typeof invitationId === "string" && invitationId.length > 0 ? invitationId : undefined;
+}
+
+function formatNotificationCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
 }
 
 function FluxMenu({ onClose }: { onClose: () => void }) {
@@ -426,10 +471,10 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md
+    justifyContent: "flex-start"
   },
   gearButton: {
+    position: "relative",
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -444,21 +489,24 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 2
   },
-  identity: {
-    flex: 1,
-    alignItems: "flex-end"
+  notificationBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.red,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4
   },
-  identityLabel: {
-    color: colors.muted,
+  notificationBadgeText: {
+    color: colors.white,
     fontSize: 11,
-    lineHeight: 15,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  identityValue: {
-    color: colors.text,
-    fontSize: 18,
-    lineHeight: 22,
+    lineHeight: 12,
     fontWeight: "900"
   },
   menuPanel: {

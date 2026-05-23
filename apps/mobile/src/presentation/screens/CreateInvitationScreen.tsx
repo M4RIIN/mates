@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Send } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
+import { ApiClientError } from "@/infrastructure/api/api-client";
 import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invitation/schedule";
 import { AppButton } from "@/presentation/components/AppButton";
 import { PageHeader } from "@/presentation/components/PageHeader";
@@ -12,7 +13,7 @@ import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
-import { useCreateInvitation } from "@/presentation/hooks/useInvitations";
+import { useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
@@ -21,8 +22,15 @@ export function CreateInvitationScreen() {
   const [customAddress, setCustomAddress] = useState("");
   const [timeText, setTimeText] = useState(getDefaultInvitationTime());
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const activeInvitation = useActiveCreatedInvitation();
   const placeSearch = usePlaceSearch(placeQuery);
   const createInvitation = useCreateInvitation();
+
+  useEffect(() => {
+    if (activeInvitation.data !== null && activeInvitation.data !== undefined) {
+      router.replace({ pathname: "/invitations/created/[id]", params: { id: activeInvitation.data.id } });
+    }
+  }, [activeInvitation.data]);
 
   async function submit() {
     const placeName = selectedPlace?.name ?? placeQuery.trim();
@@ -49,6 +57,14 @@ export function CreateInvitationScreen() {
       const invitation = await createInvitation.mutateAsync(request);
       router.push({ pathname: "/invitations/created/[id]", params: { id: invitation.id } });
     } catch (error: unknown) {
+      if (error instanceof ApiClientError && error.code === "INVITATION_ALREADY_ACTIVE") {
+        const invitationId = getInvitationIdFromError(error.details);
+        if (invitationId !== undefined) {
+          router.replace({ pathname: "/invitations/created/[id]", params: { id: invitationId } });
+          return;
+        }
+      }
+
       Alert.alert("Invitation impossible", getErrorMessage(error));
     }
   }
@@ -61,6 +77,7 @@ export function CreateInvitationScreen() {
 
   return (
     <Screen>
+      {activeInvitation.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
       <PageHeader eyebrow="Nouveau plan" title="Créer une invitation" subtitle="Lieu, heure, puis envoi à tes amis actifs." tone="red" compact />
       <TextField
         label="Lieu"
@@ -85,6 +102,7 @@ export function CreateInvitationScreen() {
           address={selectedPlace.address}
           latitude={selectedPlace.latitude}
           longitude={selectedPlace.longitude}
+          showTransportActions={false}
           compact
         />
       ) : null}
@@ -135,3 +153,12 @@ const styles = StyleSheet.create({
     marginTop: -spacing.sm
   }
 });
+
+function getInvitationIdFromError(details: unknown): string | undefined {
+  if (typeof details !== "object" || details === null) {
+    return undefined;
+  }
+
+  const invitationId = (details as { invitationId?: unknown }).invitationId;
+  return typeof invitationId === "string" && invitationId.length > 0 ? invitationId : undefined;
+}

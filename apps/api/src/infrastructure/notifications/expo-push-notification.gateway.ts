@@ -1,9 +1,11 @@
 import type {
   FriendRequestCreatedNotification,
+  InvitationCancelledNotification,
   InvitationCreatedNotification,
   NotificationGateway
 } from "../../application/ports/notification-gateway.js";
 import type { PushTokenRecord } from "../../application/ports/push-token-repository.js";
+import { formatFrenchTime } from "../../domain/shared/date.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_BATCH_SIZE = 100;
@@ -36,13 +38,40 @@ export class ExpoPushNotificationGateway implements NotificationGateway {
       return;
     }
 
+    const scheduledTime = formatFrenchTime(notification.scheduledAt);
+
     const messages = expoTokens.map<ExpoPushMessage>((token) => ({
       to: token,
       sound: "default",
       title: `${notification.creatorPseudo} t'invite`,
-      body: `${notification.placeName} aujourd'hui`,
+      body: `${notification.placeName} aujourd'hui a ${scheduledTime}`,
       data: {
         type: "invitation.created",
+        invitationId: notification.invitationId,
+        scheduledAt: notification.scheduledAt.toISOString()
+      }
+    }));
+
+    for (let index = 0; index < messages.length; index += EXPO_BATCH_SIZE) {
+      await this.sendBatch(messages.slice(index, index + EXPO_BATCH_SIZE));
+    }
+  }
+
+  async sendInvitationCancelled(tokens: PushTokenRecord[], notification: InvitationCancelledNotification): Promise<void> {
+    const expoTokens = tokens.map((token) => token.token).filter(isExpoPushToken);
+    if (expoTokens.length === 0) {
+      return;
+    }
+
+    const scheduledTime = formatFrenchTime(notification.scheduledAt);
+
+    const messages = expoTokens.map<ExpoPushMessage>((token) => ({
+      to: token,
+      sound: "default",
+      title: `${notification.creatorPseudo} a annulé l'invitation`,
+      body: `${notification.placeName} prevu a ${scheduledTime}`,
+      data: {
+        type: "invitation.cancelled",
         invitationId: notification.invitationId,
         scheduledAt: notification.scheduledAt.toISOString()
       }

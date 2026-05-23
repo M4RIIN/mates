@@ -11,6 +11,7 @@ type PlaceVenuePanelProps = {
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  showTransportActions?: boolean;
   showReserveButton?: boolean;
   compact?: boolean;
 };
@@ -20,6 +21,7 @@ export function PlaceVenuePanel({
   address,
   latitude,
   longitude,
+  showTransportActions = true,
   showReserveButton = false,
   compact = false
 }: PlaceVenuePanelProps) {
@@ -100,28 +102,30 @@ export function PlaceVenuePanel({
 
       {address !== null && address !== undefined ? <Text style={styles.address}>{address}</Text> : null}
 
-      <View style={styles.actions}>
-        <View style={styles.actionItem}>
-          <AppButton
-            title="Uber"
-            onPress={() => {
-              handleUberPress().catch(() => undefined);
-            }}
-            loading={isUberOpening}
-            disabled={!hasCoordinates}
-            variant="secondary"
-            icon={<CarFront size={18} color={colors.ink} strokeWidth={3} />}
-          />
+      {showTransportActions ? (
+        <View style={styles.actions}>
+          <View style={styles.actionItem}>
+            <AppButton
+              title="Uber"
+              onPress={() => {
+                handleUberPress().catch(() => undefined);
+              }}
+              loading={isUberOpening}
+              disabled={!hasCoordinates}
+              variant="secondary"
+              icon={<CarFront size={18} color={colors.ink} strokeWidth={3} />}
+            />
+          </View>
+          <View style={styles.actionItem}>
+            <AppButton
+              title="Itineraire"
+              onPress={() => openDirectionsChooser(place)}
+              variant="primary"
+              icon={<MapPinned size={18} color={colors.white} strokeWidth={3} />}
+            />
+          </View>
         </View>
-        <View style={styles.actionItem}>
-          <AppButton
-            title="Itineraire"
-            onPress={() => openDirectionsChooser(place)}
-            variant="primary"
-            icon={<MapPinned size={18} color={colors.white} strokeWidth={3} />}
-          />
-        </View>
-      </View>
+      ) : null}
 
       {showReserveButton ? (
         <View style={styles.reserveRow}>

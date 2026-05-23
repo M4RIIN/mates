@@ -12,6 +12,15 @@ export class RespondToInvitationUseCase {
   constructor(private readonly invitations: InvitationRepository) {}
 
   async execute(input: RespondToInvitationInput): Promise<InvitationRecipientRecord> {
+    const invitation = await this.invitations.getDetails(input.invitationId);
+    if (invitation === null) {
+      throw AppErrors.notFound("Invitation not found");
+    }
+
+    if (invitation.canceledAt !== null) {
+      throw AppErrors.invitationCancelled();
+    }
+
     const recipient = await this.invitations.findRecipient(input.invitationId, input.userId);
     if (recipient === null) {
       throw AppErrors.forbidden("You can only respond to invitations you received");

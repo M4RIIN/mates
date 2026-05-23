@@ -10,6 +10,7 @@ import { CreateInvitationUseCase } from "./create-invitation.use-case.js";
 
 export type SendInvitationToFriendsInput = CreateInvitationRequest & {
   creatorId: string;
+  now?: Date;
 };
 
 export class SendInvitationToFriendsUseCase {
@@ -32,6 +33,11 @@ export class SendInvitationToFriendsUseCase {
     const creator = await this.users.findById(input.creatorId);
     if (creator === null) {
       throw AppErrors.notFound("Creator not found");
+    }
+
+    const existingInvitation = await this.invitations.findActiveByCreator(input.creatorId, input.now ?? new Date());
+    if (existingInvitation !== null) {
+      throw AppErrors.invitationAlreadyActive(existingInvitation.id);
     }
 
     const invitation = await this.createInvitation.execute(input);

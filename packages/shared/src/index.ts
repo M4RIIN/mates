@@ -175,6 +175,7 @@ export const invitationDetailsSchema = z.object({
   longitude: z.number().nullable(),
   scheduledAt: isoDateTimeSchema,
   createdAt: isoDateTimeSchema,
+  canceledAt: isoDateTimeSchema.nullable(),
   recipients: z.array(invitationRecipientSchema)
 });
 export type InvitationDetailsDto = z.infer<typeof invitationDetailsSchema>;

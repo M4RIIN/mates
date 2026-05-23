@@ -7,6 +7,13 @@ export type InvitationCreatedNotification = {
   scheduledAt: Date;
 };
 
+export type InvitationCancelledNotification = {
+  invitationId: string;
+  creatorPseudo: string;
+  placeName: string;
+  scheduledAt: Date;
+};
+
 export type FriendRequestCreatedNotification = {
   friendshipId: string;
   requesterPseudo: string;
@@ -15,5 +22,6 @@ export type FriendRequestCreatedNotification = {
 
 export interface NotificationGateway {
   sendInvitationCreated(tokens: PushTokenRecord[], notification: InvitationCreatedNotification): Promise<void>;
+  sendInvitationCancelled(tokens: PushTokenRecord[], notification: InvitationCancelledNotification): Promise<void>;
   sendFriendRequestCreated(tokens: PushTokenRecord[], notification: FriendRequestCreatedNotification): Promise<void>;
 }

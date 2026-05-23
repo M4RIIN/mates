@@ -11,7 +11,7 @@ import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useInvitationDetails, useRespondToInvitation } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
-import { formatDateTime } from "@/shared/date-format";
+import { formatDateTime, formatTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
 export function RespondInvitationScreen() {
@@ -72,6 +72,16 @@ export function RespondInvitationScreen() {
             tone="blue"
             compact
           />
+          <View style={styles.timeHero}>
+            <Text style={styles.timeHeroLabel}>Heure de rendez-vous</Text>
+            <Text style={styles.timeHeroValue}>{formatTime(invitation.data.scheduledAt)}</Text>
+          </View>
+          {invitation.data.canceledAt !== null ? (
+            <View style={styles.cancelledBanner}>
+              <Text style={styles.cancelledLabel}>Invitation annulée</Text>
+              <Text style={styles.cancelledValue}>Le créateur a fermé cette invitation.</Text>
+            </View>
+          ) : null}
           <PlaceVenuePanel
             title={invitation.data.placeName}
             address={invitation.data.placeAddress}
@@ -82,43 +92,47 @@ export function RespondInvitationScreen() {
             <Text style={styles.currentLabel}>Ta réponse</Text>
             <Text style={styles.currentValue}>{formatCurrentResponse(myResponse?.responseStatus, myResponse?.delayMinutes)}</Text>
           </View>
-          <View style={styles.answerRow}>
-            <View style={styles.answerItem}>
-              <AppButton
-                title="Oui"
-                onPress={() => {
-                  answerYes().catch((error: unknown) => {
-                    Alert.alert("Réponse impossible", getErrorMessage(error));
-                  });
-                }}
-                loading={respond.isPending}
-                variant="success"
-                icon={<Check size={18} color={colors.ink} strokeWidth={3} />}
-              />
-            </View>
-            <View style={styles.answerItem}>
-              <AppButton
-                title="Non"
-                onPress={answerNo}
-                loading={respond.isPending}
-                variant="danger"
-                icon={<X size={18} color={colors.white} strokeWidth={3} />}
-              />
-            </View>
-          </View>
-          <View style={styles.delayRow}>
-            <View style={styles.delayField}>
-              <TextField label="Retard estimé" value={delayText} onChangeText={setDelayText} keyboardType="number-pad" placeholder="10" />
-            </View>
-            <View style={styles.delayButton}>
-              <AppButton
-                title="Oui + retard"
-                onPress={answerWithDelay}
-                loading={respond.isPending}
-                icon={<Clock3 size={18} color={colors.white} strokeWidth={3} />}
-              />
-            </View>
-          </View>
+          {invitation.data.canceledAt === null ? (
+            <>
+              <View style={styles.answerRow}>
+                <View style={styles.answerItem}>
+                  <AppButton
+                    title="Oui"
+                    onPress={() => {
+                      answerYes().catch((error: unknown) => {
+                        Alert.alert("Réponse impossible", getErrorMessage(error));
+                      });
+                    }}
+                    loading={respond.isPending}
+                    variant="success"
+                    icon={<Check size={18} color={colors.ink} strokeWidth={3} />}
+                  />
+                </View>
+                <View style={styles.answerItem}>
+                  <AppButton
+                    title="Non"
+                    onPress={answerNo}
+                    loading={respond.isPending}
+                    variant="danger"
+                    icon={<X size={18} color={colors.white} strokeWidth={3} />}
+                  />
+                </View>
+              </View>
+              <View style={styles.delayRow}>
+                <View style={styles.delayField}>
+                  <TextField label="Retard estimé" value={delayText} onChangeText={setDelayText} keyboardType="number-pad" placeholder="10" />
+                </View>
+                <View style={styles.delayButton}>
+                  <AppButton
+                    title="Oui + retard"
+                    onPress={answerWithDelay}
+                    loading={respond.isPending}
+                    icon={<Clock3 size={18} color={colors.white} strokeWidth={3} />}
+                  />
+                </View>
+              </View>
+            </>
+          ) : null}
         </>
       ) : null}
     </Screen>
@@ -138,6 +152,50 @@ function formatCurrentResponse(status: "pending" | "yes" | "no" | undefined, del
 }
 
 const styles = StyleSheet.create({
+  timeHero: {
+    borderRadius: radii.md,
+    borderWidth: borders.heavy,
+    borderColor: colors.border,
+    backgroundColor: colors.yellow,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  timeHeroLabel: {
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  timeHeroValue: {
+    color: colors.text,
+    fontSize: 42,
+    lineHeight: 46,
+    fontWeight: "900"
+  },
+  cancelledBanner: {
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.redSoft,
+    padding: spacing.md,
+    gap: spacing.xs
+  },
+  cancelledLabel: {
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  cancelledValue: {
+    color: colors.text,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "900"
+  },
   current: {
     borderRadius: radii.md,
     backgroundColor: colors.blueSoft,

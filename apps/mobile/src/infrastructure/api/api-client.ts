@@ -31,6 +31,10 @@ const searchUserResponseSchema = z.object({
   user: publicUserSchema.nullable()
 });
 
+const activeInvitationResponseSchema = z.object({
+  invitation: invitationDetailsSchema.nullable()
+});
+
 const okResponseSchema = z.object({
   ok: z.boolean()
 });
@@ -39,7 +43,8 @@ export class ApiClientError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly code: string
+    readonly code: string,
+    readonly details?: unknown
   ) {
     super(message);
     this.name = "ApiClientError";
@@ -128,12 +133,20 @@ export class ApiClient {
     return this.request("GET", "/invitations/created", invitationListSchema);
   }
 
+  getActiveCreatedInvitation(): Promise<InvitationDetailsDto | null> {
+    return this.request("GET", "/invitations/created/active", activeInvitationResponseSchema).then((response) => response.invitation);
+  }
+
   getInvitation(id: string): Promise<InvitationDetailsDto> {
     return this.request("GET", `/invitations/${id}`, invitationDetailsSchema);
   }
 
   respondToInvitation(id: string, input: RespondToInvitationRequest): Promise<void> {
     return this.request("POST", `/invitations/${id}/respond`, z.unknown(), input).then(() => undefined);
+  }
+
+  cancelInvitation(id: string): Promise<InvitationDetailsDto> {
+    return this.request("POST", `/invitations/${id}/cancel`, invitationDetailsSchema);
   }
 
   private async request<TOutput>(
@@ -188,13 +201,14 @@ function toApiClientError(status: number, payload: unknown): ApiClientError {
     .object({
       error: z.object({
         code: z.string(),
-        message: z.string()
+        message: z.string(),
+        details: z.unknown().optional()
       })
     })
     .safeParse(payload);
 
   if (parsed.success) {
-    return new ApiClientError(parsed.data.error.message, status, parsed.data.error.code);
+    return new ApiClientError(parsed.data.error.message, status, parsed.data.error.code, parsed.data.error.details);
   }
 
   return new ApiClientError("Erreur réseau", status, "NETWORK_ERROR");

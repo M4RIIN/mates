@@ -13,6 +13,7 @@ export type CreateInvitationRecordInput = {
 export type InvitationRecord = CreateInvitationRecordInput & {
   id: string;
   createdAt: Date;
+  canceledAt: Date | null;
 };
 
 export type InvitationRecipientRecord = {
@@ -53,7 +54,9 @@ export interface InvitationRepository {
   addRecipients(invitationId: string, userIds: string[]): Promise<void>;
   findRecipient(invitationId: string, userId: string): Promise<InvitationRecipientRecord | null>;
   updateRecipientResponse(input: UpdateInvitationResponseInput): Promise<InvitationRecipientRecord>;
+  cancel(invitationId: string, canceledAt: Date): Promise<InvitationRecord>;
   getDetails(invitationId: string): Promise<InvitationDetailsRecord | null>;
+  findActiveByCreator(userId: string, now: Date): Promise<InvitationDetailsRecord | null>;
   listCreatedByUser(userId: string): Promise<InvitationDetailsRecord[]>;
   listReceivedByUser(userId: string): Promise<ReceivedInvitationRecord[]>;
 }
