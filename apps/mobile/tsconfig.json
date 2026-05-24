@@ -4,6 +4,7 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -12,10 +13,7 @@
       "@mates/shared": [
         "../../packages/shared/src/index.ts"
       ]
-    },
-    "types": [
-      "expo-router/types"
-    ]
+    }
   },
   "include": [
     "**/*.ts",

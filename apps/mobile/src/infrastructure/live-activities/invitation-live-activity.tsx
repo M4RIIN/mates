@@ -1,164 +1,171 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { InvitationDetailsDto, ResponseStatus } from "@mates/shared";
-import { createURL } from "expo-linking";
-import { createLiveActivity } from "expo-widgets";
-import { HStack, ProgressView, Text, VStack } from "@expo/ui/swift-ui";
-import { font, foregroundStyle, padding } from "@expo/ui/swift-ui/modifiers";
+import type { InvitationDetailsDto, InvitationRecipientDto } from "@mates/shared";
+import { ProgressView, Spacer, Text, VStack, HStack } from "@expo/ui/swift-ui";
+import { background, cornerRadius, font, foregroundStyle, frame, padding } from "@expo/ui/swift-ui/modifiers";
+import { createLiveActivity, type LiveActivityEnvironment } from "expo-widgets";
 import { Platform } from "react-native";
 
 type InvitationLiveActivityProps = {
   invitationId: string;
-  creatorPseudo: string;
   placeName: string;
   placeAddress: string;
-  scheduledAt: string;
-  responseSummary: string;
+  scheduledAt: number;
+  statusText: string;
 };
 
-const ACTIVE_INVITATION_KEY = "mates-live-activity-invitation-id";
-const InvitationLiveActivity = createLiveActivity<InvitationLiveActivityProps>("InvitationLiveActivity", (props) => {
+const LIVE_ACTIVITY_STORAGE_KEY = "mates.live-activity.invitation-id";
+
+const InvitationActivityLayout = (props: InvitationLiveActivityProps, environment: LiveActivityEnvironment) => {
   "widget";
 
-  const scheduledDate = new Date(props.scheduledAt);
   const now = new Date();
-  const address = props.placeAddress.trim().length > 0 ? props.placeAddress : "Adresse non précisée";
+  const scheduledAt = new Date(props.scheduledAt);
+  const countdownLower = now.getTime() < scheduledAt.getTime() ? now : scheduledAt;
+  const hasStarted = scheduledAt.getTime() <= now.getTime();
+  const scheduledTimeLabel = scheduledAt.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  const timer = hasStarted ? (
+    <Text modifiers={[font({ size: 20, weight: "bold" }), foregroundStyle("#0F172A")]}>En cours</Text>
+  ) : (
+    <Text
+      timerInterval={{ lower: countdownLower, upper: scheduledAt }}
+      countsDown
+      modifiers={[font({ size: 20, weight: "bold" }), foregroundStyle("#0F172A")]}
+    />
+  );
 
   return {
     banner: (
-      <VStack modifiers={[padding({ all: 12 })]} spacing={8}>
-        <Text modifiers={[font({ size: 18, weight: "bold" }), foregroundStyle("#071A2D")]}>
-          {props.placeName}
-        </Text>
-        <HStack spacing={6}>
-          <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#071A2D")]}>Dans</Text>
-          <Text
-            timerInterval={{ lower: now, upper: scheduledDate }}
-            countsDown
-            modifiers={[font({ size: 16, weight: "bold", design: "monospaced" }), foregroundStyle("#0057FF")]}
-          />
+      <VStack
+        modifiers={[
+          padding({ all: 14 }),
+          background("#F8FAFC"),
+          cornerRadius(18)
+        ]}
+      >
+        <HStack>
+          <VStack modifiers={[frame({ maxWidth: 220, alignment: "leading" })]}>
+            <Text modifiers={[font({ size: 17, weight: "bold" }), foregroundStyle("#0F172A")]}>
+              {props.placeName}
+            </Text>
+            <Text modifiers={[font({ size: 12 }), foregroundStyle("#475569")]}>{props.placeAddress}</Text>
+          </VStack>
+          <Spacer />
+          <VStack modifiers={[frame({ alignment: "trailing" })]}>
+            <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#475569")]}>RDV</Text>
+            <Text modifiers={[font({ size: 16, weight: "bold" }), foregroundStyle("#0F172A")]}>
+              {scheduledTimeLabel}
+            </Text>
+          </VStack>
         </HStack>
-        <ProgressView timerInterval={{ lower: now, upper: scheduledDate }} countsDown />
-        <Text modifiers={[font({ size: 13, weight: "medium" }), foregroundStyle("#596171")]}>
-          {address}
-        </Text>
-        <Text modifiers={[font({ size: 12, weight: "medium" }), foregroundStyle("#596171")]}>
-          {props.responseSummary}
-        </Text>
+        <ProgressView timerInterval={{ lower: countdownLower, upper: scheduledAt }} countsDown />
+        <HStack>
+          {timer}
+          <Spacer />
+          <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#1D4ED8")]}>
+            {props.statusText}
+          </Text>
+        </HStack>
       </VStack>
     ),
     compactLeading: (
-      <Text modifiers={[font({ size: 13, weight: "bold" }), foregroundStyle("#071A2D")]}>M</Text>
+      <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#0F172A")]}>Mates</Text>
     ),
-    compactTrailing: (
-      <Text
-        timerInterval={{ lower: now, upper: scheduledDate }}
-        countsDown
-        modifiers={[font({ size: 13, weight: "bold", design: "monospaced" }), foregroundStyle("#0057FF")]}
-      />
-    ),
+    compactTrailing: timer,
     minimal: (
-      <Text modifiers={[font({ size: 13, weight: "bold" }), foregroundStyle("#0057FF")]}>⌛</Text>
+      <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#0F172A")]}>M</Text>
     ),
     expandedLeading: (
-      <VStack modifiers={[padding({ all: 12 })]} spacing={4}>
-        <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#596171")]}>Invitation</Text>
-        <Text modifiers={[font({ size: 18, weight: "bold" }), foregroundStyle("#071A2D")]}>
+      <VStack>
+        <Text modifiers={[font({ size: 16, weight: "bold" }), foregroundStyle("#0F172A")]}>
           {props.placeName}
         </Text>
+        <Text modifiers={[font({ size: 12 }), foregroundStyle("#475569")]}>{props.placeAddress}</Text>
       </VStack>
     ),
     expandedTrailing: (
-      <VStack modifiers={[padding({ all: 12 })]} spacing={4}>
-        <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#596171")]}>Rendez-vous</Text>
-        <Text
-          timerInterval={{ lower: now, upper: scheduledDate }}
-          countsDown
-          modifiers={[font({ size: 22, weight: "bold", design: "monospaced" }), foregroundStyle("#0057FF")]}
-        />
+      <VStack modifiers={[frame({ alignment: "trailing" })]}>
+        <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#475569")]}>RDV</Text>
+        <Text modifiers={[font({ size: 18, weight: "bold" }), foregroundStyle("#0F172A")]}>
+          {scheduledTimeLabel}
+        </Text>
       </VStack>
     ),
+    expandedCenter: timer,
     expandedBottom: (
-      <VStack modifiers={[padding({ all: 12 })]} spacing={6}>
-        <ProgressView timerInterval={{ lower: now, upper: scheduledDate }} countsDown />
-        <Text modifiers={[font({ size: 13, weight: "medium" }), foregroundStyle("#071A2D")]}>
-          {address}
-        </Text>
-        <Text modifiers={[font({ size: 12, weight: "medium" }), foregroundStyle("#596171")]}>
-          {props.responseSummary}
+      <VStack modifiers={[padding({ horizontal: 12, bottom: 12 })]}>
+        <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#1D4ED8")]}>
+          {props.statusText}
         </Text>
       </VStack>
     )
   };
-});
+};
+
+const InvitationActivity = createLiveActivity("InvitationActivity", InvitationActivityLayout);
 
 export async function syncInvitationLiveActivity(
   invitation: InvitationDetailsDto,
-  responseStatus: ResponseStatus | undefined,
-  delayMinutes: number | null | undefined
-): Promise<void> {
-  if (!canUseLiveActivities()) {
+  response: Pick<InvitationRecipientDto, "responseStatus" | "delayMinutes">
+) {
+  if (Platform.OS !== "ios") {
     return;
   }
 
-  if (invitation.canceledAt !== null || responseStatus === "no") {
-    const activeInvitationId = await AsyncStorage.getItem(ACTIVE_INVITATION_KEY);
-    if (activeInvitationId === invitation.id) {
-      await endInvitationLiveActivity();
-    }
+  if (response.responseStatus !== "yes" || invitation.canceledAt !== null) {
+    await endInvitationLiveActivity(invitation.id);
     return;
   }
 
-  if (responseStatus !== "yes") {
+  const currentInvitationId = await AsyncStorage.getItem(LIVE_ACTIVITY_STORAGE_KEY);
+  const instances = InvitationActivity.getInstances();
+  const props = buildLiveActivityProps(invitation, response.delayMinutes);
+
+  if (currentInvitationId !== null && currentInvitationId !== invitation.id) {
+    await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
+  }
+
+  if (currentInvitationId === invitation.id && instances.length > 0) {
+    await Promise.all(instances.map((instance, index) => (index === 0 ? instance.update(props) : instance.end("immediate"))));
+    await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
     return;
   }
 
-  const props = buildLiveActivityProps(invitation, delayMinutes);
-  const activeInvitationId = await AsyncStorage.getItem(ACTIVE_INVITATION_KEY);
-
-  if (activeInvitationId === invitation.id) {
-    const [instance] = InvitationLiveActivity.getInstances();
-    if (instance !== undefined) {
-      await instance.update(props);
-      return;
-    }
-  }
-
-  await endAllInvitationLiveActivities();
-  InvitationLiveActivity.start(props, createURL(`/invitations/received/${invitation.id}`));
-  await AsyncStorage.setItem(ACTIVE_INVITATION_KEY, invitation.id);
+  InvitationActivity.start(props, buildInvitationUrl(invitation.id));
+  await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
 }
 
-export async function endInvitationLiveActivity(): Promise<void> {
-  if (!canUseLiveActivities()) {
+export async function endInvitationLiveActivity(invitationId?: string) {
+  if (Platform.OS !== "ios") {
     return;
   }
 
-  await endAllInvitationLiveActivities();
-  await AsyncStorage.removeItem(ACTIVE_INVITATION_KEY);
+  const currentInvitationId = await AsyncStorage.getItem(LIVE_ACTIVITY_STORAGE_KEY);
+  if (invitationId !== undefined && currentInvitationId !== invitationId) {
+    return;
+  }
+
+  const instances = InvitationActivity.getInstances();
+  await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
+  await AsyncStorage.removeItem(LIVE_ACTIVITY_STORAGE_KEY);
 }
 
 function buildLiveActivityProps(
   invitation: InvitationDetailsDto,
-  delayMinutes: number | null | undefined
+  delayMinutes: number | null
 ): InvitationLiveActivityProps {
   return {
     invitationId: invitation.id,
-    creatorPseudo: invitation.creator.pseudo,
     placeName: invitation.placeName,
-    placeAddress: invitation.placeAddress ?? "",
-    scheduledAt: invitation.scheduledAt,
-    responseSummary:
-      delayMinutes === null || delayMinutes === undefined
-        ? `Acceptée avec ${invitation.creator.pseudo}`
-        : `Acceptée • retard estimé ${delayMinutes} min`
+    placeAddress: invitation.placeAddress ?? "Adresse indisponible",
+    scheduledAt: new Date(invitation.scheduledAt).getTime(),
+    statusText: delayMinutes === null ? "Tu y vas" : `Retard ${delayMinutes} min`
   };
 }
 
-async function endAllInvitationLiveActivities(): Promise<void> {
-  const instances = InvitationLiveActivity.getInstances();
-  await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
-}
-
-function canUseLiveActivities(): boolean {
-  return Platform.OS === "ios";
+function buildInvitationUrl(invitationId: string) {
+  return `mates://invitations/received/${invitationId}`;
 }

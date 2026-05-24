@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Location from "expo-location";
+import { Platform } from "react-native";
+import type { Place } from "@/domain/place/place";
 import { createPlaceSearchProvider } from "@/infrastructure/places/create-place-search-provider";
 import { useApiClient } from "./useApiClient";
 
@@ -19,7 +21,7 @@ export function usePlaceSearch(query: string) {
       provider.search(
         normalizedQuery,
         countryCode !== null ? { countryCode, limit: placeSearchLimit } : { limit: placeSearchLimit }
-      )
+      ).then(deduplicatePlaces)
   });
 }
 
@@ -28,7 +30,7 @@ function useCurrentCountryCode(enabled: boolean): string | null {
   const [countryCode, setCountryCode] = useState<string | null>(localeCountryCode);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || Platform.OS === "web") {
       return;
     }
 
@@ -66,6 +68,27 @@ function useCurrentCountryCode(enabled: boolean): string | null {
   }, [enabled, localeCountryCode]);
 
   return countryCode;
+}
+
+function deduplicatePlaces(places: Place[]): Place[] {
+  const seenKeys = new Set<string>();
+
+  return places.filter((place) => {
+    const uniqueKey = [
+      place.id,
+      place.name.trim().toLowerCase(),
+      place.address?.trim().toLowerCase() ?? "",
+      place.latitude?.toFixed(6) ?? "",
+      place.longitude?.toFixed(6) ?? ""
+    ].join("|");
+
+    if (seenKeys.has(uniqueKey)) {
+      return false;
+    }
+
+    seenKeys.add(uniqueKey);
+    return true;
+  });
 }
 
 function resolveLocaleCountryCode(): string | null {

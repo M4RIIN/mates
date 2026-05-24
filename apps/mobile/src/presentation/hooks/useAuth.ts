@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Platform } from "react-native";
 import type { CompleteGoogleProfileRequest, GoogleAuthRequest, LoginRequest, RegisterRequest } from "@mates/shared";
-import { endInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { useApiClient } from "./useApiClient";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
 
@@ -88,8 +88,17 @@ export function useLogout() {
   const clearSession = useAuthStore((state) => state.clearSession);
 
   return async () => {
-    await endInvitationLiveActivity();
+    await endLiveActivityOnLogout();
     clearSession();
     await queryClient.clear();
   };
+}
+
+async function endLiveActivityOnLogout() {
+  if (Platform.OS !== "ios") {
+    return;
+  }
+
+  const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
+  await liveActivities.endInvitationLiveActivity();
 }

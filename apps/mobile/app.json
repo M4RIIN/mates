@@ -16,7 +16,16 @@
       [
         "expo-widgets",
         {
-          "groupIdentifier": "group.com.lagrange.mates"
+          "widgets": [
+            {
+              "name": "InvitationActivity",
+              "displayName": "Invitation",
+              "description": "Affiche le rendez-vous accepte en direct",
+              "supportedFamilies": [
+                "accessoryRectangular"
+              ]
+            }
+          ]
         }
       ]
     ],

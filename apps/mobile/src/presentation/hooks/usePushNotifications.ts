@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { router } from "expo-router";
-import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 import { useApiClient } from "./useApiClient";
 import { getDevicePushToken } from "@/infrastructure/notifications/expo-notifications";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
@@ -43,11 +43,13 @@ export function useNotificationNavigation() {
   const handledNotificationRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!hasHydrated || token === null) {
+    if (Platform.OS === "web" || !hasHydrated || token === null) {
       return;
     }
 
-    function openFromResponse(response: Notifications.NotificationResponse | null) {
+    let isCancelled = false;
+
+    function openFromResponse(response: import("expo-notifications").NotificationResponse | null) {
       const notificationId = response?.notification.request.identifier;
       if (notificationId === undefined || handledNotificationRef.current === notificationId) {
         return;
@@ -65,6 +67,12 @@ export function useNotificationNavigation() {
           return;
         }
 
+        if (type === "invitation.cancelled") {
+          endInvitationLiveActivity(invitationId).catch((error: unknown) => {
+            console.warn("Failed to end invitation live activity", error);
+          });
+        }
+
         router.push({
           pathname: "/invitations/received/[id]",
           params: { id: invitationId }
@@ -76,20 +84,61 @@ export function useNotificationNavigation() {
       }
     }
 
-    Notifications.getLastNotificationResponseAsync()
-      .then((response) => {
-        openFromResponse(response);
+    const notificationSubscriptionPromise = import("expo-notifications")
+      .then((Notifications) => {
+        if (isCancelled) {
+          return null;
+        }
+
+        Notifications.getLastNotificationResponseAsync()
+          .then((response) => {
+            if (!isCancelled) {
+              openFromResponse(response);
+            }
+          })
+          .catch((error: unknown) => {
+            console.warn("Failed to inspect last notification response", error);
+          });
+
+        const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+          openFromResponse(response);
+        });
+
+        const receivedSubscription = Notifications.addNotificationReceivedListener((notification) => {
+          const type = notification.request.content.data?.type;
+          const invitationId = notification.request.content.data?.invitationId;
+
+          if (type === "invitation.cancelled" && typeof invitationId === "string" && invitationId.trim().length > 0) {
+            endInvitationLiveActivity(invitationId).catch((error: unknown) => {
+              console.warn("Failed to end invitation live activity", error);
+            });
+          }
+        });
+
+        return { subscription, receivedSubscription };
       })
       .catch((error: unknown) => {
-        console.warn("Failed to inspect last notification response", error);
+        console.warn("Failed to initialize notification listeners", error);
+        return null;
       });
 
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      openFromResponse(response);
-    });
-
     return () => {
-      subscription.remove();
+      isCancelled = true;
+      notificationSubscriptionPromise
+        .then((subscriptions) => {
+          subscriptions?.subscription.remove();
+          subscriptions?.receivedSubscription.remove();
+        })
+        .catch(() => undefined);
     };
   }, [hasHydrated, token]);
+}
+
+async function endInvitationLiveActivity(invitationId: string) {
+  if (Platform.OS !== "ios") {
+    return;
+  }
+
+  const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
+  await liveActivities.endInvitationLiveActivity(invitationId);
 }

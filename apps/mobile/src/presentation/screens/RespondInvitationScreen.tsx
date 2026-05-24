@@ -3,11 +3,11 @@ import { Alert, ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Check, Clock3, X } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
-import { syncInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { PageHeader } from "@/presentation/components/PageHeader";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
+import { endInvitationLiveActivity, syncInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useInvitationDetails, useRespondToInvitation } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
@@ -30,14 +30,21 @@ export function RespondInvitationScreen() {
   }, [hasAnswered, id]);
 
   useEffect(() => {
-    if (invitation.data === undefined) {
+    if (invitation.data === undefined || myResponse === undefined) {
       return;
     }
 
-    syncInvitationLiveActivity(invitation.data, myResponse?.responseStatus, myResponse?.delayMinutes).catch((error: unknown) => {
-      console.warn("Failed to sync invitation Live Activity", error);
+    syncInvitationLiveActivity(invitation.data, {
+      responseStatus: myResponse.responseStatus,
+      delayMinutes: myResponse.delayMinutes
+    }).catch((error: unknown) => {
+      console.warn("Failed to sync invitation live activity", error);
     });
-  }, [invitation.data, myResponse?.responseStatus, myResponse?.delayMinutes]);
+  }, [
+    invitation.data,
+    myResponse?.delayMinutes,
+    myResponse?.responseStatus
+  ]);
 
   async function answerYes(delayMinutes?: number) {
     if (id === undefined) {
@@ -47,7 +54,10 @@ export function RespondInvitationScreen() {
     try {
       await respond.mutateAsync(delayMinutes === undefined ? { status: "yes" } : { status: "yes", delayMinutes });
       if (invitation.data !== undefined) {
-        await syncInvitationLiveActivity(invitation.data, "yes", delayMinutes);
+        await syncInvitationLiveActivity(invitation.data, {
+          responseStatus: "yes",
+          delayMinutes: delayMinutes ?? null
+        });
       }
       router.back();
     } catch (error: unknown) {
@@ -62,9 +72,7 @@ export function RespondInvitationScreen() {
 
     try {
       await respond.mutateAsync({ status: "no" });
-      if (invitation.data !== undefined) {
-        await syncInvitationLiveActivity(invitation.data, "no", null);
-      }
+      await endInvitationLiveActivity(id);
       router.back();
     } catch (error: unknown) {
       Alert.alert("Réponse impossible", getErrorMessage(error));

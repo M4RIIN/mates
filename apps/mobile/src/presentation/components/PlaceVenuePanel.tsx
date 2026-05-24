@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import { CarFront, MapPinned, UtensilsCrossed } from "lucide-react-native";
-import { WebView } from "react-native-webview";
 import { AppButton } from "@/presentation/components/AppButton";
 import { openDirectionsChooser, openTheFork, openUber } from "@/presentation/utils/place-links";
 import { borders, colors, radii, spacing } from "@/shared/theme";
@@ -35,6 +34,7 @@ export function PlaceVenuePanel({
   };
   const hasCoordinates = latitude !== null && latitude !== undefined && longitude !== null && longitude !== undefined;
   const canRenderInteractiveMap = hasCoordinates && Platform.OS !== "web";
+  const NativeWebView = canRenderInteractiveMap ? require("react-native-webview").WebView : null;
 
   async function handleUberPress() {
     try {
@@ -65,18 +65,20 @@ export function PlaceVenuePanel({
 
       {canRenderInteractiveMap ? (
         <View style={[styles.mapFrame, compact ? styles.mapFrameCompact : null]}>
-          <WebView
-            originWhitelist={["*"]}
-            scrollEnabled={false}
-            source={{
-              html: buildLeafletHtml({
-                latitude: latitude as number,
-                longitude: longitude as number,
-                title
-              })
-            }}
-            style={styles.webview}
-          />
+          {NativeWebView !== null ? (
+            <NativeWebView
+              originWhitelist={["*"]}
+              scrollEnabled={false}
+              source={{
+                html: buildLeafletHtml({
+                  latitude: latitude as number,
+                  longitude: longitude as number,
+                  title
+                })
+              }}
+              style={styles.webview}
+            />
+          ) : null}
           <View pointerEvents="none" style={styles.mapOverlay}>
             <View style={styles.pinChip}>
               <Text numberOfLines={1} style={styles.pinText}>

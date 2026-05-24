@@ -1,18 +1,7 @@
 import * as Device from "expo-device";
 import Constants from "expo-constants";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import type { PushPlatform } from "@mates/shared";
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false
-  })
-});
 
 export type DevicePushToken = {
   token: string;
@@ -20,10 +9,11 @@ export type DevicePushToken = {
 };
 
 export async function getDevicePushToken(): Promise<DevicePushToken | null> {
-  if (!Device.isDevice) {
+  if (Platform.OS === "web" || !Device.isDevice) {
     return null;
   }
 
+  const Notifications = await loadExpoNotifications();
   const currentPermissions = await Notifications.getPermissionsAsync();
   const finalPermissions =
     currentPermissions.status === "granted" ? currentPermissions : await Notifications.requestPermissionsAsync();
@@ -46,6 +36,21 @@ export async function getDevicePushToken(): Promise<DevicePushToken | null> {
     token: expoPushToken.data,
     platform: toPushPlatform(Platform.OS)
   };
+}
+
+async function loadExpoNotifications() {
+  const Notifications = await import("expo-notifications");
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false
+    })
+  });
+
+  return Notifications;
 }
 
 function getExpoProjectId(): string {
