@@ -11,15 +11,19 @@ import { endInvitationLiveActivity, syncInvitationLiveActivity } from "@/infrast
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useInvitationDetails, useRespondToInvitation } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
+import { openDirectionsChooser } from "@/presentation/utils/place-links";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
 import { formatDateTime, formatTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
+import { useLocalSearchParams } from "expo-router";
 
 export function RespondInvitationScreen() {
   const id = useRouteId();
+  const { openDirections } = useLocalSearchParams<{ openDirections?: string | string[] }>();
   const user = useAuthStore((state) => state.user);
   const [delayText, setDelayText] = useState("10");
   const [isEditingDecision, setIsEditingDecision] = useState(false);
+  const [hasOpenedDirectionsFromLink, setHasOpenedDirectionsFromLink] = useState(false);
   const invitation = useInvitationDetails(id);
   const respond = useRespondToInvitation(id ?? "");
   const myResponse = invitation.data?.recipients.find((recipient) => recipient.user.id === user?.id);
@@ -45,6 +49,23 @@ export function RespondInvitationScreen() {
     myResponse?.delayMinutes,
     myResponse?.responseStatus
   ]);
+
+  useEffect(() => {
+    const shouldOpenDirections =
+      openDirections === "1" || (Array.isArray(openDirections) && openDirections.includes("1"));
+
+    if (!shouldOpenDirections || hasOpenedDirectionsFromLink || invitation.data === undefined) {
+      return;
+    }
+
+    setHasOpenedDirectionsFromLink(true);
+    openDirectionsChooser({
+      name: invitation.data.placeName,
+      address: invitation.data.placeAddress,
+      latitude: invitation.data.latitude,
+      longitude: invitation.data.longitude
+    });
+  }, [hasOpenedDirectionsFromLink, invitation.data, openDirections]);
 
   async function answerYes(delayMinutes?: number) {
     if (id === undefined) {

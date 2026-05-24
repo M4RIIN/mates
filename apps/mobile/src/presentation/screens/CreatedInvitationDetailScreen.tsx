@@ -11,7 +11,7 @@ import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useReceivedFriendRequests } from "@/presentation/hooks/useFriends";
-import { useCancelInvitation, useInvitationDetails, useReceivedInvitations } from "@/presentation/hooks/useInvitations";
+import { countUpcomingInvitations, useCancelInvitation, useInvitationDetails, useReceivedInvitations } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
 import { formatDateTime, formatTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
@@ -25,7 +25,8 @@ export function CreatedInvitationDetailScreen() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const recipients = invitation.data?.recipients ?? [];
-  const notificationCount = (receivedInvitations.data?.length ?? 0) + (receivedFriendRequests.data?.length ?? 0);
+  const receivedInvitationCount = countUpcomingInvitations(receivedInvitations.data);
+  const notificationCount = receivedInvitationCount + (receivedFriendRequests.data?.length ?? 0);
   const yesCount = recipients.filter((recipient) => recipient.responseStatus === "yes").length;
   const noCount = recipients.filter((recipient) => recipient.responseStatus === "no").length;
   const pendingCount = recipients.filter((recipient) => recipient.responseStatus === "pending").length;
@@ -70,7 +71,7 @@ export function CreatedInvitationDetailScreen() {
       {menuOpen ? (
         <FluxMenu
           onClose={() => setMenuOpen(false)}
-          receivedInvitationCount={receivedInvitations.data?.length ?? 0}
+          receivedInvitationCount={receivedInvitationCount}
           receivedFriendRequestCount={receivedFriendRequests.data?.length ?? 0}
         />
       ) : null}

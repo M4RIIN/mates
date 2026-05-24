@@ -14,7 +14,7 @@ import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCurrentUser } from "@/presentation/hooks/useAuth";
 import { useReceivedFriendRequests } from "@/presentation/hooks/useFriends";
-import { useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
+import { countUpcomingInvitations, useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { useReceivedInvitations } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
 import { useRegisterPushNotifications } from "@/presentation/hooks/usePushNotifications";
@@ -45,7 +45,8 @@ export function HomeScreen() {
   const receivedFriendRequests = useReceivedFriendRequests();
   const placeSearch = usePlaceSearch(placeQuery);
   const createInvitation = useCreateInvitation();
-  const notificationCount = (receivedInvitations.data?.length ?? 0) + (receivedFriendRequests.data?.length ?? 0);
+  const receivedInvitationCount = countUpcomingInvitations(receivedInvitations.data);
+  const notificationCount = receivedInvitationCount + (receivedFriendRequests.data?.length ?? 0);
   const canArm =
     placeQuery.trim().length > 0 &&
     timeText.trim().length > 0 &&
@@ -250,7 +251,7 @@ export function HomeScreen() {
       {menuOpen ? (
         <FluxMenu
           onClose={() => setMenuOpen(false)}
-          receivedInvitationCount={receivedInvitations.data?.length ?? 0}
+          receivedInvitationCount={receivedInvitationCount}
           receivedFriendRequestCount={receivedFriendRequests.data?.length ?? 0}
         />
       ) : null}

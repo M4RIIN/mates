@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateInvitationRequest, RespondToInvitationRequest } from "@mates/shared";
 import { useApiClient } from "./useApiClient";
 
+type ScheduledInvitation = {
+  scheduledAt: string;
+};
+
 export function useCreatedInvitations() {
   const api = useApiClient();
 
@@ -87,4 +91,12 @@ export function useCancelInvitation(id: string) {
       ]);
     }
   });
+}
+
+export function isUpcomingInvitation(invitation: ScheduledInvitation, now: Date = new Date()): boolean {
+  return new Date(invitation.scheduledAt).getTime() > now.getTime();
+}
+
+export function countUpcomingInvitations<T extends ScheduledInvitation>(invitations: T[] | undefined, now: Date = new Date()): number {
+  return invitations?.filter((invitation) => isUpcomingInvitation(invitation, now)).length ?? 0;
 }
