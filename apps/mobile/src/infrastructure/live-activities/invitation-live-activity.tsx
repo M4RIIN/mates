@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { InvitationDetailsDto, InvitationRecipientDto } from "@mates/shared";
-import { Button, ProgressView, Spacer, Text, VStack, HStack } from "@expo/ui/swift-ui";
+import { ProgressView, Spacer, Text, VStack, HStack } from "@expo/ui/swift-ui";
 import { background, cornerRadius, font, foregroundStyle, frame, padding } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity, type LiveActivityEnvironment } from "expo-widgets";
 import { Platform } from "react-native";
@@ -10,12 +10,10 @@ type InvitationLiveActivityProps = {
   placeName: string;
   placeAddress: string;
   scheduledAt: number;
-  progressStartedAt: number;
   statusText: string;
 };
 
 const LIVE_ACTIVITY_STORAGE_KEY = "mates.live-activity.invitation-id";
-const LIVE_ACTIVITY_PROGRESS_STORAGE_KEY = "mates.live-activity.progress-started-at";
 let autoEndTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const InvitationActivityLayout = (props: InvitationLiveActivityProps, environment: LiveActivityEnvironment) => {
@@ -23,7 +21,6 @@ const InvitationActivityLayout = (props: InvitationLiveActivityProps, environmen
 
   const now = new Date();
   const scheduledAt = new Date(props.scheduledAt);
-  const progressStartedAt = new Date(props.progressStartedAt);
   const countdownLower = now.getTime() < scheduledAt.getTime() ? now : scheduledAt;
   const hasStarted = scheduledAt.getTime() <= now.getTime();
   const scheduledTimeLabel = scheduledAt.toLocaleTimeString("fr-FR", {
@@ -65,28 +62,13 @@ const InvitationActivityLayout = (props: InvitationLiveActivityProps, environmen
             </Text>
           </VStack>
         </HStack>
-        <ProgressView timerInterval={{ lower: progressStartedAt, upper: scheduledAt }} />
+        <ProgressView timerInterval={{ lower: countdownLower, upper: scheduledAt }} countsDown />
         <HStack>
           {timer}
           <Spacer />
           <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#1D4ED8")]}>
             {props.statusText}
           </Text>
-        </HStack>
-        <HStack>
-          <Spacer />
-          <Button
-            label="Itinéraire"
-            target={buildInvitationDirectionsTarget(props.invitationId)}
-            onPress={() => undefined}
-            modifiers={[
-              font({ size: 12, weight: "bold" }),
-              foregroundStyle("#1D4ED8"),
-              background("#DBEAFE"),
-              cornerRadius(999),
-              padding({ horizontal: 10, vertical: 6 })
-            ]}
-          />
         </HStack>
       </VStack>
     ),
@@ -115,24 +97,11 @@ const InvitationActivityLayout = (props: InvitationLiveActivityProps, environmen
     ),
     expandedCenter: timer,
     expandedBottom: (
-      <HStack modifiers={[padding({ horizontal: 12, bottom: 12 })]}>
+      <VStack modifiers={[padding({ horizontal: 12, bottom: 12 })]}>
         <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#1D4ED8")]}>
           {props.statusText}
         </Text>
-        <Spacer />
-          <Button
-            label="Itinéraire"
-            target={buildInvitationDirectionsTarget(props.invitationId)}
-            onPress={() => undefined}
-            modifiers={[
-              font({ size: 12, weight: "bold" }),
-              foregroundStyle("#1D4ED8"),
-            background("#DBEAFE"),
-            cornerRadius(999),
-            padding({ horizontal: 10, vertical: 6 })
-          ]}
-        />
-      </HStack>
+      </VStack>
     )
   };
 };
@@ -155,13 +124,8 @@ export async function syncInvitationLiveActivity(
   }
 
   const currentInvitationId = await AsyncStorage.getItem(LIVE_ACTIVITY_STORAGE_KEY);
-  const storedProgressStartedAt = await AsyncStorage.getItem(LIVE_ACTIVITY_PROGRESS_STORAGE_KEY);
   const instances = InvitationActivity.getInstances();
-  const progressStartedAt =
-    currentInvitationId === invitation.id && storedProgressStartedAt !== null
-      ? Number.parseInt(storedProgressStartedAt, 10)
-      : Date.now();
-  const props = buildLiveActivityProps(invitation, response.delayMinutes, progressStartedAt);
+  const props = buildLiveActivityProps(invitation, response.delayMinutes);
 
   if (currentInvitationId !== null && currentInvitationId !== invitation.id) {
     await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
@@ -170,14 +134,12 @@ export async function syncInvitationLiveActivity(
   if (currentInvitationId === invitation.id && instances.length > 0) {
     await Promise.all(instances.map((instance, index) => (index === 0 ? instance.update(props) : instance.end("immediate"))));
     await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
-    await AsyncStorage.setItem(LIVE_ACTIVITY_PROGRESS_STORAGE_KEY, String(progressStartedAt));
     scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
     return;
   }
 
   InvitationActivity.start(props, buildInvitationUrl(invitation.id));
   await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
-  await AsyncStorage.setItem(LIVE_ACTIVITY_PROGRESS_STORAGE_KEY, String(progressStartedAt));
   scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
 }
 
@@ -196,30 +158,23 @@ export async function endInvitationLiveActivity(invitationId?: string) {
   const instances = InvitationActivity.getInstances();
   await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
   await AsyncStorage.removeItem(LIVE_ACTIVITY_STORAGE_KEY);
-  await AsyncStorage.removeItem(LIVE_ACTIVITY_PROGRESS_STORAGE_KEY);
 }
 
 function buildLiveActivityProps(
   invitation: InvitationDetailsDto,
-  delayMinutes: number | null,
-  progressStartedAt: number
+  delayMinutes: number | null
 ): InvitationLiveActivityProps {
   return {
     invitationId: invitation.id,
     placeName: invitation.placeName,
     placeAddress: invitation.placeAddress ?? "Adresse indisponible",
     scheduledAt: new Date(invitation.scheduledAt).getTime(),
-    progressStartedAt,
     statusText: delayMinutes === null ? "Tu y vas" : `Retard ${delayMinutes} min`
   };
 }
 
 function buildInvitationUrl(invitationId: string) {
   return `mates://invitations/received/${invitationId}`;
-}
-
-function buildInvitationDirectionsTarget(invitationId: string) {
-  return `invitation-directions:${invitationId}`;
 }
 
 function scheduleInvitationLiveActivityEnd(invitationId: string, scheduledAtMs: number) {
