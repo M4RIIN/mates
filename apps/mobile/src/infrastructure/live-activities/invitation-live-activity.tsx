@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { InvitationDetailsDto, InvitationRecipientDto } from "@mates/shared";
-import { Link, ProgressView, Spacer, Text, VStack, HStack } from "@expo/ui/swift-ui";
+import { Button, ProgressView, Spacer, Text, VStack, HStack } from "@expo/ui/swift-ui";
 import { background, cornerRadius, font, foregroundStyle, frame, padding } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity, type LiveActivityEnvironment } from "expo-widgets";
 import { Platform } from "react-native";
@@ -75,9 +75,10 @@ const InvitationActivityLayout = (props: InvitationLiveActivityProps, environmen
         </HStack>
         <HStack>
           <Spacer />
-          <Link
+          <Button
             label="Itinéraire"
-            destination={buildInvitationDirectionsUrl(props.invitationId)}
+            target={buildInvitationDirectionsTarget(props.invitationId)}
+            onPress={() => undefined}
             modifiers={[
               font({ size: 12, weight: "bold" }),
               foregroundStyle("#1D4ED8"),
@@ -119,12 +120,13 @@ const InvitationActivityLayout = (props: InvitationLiveActivityProps, environmen
           {props.statusText}
         </Text>
         <Spacer />
-        <Link
-          label="Itinéraire"
-          destination={buildInvitationDirectionsUrl(props.invitationId)}
-          modifiers={[
-            font({ size: 12, weight: "bold" }),
-            foregroundStyle("#1D4ED8"),
+          <Button
+            label="Itinéraire"
+            target={buildInvitationDirectionsTarget(props.invitationId)}
+            onPress={() => undefined}
+            modifiers={[
+              font({ size: 12, weight: "bold" }),
+              foregroundStyle("#1D4ED8"),
             background("#DBEAFE"),
             cornerRadius(999),
             padding({ horizontal: 10, vertical: 6 })
@@ -216,8 +218,8 @@ function buildInvitationUrl(invitationId: string) {
   return `mates://invitations/received/${invitationId}`;
 }
 
-function buildInvitationDirectionsUrl(invitationId: string) {
-  return `mates://invitations/received/${invitationId}?openDirections=1`;
+function buildInvitationDirectionsTarget(invitationId: string) {
+  return `invitation-directions:${invitationId}`;
 }
 
 function scheduleInvitationLiveActivityEnd(invitationId: string, scheduledAtMs: number) {

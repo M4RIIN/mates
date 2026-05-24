@@ -122,12 +122,40 @@ export function useNotificationNavigation() {
         return null;
       });
 
+    const widgetInteractionSubscriptionPromise = import("expo-widgets")
+      .then((ExpoWidgets) => {
+        if (isCancelled) {
+          return null;
+        }
+
+        return ExpoWidgets.addUserInteractionListener((event) => {
+          const invitationId = getInvitationIdFromWidgetTarget(event.target);
+          if (invitationId === undefined) {
+            return;
+          }
+
+          router.push({
+            pathname: "/invitations/received/[id]",
+            params: { id: invitationId, openDirections: "1" }
+          });
+        });
+      })
+      .catch((error: unknown) => {
+        console.warn("Failed to initialize widget interaction listener", error);
+        return null;
+      });
+
     return () => {
       isCancelled = true;
       notificationSubscriptionPromise
         .then((subscriptions) => {
           subscriptions?.subscription.remove();
           subscriptions?.receivedSubscription.remove();
+        })
+        .catch(() => undefined);
+      widgetInteractionSubscriptionPromise
+        .then((subscription) => {
+          subscription?.remove();
         })
         .catch(() => undefined);
     };
@@ -141,4 +169,14 @@ async function endInvitationLiveActivity(invitationId: string) {
 
   const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
   await liveActivities.endInvitationLiveActivity(invitationId);
+}
+
+function getInvitationIdFromWidgetTarget(target: string): string | undefined {
+  const prefix = "invitation-directions:";
+  if (!target.startsWith(prefix)) {
+    return undefined;
+  }
+
+  const invitationId = target.slice(prefix.length).trim();
+  return invitationId.length > 0 ? invitationId : undefined;
 }
