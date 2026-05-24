@@ -156,6 +156,9 @@ importers:
       babel-plugin-module-resolver:
         specifier: ^5.0.2
         version: 5.0.3
+      babel-preset-expo:
+        specifier: ~56.0.12
+        version: 56.0.12(@babel/core@7.29.0)(@babel/runtime@7.29.2)(expo-widgets@56.0.14)(expo@56.0.4)(react-refresh@0.14.2)
       typescript:
         specifier: ~6.0.3
         version: 6.0.3

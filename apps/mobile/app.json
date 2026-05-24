@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "plugins": [
       "expo-router",
       "expo-notifications",
