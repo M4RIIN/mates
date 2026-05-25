@@ -23,12 +23,14 @@ import {
   type FriendRequestDto,
   type GoogleAuthRequest,
   type GoogleAuthResponse,
+  type InvitationAuditAction,
   type InvitationDetailsDto,
   type PlaceCandidateDto,
   type PublicUserDto,
   type ReceivedInvitationDto,
   type RegisterPushTokenRequest,
   type RespondToInvitationRequest,
+  type TrackInvitationAuditEventRequest,
   type UpdateFriendGroupMembersRequest
 } from "@mates/shared";
 import { z } from "zod";
@@ -170,6 +172,11 @@ export class ApiClient {
 
   cancelInvitation(id: string): Promise<InvitationDetailsDto> {
     return this.request("POST", `/invitations/${id}/cancel`, invitationDetailsSchema);
+  }
+
+  trackInvitationAuditEvent(id: string, action: InvitationAuditAction): Promise<void> {
+    const body: TrackInvitationAuditEventRequest = { action };
+    return this.request("POST", `/invitations/${id}/audit-events`, z.unknown(), body).then(() => undefined);
   }
 
   private async request<TOutput>(

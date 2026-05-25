@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type {
+  CreateInvitationAuditEventInput,
   CreateInvitationRecordInput,
+  InvitationAuditEventRecord,
   InvitationDetailsRecord,
   InvitationRecipientRecord,
   InvitationRepository,
@@ -11,6 +13,7 @@ import type {
 import { CreateInvitationUseCase } from "../src/application/use-cases/create-invitation.use-case.js";
 import { RespondToInvitationUseCase } from "../src/application/use-cases/respond-to-invitation.use-case.js";
 import { SendInvitationToFriendsUseCase } from "../src/application/use-cases/send-invitation-to-friends.use-case.js";
+import { TrackInvitationAuditEventUseCase } from "../src/application/use-cases/track-invitation-audit-event.use-case.js";
 import { AppError } from "../src/domain/shared/app-error.js";
 import { normalizeInvitationResponse } from "../src/domain/invitation/invitation-rules.js";
 import { generatePublicTag } from "../src/domain/user/public-tag.js";
@@ -18,6 +21,7 @@ import { generatePublicTag } from "../src/domain/user/public-tag.js";
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const INVITATION_ID = "22222222-2222-4222-8222-222222222222";
 const RECIPIENT_ID = "33333333-3333-4333-8333-333333333333";
+const AUDIT_EVENT_ID = "44444444-4444-4444-8444-444444444444";
 
 function createInvitationRepository(overrides: Partial<InvitationRepository> = {}): InvitationRepository {
   return {
@@ -28,6 +32,30 @@ function createInvitationRepository(overrides: Partial<InvitationRepository> = {
       canceledAt: null
     }),
     addRecipients: async () => undefined,
+    createAuditEvent: async (input: CreateInvitationAuditEventInput): Promise<InvitationAuditEventRecord> => ({
+      id: AUDIT_EVENT_ID,
+      invitationId: input.invitationId,
+      parentAuditEventId: input.parentAuditEventId,
+      actorUserId: input.actorUserId,
+      eventType: input.eventType,
+      placeName: input.placeName,
+      placeAddress: input.placeAddress,
+      scheduledAt: input.scheduledAt,
+      invitedCount: input.invitedCount,
+      createdAt: new Date("2026-05-16T08:00:00.000Z")
+    }),
+    findCreatedAuditEvent: async (): Promise<InvitationAuditEventRecord | null> => ({
+      id: AUDIT_EVENT_ID,
+      invitationId: INVITATION_ID,
+      parentAuditEventId: null,
+      actorUserId: USER_ID,
+      eventType: "created",
+      placeName: "Cafe Central",
+      placeAddress: null,
+      scheduledAt: new Date("2026-05-16T20:30:00.000Z"),
+      invitedCount: 3,
+      createdAt: new Date("2026-05-16T08:00:00.000Z")
+    }),
     findRecipient: async () => null,
     updateRecipientResponse: async (input: UpdateInvitationResponseInput) => ({
       id: input.recipientId,
@@ -190,6 +218,57 @@ describe("invitation responses", () => {
     });
   });
 
+  it("creates an accepted audit event for yes responses", async () => {
+    let createdAuditEvent: InvitationAuditEventRecord | null = null;
+
+    const useCase = new RespondToInvitationUseCase(
+      createInvitationRepository({
+        getDetails: async (): Promise<InvitationDetailsRecord | null> =>
+          buildInvitationDetails({
+            recipients: [
+              {
+                id: RECIPIENT_ID,
+                user: {
+                  id: USER_ID,
+                  pseudo: "nicolas",
+                  publicTag: "nicolas#0047"
+                },
+                responseStatus: "pending",
+                delayMinutes: null,
+                respondedAt: null
+              }
+            ]
+          }),
+        findRecipient: async (): Promise<InvitationRecipientRecord | null> => ({
+          id: RECIPIENT_ID,
+          invitationId: INVITATION_ID,
+          userId: USER_ID,
+          responseStatus: "pending",
+          delayMinutes: null,
+          respondedAt: null
+        }),
+        createAuditEvent: async (input) => {
+          createdAuditEvent = await createInvitationRepository().createAuditEvent(input);
+          return createdAuditEvent;
+        }
+      }),
+      { publishToUser: async () => undefined, publishToUsers: async () => undefined }
+    );
+
+    await useCase.execute({
+      invitationId: INVITATION_ID,
+      userId: USER_ID,
+      status: "yes"
+    });
+
+    expect(createdAuditEvent).toMatchObject({
+      parentAuditEventId: AUDIT_EVENT_ID,
+      actorUserId: USER_ID,
+      eventType: "accepted",
+      invitedCount: 1
+    });
+  });
+
   it("blocks responses to a cancelled invitation", async () => {
     const useCase = new RespondToInvitationUseCase(
       createInvitationRepository({
@@ -343,6 +422,44 @@ describe("active invitation rules", () => {
     });
 
     expect(capturedRecipientBatches).toEqual([["friend-b"]]);
+  });
+});
+
+describe("invitation audit actions", () => {
+  it("tracks uber clicks under the created audit event", async () => {
+    const useCase = new TrackInvitationAuditEventUseCase(
+      createInvitationRepository({
+        getDetails: async (): Promise<InvitationDetailsRecord | null> =>
+          buildInvitationDetails({
+            recipients: [
+              {
+                id: RECIPIENT_ID,
+                user: {
+                  id: USER_ID,
+                  pseudo: "nicolas",
+                  publicTag: "nicolas#0047"
+                },
+                responseStatus: "pending",
+                delayMinutes: null,
+                respondedAt: null
+              }
+            ]
+          })
+      })
+    );
+
+    const auditEvent = await useCase.execute({
+      invitationId: INVITATION_ID,
+      userId: USER_ID,
+      action: "uber_requested"
+    });
+
+    expect(auditEvent).toMatchObject({
+      parentAuditEventId: AUDIT_EVENT_ID,
+      actorUserId: USER_ID,
+      eventType: "uber_requested",
+      invitedCount: 1
+    });
   });
 });
 

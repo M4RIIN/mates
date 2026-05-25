@@ -1,6 +1,8 @@
 import { and, desc, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import type {
+  CreateInvitationAuditEventInput,
   CreateInvitationRecordInput,
+  InvitationAuditEventRecord,
   InvitationDetailsRecord,
   InvitationFriendGroupRecord,
   InvitationParticipantRecord,
@@ -13,7 +15,7 @@ import type {
 import { endOfLocalDay, startOfLocalDay } from "../../domain/shared/date.js";
 import type { PublicUserRecord } from "../../application/ports/user-repository.js";
 import type { AppDb } from "../db/client.js";
-import { friendGroups, invitationRecipients, invitations, users } from "../db/schema.js";
+import { friendGroups, invitationAuditEvents, invitationRecipients, invitations, users } from "../db/schema.js";
 
 function toInvitationRecord(row: typeof invitations.$inferSelect): InvitationRecord {
   return {
@@ -45,6 +47,21 @@ function toRecipientRecord(row: typeof invitationRecipients.$inferSelect): Invit
     responseStatus: row.responseStatus,
     delayMinutes: row.delayMinutes,
     respondedAt: row.respondedAt
+  };
+}
+
+function toAuditEventRecord(row: typeof invitationAuditEvents.$inferSelect): InvitationAuditEventRecord {
+  return {
+    id: row.id,
+    invitationId: row.invitationId,
+    parentAuditEventId: row.parentAuditEventId,
+    actorUserId: row.actorUserId,
+    eventType: row.eventType,
+    placeName: row.placeName,
+    placeAddress: row.placeAddress,
+    scheduledAt: row.scheduledAt,
+    invitedCount: row.invitedCount,
+    createdAt: row.createdAt
   };
 }
 
@@ -98,6 +115,38 @@ export class PostgresInvitationRepository implements InvitationRepository {
         }))
       )
       .onConflictDoNothing();
+  }
+
+  async createAuditEvent(input: CreateInvitationAuditEventInput): Promise<InvitationAuditEventRecord> {
+    const [created] = await this.db
+      .insert(invitationAuditEvents)
+      .values({
+        invitationId: input.invitationId,
+        parentAuditEventId: input.parentAuditEventId,
+        actorUserId: input.actorUserId,
+        eventType: input.eventType,
+        placeName: input.placeName,
+        placeAddress: input.placeAddress,
+        scheduledAt: input.scheduledAt,
+        invitedCount: input.invitedCount
+      })
+      .returning();
+
+    if (created === undefined) {
+      throw new Error("Invitation audit event creation failed");
+    }
+
+    return toAuditEventRecord(created);
+  }
+
+  async findCreatedAuditEvent(invitationId: string): Promise<InvitationAuditEventRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(invitationAuditEvents)
+      .where(and(eq(invitationAuditEvents.invitationId, invitationId), eq(invitationAuditEvents.eventType, "created")))
+      .limit(1);
+
+    return row === undefined ? null : toAuditEventRecord(row);
   }
 
   async findRecipient(invitationId: string, userId: string): Promise<InvitationRecipientRecord | null> {

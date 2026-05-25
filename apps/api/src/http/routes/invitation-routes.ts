@@ -1,5 +1,9 @@
 import type { Hono } from "hono";
-import { createInvitationRequestSchema, respondToInvitationRequestSchema } from "@mates/shared";
+import {
+  createInvitationRequestSchema,
+  respondToInvitationRequestSchema,
+  trackInvitationAuditEventRequestSchema
+} from "@mates/shared";
 import { z } from "zod";
 import type { AppContainer } from "../../infrastructure/container.js";
 import { createAuthMiddleware } from "../middlewares/auth-middleware.js";
@@ -63,6 +67,27 @@ export function registerInvitationRoutes(app: Hono<AppBindings>, container: AppC
       delayMinutes: response.delayMinutes,
       respondedAt: response.respondedAt?.toISOString() ?? null
     });
+  });
+
+  app.post("/invitations/:id/audit-events", auth, async (context) => {
+    const invitationId = parseParam(idParamSchema, context.req.param("id"));
+    const body = await parseJsonBody<{ action: "uber_requested" | "reservation_requested" }>(
+      trackInvitationAuditEventRequestSchema,
+      context
+    );
+    const auditEvent = await container.useCases.trackInvitationAuditEvent.execute({
+      invitationId,
+      userId: context.get("currentUserId"),
+      action: body.action
+    });
+
+    return context.json({
+      id: auditEvent.id,
+      invitationId: auditEvent.invitationId,
+      parentAuditEventId: auditEvent.parentAuditEventId,
+      eventType: auditEvent.eventType,
+      createdAt: auditEvent.createdAt.toISOString()
+    }, 201);
   });
 
   app.post("/invitations/:id/cancel", auth, async (context) => {

@@ -39,6 +39,7 @@ function createContainer(overrides?: Partial<AppContainer>): AppContainer {
       sendInvitationToFriends: { execute: vi.fn() },
       cancelInvitation: { execute: vi.fn() },
       respondToInvitation: { execute: vi.fn() },
+      trackInvitationAuditEvent: { execute: vi.fn() },
       getInvitationDetails: { execute: vi.fn() },
       getActiveCreatedInvitation: { execute: vi.fn() },
       listReceivedInvitations: { execute: vi.fn() },

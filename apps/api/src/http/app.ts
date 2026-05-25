@@ -17,7 +17,8 @@ function getHttpLogContext(context: Context<AppBindings>, status: number): Recor
     method: context.req.method,
     path: context.req.path,
     status,
-    requestId: context.req.header("x-request-id")
+    requestId: context.req.header("x-request-id"),
+    userId: context.get("currentUserId") ?? null
   };
 }
 
@@ -32,6 +33,19 @@ export function createHttpApp(container: AppContainer): Hono<AppBindings> {
       allowMethods: ["GET", "POST", "OPTIONS"]
     })
   );
+
+  app.use("*", async (context, next) => {
+    const startedAt = Date.now();
+    try {
+      await next();
+    } finally {
+      logger.info("http.request.completed", {
+        ...getHttpLogContext(context, context.res.status),
+        durationMs: Date.now() - startedAt,
+        userAgent: context.req.header("user-agent")
+      });
+    }
+  });
 
   app.get("/health", (context) => context.json({ ok: true }));
 

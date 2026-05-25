@@ -15,6 +15,12 @@ import { sql } from "drizzle-orm";
 export const friendshipStatusEnum = pgEnum("friendship_status", ["pending", "active", "blocked"]);
 export const responseStatusEnum = pgEnum("response_status", ["pending", "yes", "no"]);
 export const pushPlatformEnum = pgEnum("push_platform", ["ios", "android", "web", "unknown"]);
+export const invitationAuditEventTypeEnum = pgEnum("invitation_audit_event_type", [
+  "created",
+  "accepted",
+  "uber_requested",
+  "reservation_requested"
+]);
 
 export const users = pgTable(
   "users",
@@ -154,5 +160,34 @@ export const invitationRecipients = pgTable(
     ),
     userIdx: index("invitation_recipients_user_idx").on(table.userId),
     invitationIdx: index("invitation_recipients_invitation_idx").on(table.invitationId)
+  })
+);
+
+export const invitationAuditEvents = pgTable(
+  "invitation_audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    invitationId: uuid("invitation_id")
+      .notNull()
+      .references(() => invitations.id, { onDelete: "cascade" }),
+    parentAuditEventId: uuid("parent_audit_event_id"),
+    actorUserId: uuid("actor_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventType: invitationAuditEventTypeEnum("event_type").notNull(),
+    placeName: text("place_name").notNull(),
+    placeAddress: text("place_address"),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    invitedCount: integer("invited_count").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    invitationIdx: index("invitation_audit_events_invitation_idx").on(table.invitationId),
+    parentAuditEventIdx: index("invitation_audit_events_parent_audit_event_idx").on(table.parentAuditEventId),
+    actorUserIdx: index("invitation_audit_events_actor_user_idx").on(table.actorUserId),
+    invitationCreatedUniqueIdx: uniqueIndex("invitation_audit_events_created_unique_idx")
+      .on(table.invitationId, table.eventType)
+      .where(sql`${table.eventType} = 'created'`),
+    invitedCountCheck: check("invitation_audit_events_invited_count_positive", sql`${table.invitedCount} >= 0`)
   })
 );

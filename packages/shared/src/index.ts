@@ -192,6 +192,14 @@ export const respondToInvitationRequestSchema = z.discriminatedUnion("status", [
 ]);
 export type RespondToInvitationRequest = z.infer<typeof respondToInvitationRequestSchema>;
 
+export const invitationAuditActionSchema = z.enum(["uber_requested", "reservation_requested"]);
+export type InvitationAuditAction = z.infer<typeof invitationAuditActionSchema>;
+
+export const trackInvitationAuditEventRequestSchema = z.object({
+  action: invitationAuditActionSchema
+});
+export type TrackInvitationAuditEventRequest = z.infer<typeof trackInvitationAuditEventRequestSchema>;
+
 export const invitationRecipientSchema = z.object({
   id: z.string().uuid(),
   user: publicUserSchema,

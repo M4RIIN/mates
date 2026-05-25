@@ -135,6 +135,7 @@ export function RespondInvitationScreen() {
             </View>
           ) : null}
           <PlaceVenuePanel
+            invitationId={invitation.data.id}
             title={invitation.data.placeName}
             address={invitation.data.placeAddress}
             latitude={invitation.data.latitude}

@@ -3,6 +3,7 @@ import { normalizeInvitationResponse } from "../../domain/invitation/invitation-
 import { AppErrors } from "../../domain/shared/app-error.js";
 import type { InvitationRecipientRecord, InvitationRepository } from "../ports/invitation-repository.js";
 import type { RealtimeGateway } from "../ports/realtime-gateway.js";
+import { logger } from "../../infrastructure/logger.js";
 
 export type RespondToInvitationInput = RespondToInvitationRequest & {
   invitationId: string;
@@ -38,6 +39,39 @@ export class RespondToInvitationUseCase {
       delayMinutes: normalized.delayMinutes,
       respondedAt: normalized.respondedAt
     });
+
+    if (updatedRecipient.responseStatus === "yes") {
+      const createdAuditEvent = await this.invitations.findCreatedAuditEvent(invitation.id);
+      if (createdAuditEvent === null) {
+        throw new Error(`Invitation audit root not found for invitation ${invitation.id}`);
+      }
+
+      const acceptedAuditEvent = await this.invitations.createAuditEvent({
+        invitationId: invitation.id,
+        parentAuditEventId: createdAuditEvent.id,
+        actorUserId: input.userId,
+        eventType: "accepted",
+        placeName: invitation.placeName,
+        placeAddress: invitation.placeAddress,
+        scheduledAt: invitation.scheduledAt,
+        invitedCount: invitation.recipients.length
+      });
+
+      logger.info("invitation.response.accepted", {
+        invitationId: invitation.id,
+        recipientId: updatedRecipient.id,
+        userId: input.userId,
+        auditEventId: acceptedAuditEvent.id,
+        rootAuditEventId: createdAuditEvent.id,
+        delayMinutes: updatedRecipient.delayMinutes
+      });
+    } else {
+      logger.info("invitation.response.rejected", {
+        invitationId: invitation.id,
+        recipientId: updatedRecipient.id,
+        userId: input.userId
+      });
+    }
 
     await this.realtime.publishToUser(invitation.creatorId, {
       type: "invitation.response.updated",

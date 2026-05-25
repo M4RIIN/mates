@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import { CarFront, MapPinned, UtensilsCrossed } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
+import { useApiClient } from "@/presentation/hooks/useApiClient";
 import { openDirectionsChooser, openTheFork, openUber } from "@/presentation/utils/place-links";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
@@ -10,6 +11,7 @@ type PlaceVenuePanelProps = {
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  invitationId?: string;
   showTransportActions?: boolean;
   showReserveButton?: boolean;
   compact?: boolean;
@@ -20,10 +22,12 @@ export function PlaceVenuePanel({
   address,
   latitude,
   longitude,
+  invitationId,
   showTransportActions = true,
   showReserveButton = false,
   compact = false
 }: PlaceVenuePanelProps) {
+  const api = useApiClient();
   const [isUberOpening, setIsUberOpening] = useState(false);
   const [isReserveOpening, setIsReserveOpening] = useState(false);
   const place = {
@@ -39,6 +43,11 @@ export function PlaceVenuePanel({
   async function handleUberPress() {
     try {
       setIsUberOpening(true);
+      if (invitationId !== undefined) {
+        await api.trackInvitationAuditEvent(invitationId, "uber_requested").catch((error: unknown) => {
+          console.warn("Failed to track Uber request audit event", error);
+        });
+      }
       await openUber(place);
     } finally {
       setIsUberOpening(false);
@@ -48,6 +57,11 @@ export function PlaceVenuePanel({
   async function handleReservePress() {
     try {
       setIsReserveOpening(true);
+      if (invitationId !== undefined) {
+        await api.trackInvitationAuditEvent(invitationId, "reservation_requested").catch((error: unknown) => {
+          console.warn("Failed to track reservation audit event", error);
+        });
+      }
       await openTheFork(place);
     } finally {
       setIsReserveOpening(false);

@@ -117,6 +117,7 @@ export function CreatedInvitationDetailScreen() {
             </View>
           )}
           <PlaceVenuePanel
+            invitationId={invitation.data.id}
             title={invitation.data.placeName}
             address={invitation.data.placeAddress}
             latitude={invitation.data.latitude}

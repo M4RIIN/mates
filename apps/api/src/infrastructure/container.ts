@@ -46,6 +46,8 @@ import type { SearchPlacesUseCase } from "../application/use-cases/search-places
 import { SearchPlacesUseCase as SearchPlaces } from "../application/use-cases/search-places.use-case.js";
 import type { SendInvitationToFriendsUseCase } from "../application/use-cases/send-invitation-to-friends.use-case.js";
 import { SendInvitationToFriendsUseCase as SendInvitationToFriends } from "../application/use-cases/send-invitation-to-friends.use-case.js";
+import type { TrackInvitationAuditEventUseCase } from "../application/use-cases/track-invitation-audit-event.use-case.js";
+import { TrackInvitationAuditEventUseCase as TrackInvitationAuditEvent } from "../application/use-cases/track-invitation-audit-event.use-case.js";
 import type { PlaceSearchPort } from "../application/ports/place-search-port.js";
 import type { TokenService } from "../application/ports/token-service.js";
 import type { GoogleIdentityVerifier } from "../application/ports/google-identity-verifier.js";
@@ -86,6 +88,7 @@ export type AppUseCases = {
   sendInvitationToFriends: SendInvitationToFriendsUseCase;
   cancelInvitation: CancelInvitationUseCase;
   respondToInvitation: RespondToInvitationUseCase;
+  trackInvitationAuditEvent: TrackInvitationAuditEventUseCase;
   getInvitationDetails: GetInvitationDetailsUseCase;
   getActiveCreatedInvitation: GetActiveCreatedInvitationUseCase;
   listReceivedInvitations: ListReceivedInvitationsUseCase;
@@ -236,6 +239,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
       ),
       cancelInvitation: new CancelInvitation(invitations, pushTokens, notifications, realtime),
       respondToInvitation: new RespondToInvitation(invitations, realtime),
+      trackInvitationAuditEvent: new TrackInvitationAuditEvent(invitations),
       getInvitationDetails: new GetInvitationDetails(invitations),
       getActiveCreatedInvitation: new GetActiveCreatedInvitation(invitations),
       listReceivedInvitations: new ListReceivedInvitations(invitations),

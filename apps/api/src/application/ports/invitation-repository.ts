@@ -1,6 +1,8 @@
 import type { ResponseStatus } from "@mates/shared";
 import type { PublicUserRecord } from "./user-repository.js";
 
+export type InvitationAuditAction = "uber_requested" | "reservation_requested";
+
 export type InvitationFriendGroupRecord = {
   id: string;
   name: string;
@@ -31,6 +33,19 @@ export type InvitationRecipientRecord = {
   respondedAt: Date | null;
 };
 
+export type InvitationAuditEventRecord = {
+  id: string;
+  invitationId: string;
+  parentAuditEventId: string | null;
+  actorUserId: string;
+  eventType: "created" | "accepted" | InvitationAuditAction;
+  placeName: string;
+  placeAddress: string | null;
+  scheduledAt: Date;
+  invitedCount: number;
+  createdAt: Date;
+};
+
 export type InvitationParticipantRecord = {
   id: string;
   user: PublicUserRecord;
@@ -56,9 +71,22 @@ export type UpdateInvitationResponseInput = {
   respondedAt: Date;
 };
 
+export type CreateInvitationAuditEventInput = {
+  invitationId: string;
+  parentAuditEventId: string | null;
+  actorUserId: string;
+  eventType: InvitationAuditEventRecord["eventType"];
+  placeName: string;
+  placeAddress: string | null;
+  scheduledAt: Date;
+  invitedCount: number;
+};
+
 export interface InvitationRepository {
   create(input: CreateInvitationRecordInput): Promise<InvitationRecord>;
   addRecipients(invitationId: string, userIds: string[]): Promise<void>;
+  createAuditEvent(input: CreateInvitationAuditEventInput): Promise<InvitationAuditEventRecord>;
+  findCreatedAuditEvent(invitationId: string): Promise<InvitationAuditEventRecord | null>;
   findRecipient(invitationId: string, userId: string): Promise<InvitationRecipientRecord | null>;
   updateRecipientResponse(input: UpdateInvitationResponseInput): Promise<InvitationRecipientRecord>;
   cancel(invitationId: string, canceledAt: Date): Promise<InvitationRecord>;

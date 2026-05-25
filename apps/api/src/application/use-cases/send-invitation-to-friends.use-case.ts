@@ -7,6 +7,7 @@ import type { NotificationGateway } from "../ports/notification-gateway.js";
 import type { PushTokenRepository } from "../ports/push-token-repository.js";
 import type { RealtimeGateway } from "../ports/realtime-gateway.js";
 import type { UserRepository } from "../ports/user-repository.js";
+import { logger } from "../../infrastructure/logger.js";
 import { toInvitationDetailsDto } from "./serializers.js";
 import { CreateInvitationUseCase } from "./create-invitation.use-case.js";
 
@@ -53,14 +54,41 @@ export class SendInvitationToFriendsUseCase {
           ? await this.resolveGroupRecipients(input.creatorId, input.friendGroupId, activeFriendIds)
           : friends.map((friend) => friend.id);
 
+    logger.info("invitation.create.requested", {
+      creatorId: input.creatorId,
+      friendGroupId: input.friendGroupId ?? null,
+      requestedRecipientCount: recipientIds.length,
+      placeName: input.placeName,
+      scheduledAt: input.scheduledAt
+    });
+
     const invitation = await this.createInvitation.execute(input);
 
     await this.invitations.addRecipients(invitation.id, recipientIds);
+    const createdAuditEvent = await this.invitations.createAuditEvent({
+      invitationId: invitation.id,
+      parentAuditEventId: null,
+      actorUserId: input.creatorId,
+      eventType: "created",
+      placeName: invitation.placeName,
+      placeAddress: invitation.placeAddress,
+      scheduledAt: invitation.scheduledAt,
+      invitedCount: recipientIds.length
+    });
 
     const details = await this.invitations.getDetails(invitation.id);
     if (details === null) {
       throw AppErrors.notFound("Invitation not found after creation");
     }
+
+    logger.info("invitation.created", {
+      invitationId: invitation.id,
+      creatorId: input.creatorId,
+      auditEventId: createdAuditEvent.id,
+      invitedCount: recipientIds.length,
+      placeName: invitation.placeName,
+      scheduledAt: invitation.scheduledAt.toISOString()
+    });
 
     if (recipientIds.length > 0) {
       const tokens = await this.pushTokens.listByUserIds(recipientIds);
