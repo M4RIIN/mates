@@ -47,9 +47,11 @@ export class SendInvitationToFriendsUseCase {
     const friends = await this.friendships.listActiveFriends(input.creatorId);
     const activeFriendIds = new Set(friends.map((friend) => friend.id));
     const recipientIds =
-      input.friendGroupId === undefined
-        ? friends.map((friend) => friend.id)
-        : await this.resolveGroupRecipients(input.creatorId, input.friendGroupId, activeFriendIds);
+      input.friendUserIds !== undefined
+        ? this.resolveDirectRecipients(input.friendUserIds, activeFriendIds)
+        : input.friendGroupId !== undefined
+          ? await this.resolveGroupRecipients(input.creatorId, input.friendGroupId, activeFriendIds)
+          : friends.map((friend) => friend.id);
 
     const invitation = await this.createInvitation.execute(input);
 
@@ -88,5 +90,14 @@ export class SendInvitationToFriendsUseCase {
     }
 
     return group.members.map((member) => member.id).filter((memberId) => activeFriendIds.has(memberId));
+  }
+
+  private resolveDirectRecipients(friendUserIds: string[], activeFriendIds: Set<string>): string[] {
+    const uniqueRecipientIds = [...new Set(friendUserIds)];
+    if (uniqueRecipientIds.some((friendUserId) => !activeFriendIds.has(friendUserId))) {
+      throw AppErrors.validation("Invitation recipients must be active friends");
+    }
+
+    return uniqueRecipientIds;
   }
 }

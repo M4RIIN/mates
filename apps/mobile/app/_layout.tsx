@@ -48,7 +48,6 @@ export default function RootLayout() {
           <Stack.Screen name="friends/add" options={{ title: "Ajouter" }} />
           <Stack.Screen name="friends/groups/index" options={{ title: "Groupes" }} />
           <Stack.Screen name="friends/groups/[id]" options={{ title: "Modifier le groupe" }} />
-          <Stack.Screen name="create-call/index" options={{ title: "Invitation" }} />
           <Stack.Screen name="invitations/created/index" options={{ title: "Créées" }} />
           <Stack.Screen name="invitations/created/[id]" options={{ title: "Détail" }} />
           <Stack.Screen name="invitations/received/index" options={{ title: "Reçues" }} />

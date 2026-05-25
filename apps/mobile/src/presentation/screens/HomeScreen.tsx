@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GestureResponderHandlers, LayoutChangeEvent } from "react-native";
-import { ActivityIndicator, Alert, Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Easing, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
 import { router } from "expo-router";
-import { Bell, Inbox, Send, Settings, User, Users, X } from "lucide-react-native";
+import { Bell, ChevronDown, Inbox, Send, Settings, User, Users, X } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { ApiClientError } from "@/infrastructure/api/api-client";
 import { buildTodayScheduledAtFromParts, getDefaultInvitationTimeParts } from "@/domain/invitation/schedule";
+import { ListRow } from "@/presentation/components/ListRow";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCurrentUser } from "@/presentation/hooks/useAuth";
-import { useReceivedFriendRequests } from "@/presentation/hooks/useFriends";
+import { useFriendGroups, useFriends, useReceivedFriendRequests } from "@/presentation/hooks/useFriends";
 import { countUpcomingInvitations, useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { useReceivedInvitations } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
@@ -41,6 +42,9 @@ export function HomeScreen() {
   const [hourText, setHourText] = useState(defaultTime.hour);
   const [minuteText, setMinuteText] = useState(defaultTime.minute);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [selectedAudience, setSelectedAudience] = useState<HomeAudienceSelection | null>(null);
+  const [audienceModalOpen, setAudienceModalOpen] = useState(false);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [isArmed, setIsArmed] = useState(false);
   const guardX = useRef(new Animated.Value(0)).current;
   const holdProgress = useRef(new Animated.Value(0)).current;
@@ -50,6 +54,8 @@ export function HomeScreen() {
   const activeInvitation = useActiveCreatedInvitation();
   const receivedInvitations = useReceivedInvitations();
   const receivedFriendRequests = useReceivedFriendRequests();
+  const friendGroups = useFriendGroups();
+  const friends = useFriends();
   const placeSearch = usePlaceSearch(placeQuery);
   const createInvitation = useCreateInvitation();
   const receivedInvitationCount = countUpcomingInvitations(receivedInvitations.data);
@@ -62,6 +68,14 @@ export function HomeScreen() {
     activeInvitation.data === null &&
     !activeInvitation.isLoading;
   const canLaunch = canArm && isArmed;
+  const selectedGroup = useMemo(
+    () => (selectedAudience?.type === "group" ? friendGroups.data?.find((group) => group.id === selectedAudience.groupId) : undefined),
+    [friendGroups.data, selectedAudience]
+  );
+  const selectedFriend = useMemo(
+    () => (selectedAudience?.type === "friend" ? friends.data?.find((friend) => friend.id === selectedAudience.friendId) : undefined),
+    [friends.data, selectedAudience]
+  );
 
   useCurrentUser();
   useRegisterPushNotifications();
@@ -144,7 +158,9 @@ export function HomeScreen() {
         scheduledAt,
         ...(address.length > 0 ? { placeAddress: address } : {}),
         ...(selectedPlace?.latitude !== null && selectedPlace?.latitude !== undefined ? { latitude: selectedPlace.latitude } : {}),
-        ...(selectedPlace?.longitude !== null && selectedPlace?.longitude !== undefined ? { longitude: selectedPlace.longitude } : {})
+        ...(selectedPlace?.longitude !== null && selectedPlace?.longitude !== undefined ? { longitude: selectedPlace.longitude } : {}),
+        ...(selectedAudience?.type === "group" ? { friendGroupId: selectedAudience.groupId } : {}),
+        ...(selectedAudience?.type === "friend" ? { friendUserIds: [selectedAudience.friendId] } : {})
       };
 
       const invitation = await createInvitation.mutateAsync(request);
@@ -350,6 +366,31 @@ export function HomeScreen() {
               />
             </View>
           </View>
+          <View style={styles.audienceBlock}>
+            <Text style={styles.limitSectionLabel}>Diffusion</Text>
+            <Pressable accessibilityRole="button" onPress={() => setAudienceModalOpen(true)} style={styles.audienceButton}>
+              <View style={styles.audienceButtonIcon}>
+                <Users size={16} color={colors.ink} strokeWidth={3} />
+              </View>
+              <View style={styles.audienceButtonTextBlock}>
+                <Text style={styles.audienceButtonLabel}>Limiter a</Text>
+                <Text style={styles.audienceButtonValue}>
+                  {selectedAudience === null ? "Tous mes amis actifs" : selectedAudience.type === "group" ? "Un groupe" : "Un ami"}
+                </Text>
+              </View>
+              <ChevronDown size={18} color={colors.ink} strokeWidth={3} />
+            </Pressable>
+            {selectedAudience !== null ? (
+              <View style={styles.chipRow}>
+                {selectedAudience.type === "group" && selectedGroup !== undefined ? (
+                  <HomeSelectionChip label={`Groupe · ${selectedGroup.name}`} onClear={() => setSelectedAudience(null)} />
+                ) : null}
+                {selectedAudience.type === "friend" && selectedFriend !== undefined ? (
+                  <HomeSelectionChip label={`Ami · ${selectedFriend.pseudo}`} onClear={() => setSelectedAudience(null)} />
+                ) : null}
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <LaunchConsole
@@ -378,6 +419,34 @@ export function HomeScreen() {
               : "Swipe la protection, puis maintien"}
         </Text>
       </View>
+      <HomeAudiencePickerModal
+        open={audienceModalOpen}
+        groups={friendGroups.data ?? []}
+        friends={friends.data ?? []}
+        loading={friendGroups.isLoading || friends.isLoading}
+        expandedGroupIds={expandedGroupIds}
+        onClose={() => setAudienceModalOpen(false)}
+        onToggleGroup={(groupId) =>
+          setExpandedGroupIds((current) =>
+            current.includes(groupId) ? current.filter((entry) => entry !== groupId) : [...current, groupId]
+          )
+        }
+        onSelectAll={() => {
+          setSelectedAudience(null);
+          setAudienceModalOpen(false);
+          resetSafety();
+        }}
+        onSelectGroup={(groupId) => {
+          setSelectedAudience({ type: "group", groupId });
+          setAudienceModalOpen(false);
+          resetSafety();
+        }}
+        onSelectFriend={(friendId) => {
+          setSelectedAudience({ type: "friend", friendId });
+          setAudienceModalOpen(false);
+          resetSafety();
+        }}
+      />
     </Screen>
   );
 }
@@ -443,6 +512,113 @@ function FluxMenu({
         })}
       </View>
     </View>
+  );
+}
+
+function HomeSelectionChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <View style={styles.chip}>
+      <Text style={styles.chipText}>{label}</Text>
+      <Pressable accessibilityRole="button" onPress={onClear}>
+        <X size={14} color={colors.ink} strokeWidth={3} />
+      </Pressable>
+    </View>
+  );
+}
+
+function HomeAudiencePickerModal({
+  open,
+  groups,
+  friends,
+  loading,
+  expandedGroupIds,
+  onClose,
+  onToggleGroup,
+  onSelectAll,
+  onSelectGroup,
+  onSelectFriend
+}: {
+  open: boolean;
+  groups: Array<{ id: string; name: string; members: Array<{ id: string; pseudo: string }> }>;
+  friends: Array<{ id: string; pseudo: string; publicTag: string }>;
+  loading: boolean;
+  expandedGroupIds: string[];
+  onClose: () => void;
+  onToggleGroup: (groupId: string) => void;
+  onSelectAll: () => void;
+  onSelectGroup: (groupId: string) => void;
+  onSelectFriend: (friendId: string) => void;
+}) {
+  return (
+    <Modal transparent visible={open} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalScrim}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Limiter a</Text>
+            <Pressable accessibilityRole="button" onPress={onClose}>
+              <X size={22} color={colors.ink} strokeWidth={3} />
+            </Pressable>
+          </View>
+          {loading ? <ActivityIndicator color={colors.primary} /> : null}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Tous</Text>
+              <ListRow title="Tous mes amis actifs" subtitle="Aucune limitation" onPress={onSelectAll} />
+            </View>
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Mes groupes</Text>
+              {groups.map((group) => {
+                const isExpanded = expandedGroupIds.includes(group.id);
+
+                return (
+                  <View key={group.id} style={styles.groupCard}>
+                    <View style={styles.groupCardHeader}>
+                      <View style={styles.groupCardTitleBlock}>
+                        <Text style={styles.groupCardTitle}>{group.name}</Text>
+                        <Text style={styles.groupCardSubtitle}>{group.members.length} ami(s)</Text>
+                      </View>
+                      <View style={styles.groupCardActions}>
+                        <Pressable accessibilityRole="button" onPress={() => onToggleGroup(group.id)} style={styles.miniButton}>
+                          <Text style={styles.miniButtonText}>{isExpanded ? "Masquer" : "Voir"}</Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => onSelectGroup(group.id)}
+                          style={[styles.miniButton, styles.miniButtonActive]}
+                        >
+                          <Text style={styles.miniButtonText}>Choisir</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                    {isExpanded ? (
+                      <View style={styles.memberList}>
+                        {group.members.map((member) => (
+                          <View key={member.id} style={styles.memberPill}>
+                            <Text style={styles.memberPillText}>{member.pseudo}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Mes amis</Text>
+              {friends.map((friend) => (
+                <ListRow
+                  key={friend.id}
+                  title={friend.pseudo}
+                  subtitle={friend.publicTag}
+                  onPress={() => onSelectFriend(friend.id)}
+                  right={<Text style={[styles.miniButtonText, { paddingHorizontal: spacing.xs }]}>Ami</Text>}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -526,6 +702,8 @@ function LaunchConsole({
     </View>
   );
 }
+
+type HomeAudienceSelection = { type: "group"; groupId: string } | { type: "friend"; friendId: string };
 
 const styles = StyleSheet.create({
   screen: {
@@ -723,6 +901,184 @@ const styles = StyleSheet.create({
   },
   fieldFlex: {
     flex: 1
+  },
+  audienceBlock: {
+    gap: spacing.xs
+  },
+  limitSectionLabel: {
+    color: colors.text,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  audienceButton: {
+    minHeight: 58,
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceStrong,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm
+  },
+  audienceButtonIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.yellow,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  audienceButtonTextBlock: {
+    flex: 1,
+    gap: 2
+  },
+  audienceButtonLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  audienceButtonValue: {
+    color: colors.text,
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: "900"
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceStrong,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    alignSelf: "flex-start"
+  },
+  chipText: {
+    color: colors.ink,
+    fontWeight: "900",
+    fontSize: 11,
+    textTransform: "uppercase"
+  },
+  modalScrim: {
+    flex: 1,
+    backgroundColor: "rgba(7, 26, 45, 0.22)",
+    justifyContent: "center",
+    padding: spacing.md
+  },
+  modalCard: {
+    maxHeight: "80%",
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    padding: spacing.md,
+    gap: spacing.sm
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "900"
+  },
+  modalScroll: {
+    gap: spacing.sm
+  },
+  modalSection: {
+    gap: spacing.xs
+  },
+  modalSectionTitle: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  groupCard: {
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceStrong
+  },
+  groupCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm
+  },
+  groupCardTitleBlock: {
+    flex: 1,
+    gap: spacing.xxs
+  },
+  groupCardTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "900"
+  },
+  groupCardSubtitle: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  groupCardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  miniButton: {
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs
+  },
+  miniButtonActive: {
+    backgroundColor: colors.yellow
+  },
+  miniButtonText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  memberList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs
+  },
+  memberPill: {
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    backgroundColor: colors.blueSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs
+  },
+  memberPillText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: "900"
   },
   launchPanel: {
     alignItems: "center",

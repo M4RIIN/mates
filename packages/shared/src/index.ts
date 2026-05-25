@@ -168,10 +168,16 @@ export const placeSearchResponseSchema = z.object({
 });
 export type PlaceSearchResponse = z.infer<typeof placeSearchResponseSchema>;
 
-export const createInvitationRequestSchema = placeInputSchema.extend({
-  scheduledAt: isoDateTimeSchema,
-  friendGroupId: z.string().uuid().optional()
-});
+export const createInvitationRequestSchema = placeInputSchema
+  .extend({
+    scheduledAt: isoDateTimeSchema,
+    friendGroupId: z.string().uuid().optional(),
+    friendUserIds: z.array(z.string().uuid()).min(1).max(100).optional()
+  })
+  .refine((value) => !(value.friendGroupId !== undefined && value.friendUserIds !== undefined), {
+    message: "friendGroupId and friendUserIds are mutually exclusive",
+    path: ["friendUserIds"]
+  });
 export type CreateInvitationRequest = z.infer<typeof createInvitationRequestSchema>;
 
 export const respondToInvitationRequestSchema = z.discriminatedUnion("status", [
