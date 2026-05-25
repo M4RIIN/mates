@@ -4,6 +4,7 @@ import { AppErrors } from "../../domain/shared/app-error.js";
 import type { FriendshipRepository } from "../ports/friendship-repository.js";
 import type { NotificationGateway } from "../ports/notification-gateway.js";
 import type { PushTokenRepository } from "../ports/push-token-repository.js";
+import type { RealtimeGateway } from "../ports/realtime-gateway.js";
 import type { UserRepository } from "../ports/user-repository.js";
 
 export type AddFriendInput = {
@@ -16,7 +17,8 @@ export class AddFriendUseCase {
     private readonly users: UserRepository,
     private readonly friendships: FriendshipRepository,
     private readonly pushTokens: PushTokenRepository,
-    private readonly notifications: NotificationGateway
+    private readonly notifications: NotificationGateway,
+    private readonly realtime: RealtimeGateway
   ) {}
 
   async execute(input: AddFriendInput): Promise<FriendRequestDto> {
@@ -55,6 +57,10 @@ export class AddFriendUseCase {
       friendshipId: friendship.id,
       requesterPseudo: requester.pseudo,
       requesterTag: requester.publicTag
+    });
+    await this.realtime.publishToUser(addressee.id, {
+      type: "friend.request.created",
+      friendshipId: friendship.id
     });
 
     return {

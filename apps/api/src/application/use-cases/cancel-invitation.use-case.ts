@@ -3,6 +3,7 @@ import { AppErrors } from "../../domain/shared/app-error.js";
 import type { InvitationRepository } from "../ports/invitation-repository.js";
 import type { NotificationGateway } from "../ports/notification-gateway.js";
 import type { PushTokenRepository } from "../ports/push-token-repository.js";
+import type { RealtimeGateway } from "../ports/realtime-gateway.js";
 import { toInvitationDetailsDto } from "./serializers.js";
 
 export type CancelInvitationInput = {
@@ -15,7 +16,8 @@ export class CancelInvitationUseCase {
   constructor(
     private readonly invitations: InvitationRepository,
     private readonly pushTokens: PushTokenRepository,
-    private readonly notifications: NotificationGateway
+    private readonly notifications: NotificationGateway,
+    private readonly realtime: RealtimeGateway
   ) {}
 
   async execute(input: CancelInvitationInput): Promise<InvitationDetailsDto> {
@@ -45,6 +47,11 @@ export class CancelInvitationUseCase {
         scheduledAt: details.scheduledAt
       });
     }
+
+    await this.realtime.publishToUsers([details.creatorId, ...recipientIds], {
+      type: "invitation.cancelled",
+      invitationId: details.id
+    });
 
     const refreshed = await this.invitations.getDetails(input.invitationId);
     if (refreshed === null) {

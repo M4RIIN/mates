@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { GestureResponderHandlers } from "react-native";
+import type { GestureResponderHandlers, LayoutChangeEvent } from "react-native";
 import { ActivityIndicator, Alert, Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
 import { router } from "expo-router";
 import { Bell, Inbox, Send, Settings, User, Users, X } from "lucide-react-native";
@@ -21,6 +21,7 @@ import { useRegisterPushNotifications } from "@/presentation/hooks/usePushNotifi
 import { borders, colors, layout, radii, spacing } from "@/shared/theme";
 
 const guardTravel = 138;
+const guardTrackPadding = 5;
 const holdDurationMs = 1150;
 
 export function HomeScreen() {
@@ -29,7 +30,11 @@ export function HomeScreen() {
   const isWide = width >= layout.tabletWidth;
   const isNarrow = width <= layout.compactWidth;
   const isShort = height < 740;
-  const effectiveGuardTravel = Math.max(84, Math.min(guardTravel, width - 230));
+  const [guardTrackWidth, setGuardTrackWidth] = useState(0);
+  const [guardPlateWidth, setGuardPlateWidth] = useState(0);
+  const measuredGuardTravel = Math.max(0, guardTrackWidth - guardPlateWidth - guardTrackPadding * 2);
+  const fallbackGuardTravel = Math.max(84, Math.min(guardTravel, width - 230));
+  const effectiveGuardTravel = measuredGuardTravel > 0 ? measuredGuardTravel : fallbackGuardTravel;
   const [menuOpen, setMenuOpen] = useState(false);
   const [placeQuery, setPlaceQuery] = useState("");
   const [customAddress, setCustomAddress] = useState("");
@@ -81,8 +86,8 @@ export function HomeScreen() {
     setIsArmed(false);
     Animated.spring(guardX, {
       toValue: 0,
-      speed: 18,
-      bounciness: 5,
+      tension: 150,
+      friction: 18,
       useNativeDriver: true
     }).start();
     holdProgress.setValue(0);
@@ -216,13 +221,16 @@ export function HomeScreen() {
         return;
       }
 
-      const shouldArm = gesture.dx > effectiveGuardTravel * 0.5 || gesture.vx > 0.85;
+      const currentX = Math.min(Math.max(gesture.dx, 0), effectiveGuardTravel);
+      const progress = effectiveGuardTravel > 0 ? currentX / effectiveGuardTravel : 0;
+      const nearEndThreshold = Math.max(effectiveGuardTravel - 28, effectiveGuardTravel * 0.72);
+      const shouldArm = currentX >= nearEndThreshold || progress >= 0.72 || (progress >= 0.35 && gesture.vx > 0.55);
       setIsArmed(shouldArm);
       Vibration.vibrate(shouldArm ? 42 : 12);
       Animated.spring(guardX, {
         toValue: shouldArm ? effectiveGuardTravel : 0,
-        speed: 18,
-        bounciness: 4,
+        tension: 150,
+        friction: 18,
         useNativeDriver: true
       }).start();
     },
@@ -230,8 +238,8 @@ export function HomeScreen() {
       if (!isArmed) {
         Animated.spring(guardX, {
           toValue: 0,
-          speed: 18,
-          bounciness: 4,
+          tension: 150,
+          friction: 18,
           useNativeDriver: true
         }).start();
       }
@@ -353,6 +361,8 @@ export function HomeScreen() {
           loading={createInvitation.isPending}
           compact={isNarrow || isShort}
           panHandlers={guardResponder.panHandlers}
+          onGuardTrackLayout={(event) => setGuardTrackWidth(event.nativeEvent.layout.width)}
+          onGuardPlateLayout={(event) => setGuardPlateWidth(event.nativeEvent.layout.width)}
           onPressIn={startHold}
           onPressOut={stopHold}
         />
@@ -445,6 +455,8 @@ function LaunchConsole({
   loading,
   compact,
   panHandlers,
+  onGuardTrackLayout,
+  onGuardPlateLayout,
   onPressIn,
   onPressOut
 }: {
@@ -456,6 +468,8 @@ function LaunchConsole({
   loading: boolean;
   compact: boolean;
   panHandlers: GestureResponderHandlers;
+  onGuardTrackLayout: (event: LayoutChangeEvent) => void;
+  onGuardPlateLayout: (event: LayoutChangeEvent) => void;
   onPressIn: () => void;
   onPressOut: () => void;
 }) {
@@ -466,8 +480,15 @@ function LaunchConsole({
     <View style={[styles.launchPanel, compact ? styles.launchPanelCompact : null]}>
       <View style={[styles.guardZone, compact ? styles.guardZoneCompact : null]}>
         <Text style={styles.guardLabel}>{armed ? "Protection ouverte" : canArm ? "Swipe pour retirer la protection" : "Complète la mission"}</Text>
-        <View style={[styles.guardTrack, compact ? styles.guardTrackCompact : null, !canArm ? styles.guardTrackDisabled : null]} {...panHandlers}>
-          <Animated.View style={[styles.guardPlate, compact ? styles.guardPlateCompact : null, armed ? styles.guardPlateArmed : null, { transform: [{ translateX: guardX }] }]}>
+        <View
+          onLayout={onGuardTrackLayout}
+          style={[styles.guardTrack, compact ? styles.guardTrackCompact : null, !canArm ? styles.guardTrackDisabled : null]}
+          {...panHandlers}
+        >
+          <Animated.View
+            onLayout={onGuardPlateLayout}
+            style={[styles.guardPlate, compact ? styles.guardPlateCompact : null, armed ? styles.guardPlateArmed : null, { transform: [{ translateX: guardX }] }]}
+          >
             <View style={[styles.guardGrip, armed ? styles.guardGripArmed : null]} />
             <Text style={[styles.guardText, armed ? styles.guardTextArmed : null]}>{armed ? "ARMÉ" : "LOCK"}</Text>
           </Animated.View>

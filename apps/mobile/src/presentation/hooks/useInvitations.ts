@@ -4,6 +4,7 @@ import { useApiClient } from "./useApiClient";
 
 type ScheduledInvitation = {
   scheduledAt: string;
+  canceledAt?: string | null;
 };
 
 export function useCreatedInvitations() {
@@ -83,6 +84,7 @@ export function useCancelInvitation(id: string) {
   return useMutation({
     mutationFn: () => api.cancelInvitation(id),
     onSuccess: async () => {
+      queryClient.setQueryData(["invitations", "created", "active"], null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["invitations", id] }),
         queryClient.invalidateQueries({ queryKey: ["invitations", "created"] }),
@@ -94,6 +96,10 @@ export function useCancelInvitation(id: string) {
 }
 
 export function isUpcomingInvitation(invitation: ScheduledInvitation, now: Date = new Date()): boolean {
+  if (invitation.canceledAt !== undefined && invitation.canceledAt !== null) {
+    return false;
+  }
+
   return new Date(invitation.scheduledAt).getTime() > now.getTime();
 }
 

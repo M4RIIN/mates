@@ -1,6 +1,7 @@
 import type { FriendDto } from "@mates/shared";
 import { AppErrors } from "../../domain/shared/app-error.js";
 import type { FriendshipRepository } from "../ports/friendship-repository.js";
+import type { RealtimeGateway } from "../ports/realtime-gateway.js";
 import type { UserRepository } from "../ports/user-repository.js";
 
 export type AcceptFriendRequestInput = {
@@ -11,7 +12,8 @@ export type AcceptFriendRequestInput = {
 export class AcceptFriendRequestUseCase {
   constructor(
     private readonly friendships: FriendshipRepository,
-    private readonly users: UserRepository
+    private readonly users: UserRepository,
+    private readonly realtime: RealtimeGateway
   ) {}
 
   async execute(input: AcceptFriendRequestInput): Promise<FriendDto> {
@@ -25,6 +27,11 @@ export class AcceptFriendRequestUseCase {
     if (friend === null) {
       throw AppErrors.notFound("Friend not found");
     }
+
+    await this.realtime.publishToUsers([friendship.requesterId, friendship.addresseeId], {
+      type: "friend.request.accepted",
+      friendshipId: friendship.id
+    });
 
     return {
       id: friend.id,

@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/infrastructure/api/query-client";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
 import { useNotificationNavigation } from "@/presentation/hooks/usePushNotifications";
+import { useRealtimeUpdates } from "@/presentation/hooks/useRealtimeUpdates";
 import { colors } from "@/shared/theme";
 
 export default function RootLayout() {
@@ -14,6 +15,7 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <RealtimeBridge />
       <Stack
         screenOptions={{
           headerBackTitle: "Retour",
@@ -53,4 +55,9 @@ export default function RootLayout() {
       </Stack>
     </QueryClientProvider>
   );
+}
+
+function RealtimeBridge() {
+  useRealtimeUpdates();
+  return null;
 }

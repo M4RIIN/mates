@@ -37,6 +37,9 @@ importers:
       postgres:
         specifier: ^3.4.5
         version: 3.4.9
+      ws:
+        specifier: ^8.21.0
+        version: 8.21.0
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -47,6 +50,9 @@ importers:
       '@types/node':
         specifier: ^22.8.6
         version: 22.19.19
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       drizzle-kit:
         specifier: ^0.27.1
         version: 0.27.2
@@ -2018,6 +2024,9 @@ packages:
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -4549,6 +4558,18 @@ packages:
       utf-8-validate:
         optional: true
 
+  ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xcode@3.0.1:
     resolution: {integrity: sha512-kCz5k7J7XbJtjABOvkc5lJmkiDh8VhjVCGNiqdKCscmVpdVUpEAyXv1xmCLkQJ5dsHqx3IPO4XW+NTDhU/fatA==}
     engines: {node: '>=10.0.0'}
@@ -6318,9 +6339,7 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.74.89': {}
 
@@ -6501,6 +6520,10 @@ snapshots:
 
   '@types/tough-cookie@4.0.5':
     optional: true
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 22.19.19
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -9291,6 +9314,8 @@ snapshots:
   ws@7.5.10: {}
 
   ws@8.20.1: {}
+
+  ws@8.21.0: {}
 
   xcode@3.0.1:
     dependencies:

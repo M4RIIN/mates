@@ -4,6 +4,7 @@ import type { FriendshipRepository } from "../ports/friendship-repository.js";
 import type { InvitationRepository } from "../ports/invitation-repository.js";
 import type { NotificationGateway } from "../ports/notification-gateway.js";
 import type { PushTokenRepository } from "../ports/push-token-repository.js";
+import type { RealtimeGateway } from "../ports/realtime-gateway.js";
 import type { UserRepository } from "../ports/user-repository.js";
 import { toInvitationDetailsDto } from "./serializers.js";
 import { CreateInvitationUseCase } from "./create-invitation.use-case.js";
@@ -21,7 +22,8 @@ export class SendInvitationToFriendsUseCase {
     private readonly friendships: FriendshipRepository,
     private readonly users: UserRepository,
     private readonly pushTokens: PushTokenRepository,
-    private readonly notifications: NotificationGateway
+    private readonly notifications: NotificationGateway,
+    private readonly realtime: RealtimeGateway
   ) {
     this.createInvitation = new CreateInvitationUseCase(invitations);
     this.invitations = invitations;
@@ -58,6 +60,10 @@ export class SendInvitationToFriendsUseCase {
         creatorPseudo: creator.pseudo,
         placeName: invitation.placeName,
         scheduledAt: invitation.scheduledAt
+      });
+      await this.realtime.publishToUsers(recipientIds, {
+        type: "invitation.created",
+        invitationId: invitation.id
       });
     }
 

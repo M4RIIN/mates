@@ -43,6 +43,7 @@ export function CreatedInvitationDetailScreen() {
     cancelInvitation.mutate(undefined, {
       onSuccess: () => {
         setCancelDialogOpen(false);
+        router.replace("/home");
       },
       onError: (error: unknown) => {
         setCancelDialogOpen(false);

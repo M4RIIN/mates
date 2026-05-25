@@ -51,6 +51,7 @@ import { FirebaseCloudMessagingGateway } from "./notifications/firebase-cloud-me
 import { MapboxPlaceSearchAdapter } from "./places/mapbox-place-search.adapter.js";
 import { MockPlaceSearchAdapter } from "./places/mock-place-search.adapter.js";
 import { PhotonPlaceSearchAdapter } from "./places/photon-place-search.adapter.js";
+import { InMemoryRealtimeGateway } from "./realtime/in-memory-realtime.gateway.js";
 import { PostgresFriendshipRepository } from "./repositories/postgres-friendship.repository.js";
 import { PostgresInvitationRepository } from "./repositories/postgres-invitation.repository.js";
 import { PostgresPushTokenRepository } from "./repositories/postgres-push-token.repository.js";
@@ -91,6 +92,7 @@ export type AuthConfig = {
 export type AppContainer = {
   auth: AuthConfig;
   tokenService: TokenService;
+  realtime: InMemoryRealtimeGateway;
   useCases: AppUseCases;
 };
 
@@ -190,18 +192,20 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
       : env.NOTIFICATION_PROVIDER === "firebase"
         ? new FirebaseCloudMessagingGateway(env.FIREBASE_SERVICE_ACCOUNT_JSON)
         : new ConsoleNotificationGateway();
+  const realtime = new InMemoryRealtimeGateway();
 
   return {
     auth,
     tokenService,
+    realtime,
     useCases: {
       registerUser: new RegisterUser(users, passwordHasher, tokenService),
       loginUser: new LoginUser(users, passwordHasher, tokenService),
       authenticateGoogle: new AuthenticateGoogle(users, googleIdentity, tokenService),
       completeGoogleProfile: new CompleteGoogleProfile(users, googleIdentity, tokenService),
       getCurrentUser: new GetCurrentUser(users),
-      addFriend: new AddFriend(users, friendships, pushTokens, notifications),
-      acceptFriendRequest: new AcceptFriendRequest(friendships, users),
+      addFriend: new AddFriend(users, friendships, pushTokens, notifications, realtime),
+      acceptFriendRequest: new AcceptFriendRequest(friendships, users, realtime),
       listFriends: new ListFriends(friendships),
       listReceivedFriendRequests: new ListReceivedFriendRequests(friendships),
       listSentFriendRequests: new ListSentFriendRequests(friendships),
@@ -212,10 +216,11 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
         friendships,
         users,
         pushTokens,
-        notifications
+        notifications,
+        realtime
       ),
-      cancelInvitation: new CancelInvitation(invitations, pushTokens, notifications),
-      respondToInvitation: new RespondToInvitation(invitations),
+      cancelInvitation: new CancelInvitation(invitations, pushTokens, notifications, realtime),
+      respondToInvitation: new RespondToInvitation(invitations, realtime),
       getInvitationDetails: new GetInvitationDetails(invitations),
       getActiveCreatedInvitation: new GetActiveCreatedInvitation(invitations),
       listReceivedInvitations: new ListReceivedInvitations(invitations),

@@ -201,3 +201,29 @@ export const apiErrorSchema = z.object({
   })
 });
 export type ApiErrorDto = z.infer<typeof apiErrorSchema>;
+
+export const realtimeEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("friend.request.created"),
+    friendshipId: z.string().uuid()
+  }),
+  z.object({
+    type: z.literal("friend.request.accepted"),
+    friendshipId: z.string().uuid()
+  }),
+  z.object({
+    type: z.literal("invitation.created"),
+    invitationId: z.string().uuid()
+  }),
+  z.object({
+    type: z.literal("invitation.cancelled"),
+    invitationId: z.string().uuid()
+  }),
+  z.object({
+    type: z.literal("invitation.response.updated"),
+    invitationId: z.string().uuid(),
+    userId: z.string().uuid(),
+    responseStatus: responseStatusSchema
+  })
+]);
+export type RealtimeEvent = z.infer<typeof realtimeEventSchema>;

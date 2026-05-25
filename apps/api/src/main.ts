@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { createHttpApp } from "./http/app.js";
 import { createContainerFromEnv } from "./infrastructure/container.js";
 import { logger, serializeError } from "./infrastructure/logger.js";
+import { createNodeRealtimeServer } from "./infrastructure/realtime/node-realtime-server.js";
 
 function exitAfterFatalError(): void {
   process.exitCode = 1;
@@ -27,6 +28,7 @@ try {
 
   const container = createContainerFromEnv(process.env);
   const app = createHttpApp(container);
+  const realtime = createNodeRealtimeServer(container);
   const server = serve(
     {
       fetch: app.fetch,
@@ -46,6 +48,10 @@ try {
       ...serializeError(error)
     });
     exitAfterFatalError();
+  });
+
+  server.on("upgrade", (request, socket, head) => {
+    void realtime.handleUpgrade(request, socket, head);
   });
 } catch (error) {
   logger.error("runtime.startup_error", serializeError(error));
