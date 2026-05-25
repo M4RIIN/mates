@@ -16,6 +16,7 @@ export class CreateInvitationUseCase {
 
     return this.invitations.create({
       creatorId: input.creatorId,
+      friendGroupId: input.friendGroupId ?? null,
       placeName: input.placeName,
       placeAddress: input.placeAddress ?? null,
       latitude: input.latitude ?? null,

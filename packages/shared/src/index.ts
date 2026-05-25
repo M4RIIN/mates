@@ -106,6 +106,34 @@ export const friendSchema = publicUserSchema.extend({
 });
 export type FriendDto = z.infer<typeof friendSchema>;
 
+export const friendGroupMemberSchema = publicUserSchema;
+export type FriendGroupMemberDto = z.infer<typeof friendGroupMemberSchema>;
+
+export const createFriendGroupRequestSchema = z.object({
+  name: z.string().trim().min(1).max(48),
+  memberUserIds: z.array(z.string().uuid()).min(1).max(100)
+});
+export type CreateFriendGroupRequest = z.infer<typeof createFriendGroupRequestSchema>;
+
+export const updateFriendGroupMembersRequestSchema = z.object({
+  memberUserIds: z.array(z.string().uuid()).min(1).max(100)
+});
+export type UpdateFriendGroupMembersRequest = z.infer<typeof updateFriendGroupMembersRequestSchema>;
+
+export const friendGroupSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(48),
+  createdAt: isoDateTimeSchema,
+  members: z.array(friendGroupMemberSchema)
+});
+export type FriendGroupDto = z.infer<typeof friendGroupSchema>;
+
+export const invitationFriendGroupSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(48)
+});
+export type InvitationFriendGroupDto = z.infer<typeof invitationFriendGroupSchema>;
+
 export const placeInputSchema = z.object({
   placeName: z.string().trim().min(1).max(160),
   placeAddress: z.string().trim().max(240).optional(),
@@ -141,7 +169,8 @@ export const placeSearchResponseSchema = z.object({
 export type PlaceSearchResponse = z.infer<typeof placeSearchResponseSchema>;
 
 export const createInvitationRequestSchema = placeInputSchema.extend({
-  scheduledAt: isoDateTimeSchema
+  scheduledAt: isoDateTimeSchema,
+  friendGroupId: z.string().uuid().optional()
 });
 export type CreateInvitationRequest = z.infer<typeof createInvitationRequestSchema>;
 
@@ -169,6 +198,7 @@ export type InvitationRecipientDto = z.infer<typeof invitationRecipientSchema>;
 export const invitationDetailsSchema = z.object({
   id: z.string().uuid(),
   creator: publicUserSchema,
+  friendGroup: invitationFriendGroupSchema.nullable(),
   placeName: z.string(),
   placeAddress: z.string().nullable(),
   latitude: z.number().nullable(),

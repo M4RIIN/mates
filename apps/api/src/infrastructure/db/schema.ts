@@ -73,6 +73,39 @@ export const friendships = pgTable(
   })
 );
 
+export const friendGroups = pgTable(
+  "friend_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    ownerIdx: index("friend_groups_owner_idx").on(table.ownerId)
+  })
+);
+
+export const friendGroupMembers = pgTable(
+  "friend_group_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => friendGroups.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+  },
+  (table) => ({
+    groupUserUniqueIdx: uniqueIndex("friend_group_members_group_user_unique_idx").on(table.groupId, table.userId),
+    groupIdx: index("friend_group_members_group_idx").on(table.groupId),
+    userIdx: index("friend_group_members_user_idx").on(table.userId)
+  })
+);
+
 export const invitations = pgTable(
   "invitations",
   {
@@ -80,6 +113,7 @@ export const invitations = pgTable(
     creatorId: uuid("creator_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    friendGroupId: uuid("friend_group_id").references(() => friendGroups.id, { onDelete: "set null" }),
     placeName: text("place_name").notNull(),
     placeAddress: text("place_address"),
     latitude: doublePrecision("latitude"),
@@ -90,6 +124,7 @@ export const invitations = pgTable(
   },
   (table) => ({
     creatorIdx: index("invitations_creator_idx").on(table.creatorId),
+    friendGroupIdx: index("invitations_friend_group_idx").on(table.friendGroupId),
     scheduledAtIdx: index("invitations_scheduled_at_idx").on(table.scheduledAt)
   })
 );

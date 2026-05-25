@@ -2,6 +2,8 @@ import type { AddFriendUseCase } from "../application/use-cases/add-friend.use-c
 import { AddFriendUseCase as AddFriend } from "../application/use-cases/add-friend.use-case.js";
 import type { AcceptFriendRequestUseCase } from "../application/use-cases/accept-friend-request.use-case.js";
 import { AcceptFriendRequestUseCase as AcceptFriendRequest } from "../application/use-cases/accept-friend-request.use-case.js";
+import type { CreateFriendGroupUseCase } from "../application/use-cases/create-friend-group.use-case.js";
+import { CreateFriendGroupUseCase as CreateFriendGroup } from "../application/use-cases/create-friend-group.use-case.js";
 import type { AuthenticateGoogleUseCase } from "../application/use-cases/authenticate-google.use-case.js";
 import { AuthenticateGoogleUseCase as AuthenticateGoogle } from "../application/use-cases/authenticate-google.use-case.js";
 import type { CompleteGoogleProfileUseCase } from "../application/use-cases/complete-google-profile.use-case.js";
@@ -20,6 +22,10 @@ import type { ListCreatedInvitationsUseCase } from "../application/use-cases/lis
 import { ListCreatedInvitationsUseCase as ListCreatedInvitations } from "../application/use-cases/list-created-invitations.use-case.js";
 import type { ListFriendsUseCase } from "../application/use-cases/list-friends.use-case.js";
 import { ListFriendsUseCase as ListFriends } from "../application/use-cases/list-friends.use-case.js";
+import type { ListFriendGroupsUseCase } from "../application/use-cases/list-friend-groups.use-case.js";
+import { ListFriendGroupsUseCase as ListFriendGroups } from "../application/use-cases/list-friend-groups.use-case.js";
+import type { UpdateFriendGroupMembersUseCase } from "../application/use-cases/update-friend-group-members.use-case.js";
+import { UpdateFriendGroupMembersUseCase as UpdateFriendGroupMembers } from "../application/use-cases/update-friend-group-members.use-case.js";
 import type { ListReceivedFriendRequestsUseCase } from "../application/use-cases/list-received-friend-requests.use-case.js";
 import { ListReceivedFriendRequestsUseCase as ListReceivedFriendRequests } from "../application/use-cases/list-received-friend-requests.use-case.js";
 import type { ListSentFriendRequestsUseCase } from "../application/use-cases/list-sent-friend-requests.use-case.js";
@@ -52,6 +58,7 @@ import { MapboxPlaceSearchAdapter } from "./places/mapbox-place-search.adapter.j
 import { MockPlaceSearchAdapter } from "./places/mock-place-search.adapter.js";
 import { PhotonPlaceSearchAdapter } from "./places/photon-place-search.adapter.js";
 import { InMemoryRealtimeGateway } from "./realtime/in-memory-realtime.gateway.js";
+import { PostgresFriendGroupRepository } from "./repositories/postgres-friend-group.repository.js";
 import { PostgresFriendshipRepository } from "./repositories/postgres-friendship.repository.js";
 import { PostgresInvitationRepository } from "./repositories/postgres-invitation.repository.js";
 import { PostgresPushTokenRepository } from "./repositories/postgres-push-token.repository.js";
@@ -69,6 +76,9 @@ export type AppUseCases = {
   addFriend: AddFriendUseCase;
   acceptFriendRequest: AcceptFriendRequestUseCase;
   listFriends: ListFriendsUseCase;
+  createFriendGroup: CreateFriendGroupUseCase;
+  listFriendGroups: ListFriendGroupsUseCase;
+  updateFriendGroupMembers: UpdateFriendGroupMembersUseCase;
   listReceivedFriendRequests: ListReceivedFriendRequestsUseCase;
   listSentFriendRequests: ListSentFriendRequestsUseCase;
   searchUserByPublicTag: SearchUserByPublicTagUseCase;
@@ -171,6 +181,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
 
   const users = new PostgresUserRepository(db);
   const friendships = new PostgresFriendshipRepository(db);
+  const friendGroups = new PostgresFriendGroupRepository(db);
   const invitations = new PostgresInvitationRepository(db);
   const pushTokens = new PostgresPushTokenRepository(db);
   const placeSearch = createPlaceSearchAdapter(env);
@@ -207,12 +218,16 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
       addFriend: new AddFriend(users, friendships, pushTokens, notifications, realtime),
       acceptFriendRequest: new AcceptFriendRequest(friendships, users, realtime),
       listFriends: new ListFriends(friendships),
+      createFriendGroup: new CreateFriendGroup(friendGroups, friendships),
+      listFriendGroups: new ListFriendGroups(friendGroups),
+      updateFriendGroupMembers: new UpdateFriendGroupMembers(friendGroups, friendships),
       listReceivedFriendRequests: new ListReceivedFriendRequests(friendships),
       listSentFriendRequests: new ListSentFriendRequests(friendships),
       searchUserByPublicTag: new SearchUserByPublicTag(users),
       createInvitation: new CreateInvitation(invitations),
       sendInvitationToFriends: new SendInvitationToFriends(
         invitations,
+        friendGroups,
         friendships,
         users,
         pushTokens,

@@ -7,12 +7,14 @@ import type { Place } from "@/domain/place/place";
 import { ApiClientError } from "@/infrastructure/api/api-client";
 import { buildTodayScheduledAtFromParts, getDefaultInvitationTimeParts } from "@/domain/invitation/schedule";
 import { AppButton } from "@/presentation/components/AppButton";
+import { ListRow } from "@/presentation/components/ListRow";
 import { PageHeader } from "@/presentation/components/PageHeader";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
+import { useFriendGroups } from "@/presentation/hooks/useFriends";
 import { useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
 import { borders, colors, radii, spacing } from "@/shared/theme";
@@ -24,7 +26,9 @@ export function CreateInvitationScreen() {
   const [hourText, setHourText] = useState(defaultTime.hour);
   const [minuteText, setMinuteText] = useState(defaultTime.minute);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [selectedFriendGroupId, setSelectedFriendGroupId] = useState<string | null>(null);
   const activeInvitation = useActiveCreatedInvitation();
+  const friendGroups = useFriendGroups();
   const placeSearch = usePlaceSearch(placeQuery);
   const createInvitation = useCreateInvitation();
 
@@ -53,7 +57,8 @@ export function CreateInvitationScreen() {
           : {}),
         ...(selectedPlace?.longitude !== null && selectedPlace?.longitude !== undefined
           ? { longitude: selectedPlace.longitude }
-          : {})
+          : {}),
+        ...(selectedFriendGroupId !== null ? { friendGroupId: selectedFriendGroupId } : {})
       };
 
       const invitation = await createInvitation.mutateAsync(request);
@@ -114,6 +119,26 @@ export function CreateInvitationScreen() {
         onChangeText={setCustomAddress}
         placeholder="Optionnel"
       />
+      {friendGroups.data !== undefined && friendGroups.data.length > 0 ? (
+        <View style={styles.results}>
+          <Text style={styles.sectionLabel}>Destinataires</Text>
+          <ListRow
+            title="Tous mes amis actifs"
+            subtitle="Invitation envoyee a tout ton reseau"
+            onPress={() => setSelectedFriendGroupId(null)}
+            right={<AudienceBadge active={selectedFriendGroupId === null} label="Tous" />}
+          />
+          {friendGroups.data.map((group) => (
+            <ListRow
+              key={group.id}
+              title={group.name}
+              subtitle={`${group.members.length} ami(s)`}
+              onPress={() => setSelectedFriendGroupId(group.id)}
+              right={<AudienceBadge active={selectedFriendGroupId === group.id} label="Groupe" />}
+            />
+          ))}
+        </View>
+      ) : null}
       <View style={styles.timeRow}>
         <View style={styles.timeField}>
           <TextField
@@ -147,7 +172,11 @@ export function CreateInvitationScreen() {
           icon={<Send size={36} color={colors.white} strokeWidth={3} />}
         />
       </View>
-      <Text style={styles.muted}>Envoi à tous tes amis actifs.</Text>
+      <Text style={styles.muted}>
+        {selectedFriendGroupId === null
+          ? "Envoi a tous tes amis actifs."
+          : "Envoi uniquement aux amis du groupe selectionne."}
+      </Text>
     </Screen>
   );
 }
@@ -155,6 +184,13 @@ export function CreateInvitationScreen() {
 const styles = StyleSheet.create({
   results: {
     gap: spacing.xxs
+  },
+  sectionLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    marginBottom: spacing.xxs
   },
   timeRow: {
     flexDirection: "row",
@@ -181,8 +217,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
     marginTop: -spacing.sm
+  },
+  badge: {
+    minWidth: 74,
+    textAlign: "center",
+    color: colors.ink,
+    fontWeight: "900",
+    fontSize: 12,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs,
+    borderWidth: borders.regular,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface
+  },
+  badgeActive: {
+    backgroundColor: colors.yellow
   }
 });
+
+function AudienceBadge({ active, label }: { active: boolean; label: string }) {
+  return <Text style={[styles.badge, active ? styles.badgeActive : null]}>{label}</Text>;
+}
 
 function getInvitationIdFromError(details: unknown): string | undefined {
   if (typeof details !== "object" || details === null) {

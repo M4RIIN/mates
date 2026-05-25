@@ -1,5 +1,6 @@
 import type { CreateInvitationRequest, InvitationDetailsDto } from "@mates/shared";
 import { AppErrors } from "../../domain/shared/app-error.js";
+import type { FriendGroupRepository } from "../ports/friend-group-repository.js";
 import type { FriendshipRepository } from "../ports/friendship-repository.js";
 import type { InvitationRepository } from "../ports/invitation-repository.js";
 import type { NotificationGateway } from "../ports/notification-gateway.js";
@@ -19,6 +20,7 @@ export class SendInvitationToFriendsUseCase {
 
   constructor(
     invitations: InvitationRepository,
+    private readonly friendGroups: FriendGroupRepository,
     private readonly friendships: FriendshipRepository,
     private readonly users: UserRepository,
     private readonly pushTokens: PushTokenRepository,
@@ -42,9 +44,14 @@ export class SendInvitationToFriendsUseCase {
       throw AppErrors.invitationAlreadyActive(existingInvitation.id);
     }
 
-    const invitation = await this.createInvitation.execute(input);
     const friends = await this.friendships.listActiveFriends(input.creatorId);
-    const recipientIds = friends.map((friend) => friend.id);
+    const activeFriendIds = new Set(friends.map((friend) => friend.id));
+    const recipientIds =
+      input.friendGroupId === undefined
+        ? friends.map((friend) => friend.id)
+        : await this.resolveGroupRecipients(input.creatorId, input.friendGroupId, activeFriendIds);
+
+    const invitation = await this.createInvitation.execute(input);
 
     await this.invitations.addRecipients(invitation.id, recipientIds);
 
@@ -68,5 +75,18 @@ export class SendInvitationToFriendsUseCase {
     }
 
     return toInvitationDetailsDto(details);
+  }
+
+  private async resolveGroupRecipients(
+    ownerId: string,
+    friendGroupId: string,
+    activeFriendIds: Set<string>
+  ): Promise<string[]> {
+    const group = await this.friendGroups.findByIdForOwner(friendGroupId, ownerId);
+    if (group === null) {
+      throw AppErrors.notFound("Friend group not found");
+    }
+
+    return group.members.map((member) => member.id).filter((memberId) => activeFriendIds.has(memberId));
   }
 }

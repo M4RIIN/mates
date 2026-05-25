@@ -40,6 +40,7 @@ function createInvitationRepository(overrides: Partial<InvitationRepository> = {
     cancel: async (invitationId: string, canceledAt: Date): Promise<InvitationRecord> => ({
       id: invitationId,
       creatorId: USER_ID,
+      friendGroupId: null,
       placeName: "Cafe Central",
       placeAddress: null,
       latitude: null,
@@ -65,6 +66,8 @@ function buildInvitationDetails(overrides: Partial<InvitationDetailsRecord> = {}
       pseudo: "lea",
       publicTag: "lea#1234"
     },
+    friendGroupId: null,
+    friendGroup: null,
     placeName: "Cafe Central",
     placeAddress: null,
     latitude: null,
@@ -141,7 +144,8 @@ describe("invitation responses", () => {
       createInvitationRepository({
         getDetails: async (): Promise<InvitationDetailsRecord | null> => buildInvitationDetails(),
         findRecipient: async (): Promise<InvitationRecipientRecord | null> => null
-      })
+      }),
+      { publishToUser: async () => undefined, publishToUsers: async () => undefined }
     );
 
     await expect(
@@ -168,7 +172,8 @@ describe("invitation responses", () => {
           delayMinutes: null,
           respondedAt: null
         })
-      })
+      }),
+      { publishToUser: async () => undefined, publishToUsers: async () => undefined }
     );
 
     const response = await useCase.execute({
@@ -192,7 +197,8 @@ describe("invitation responses", () => {
           buildInvitationDetails({
             canceledAt: new Date("2026-05-16T09:30:00.000Z")
           })
-      })
+      }),
+      { publishToUser: async () => undefined, publishToUsers: async () => undefined }
     );
 
     await expect(
@@ -222,13 +228,20 @@ describe("active invitation rules", () => {
           })
       }),
       { listActiveFriends: async () => [] },
+      {
+        findByIdForOwner: async () => null,
+        listByOwner: async () => [],
+        create: async () => buildFriendGroupDetails(),
+        replaceMembers: async () => buildFriendGroupDetails()
+      },
       { findById: async () => ({ id: USER_ID, pseudo: "nicolas", publicTag: "nicolas#0047", createdAt: new Date() }) },
       { listByUserIds: async () => [] },
       {
         sendInvitationCreated: async () => undefined,
         sendInvitationCancelled: async () => undefined,
         sendFriendRequestCreated: async () => undefined
-      }
+      },
+      { publishToUser: async () => undefined, publishToUsers: async () => undefined }
     );
 
     await expect(
@@ -245,4 +258,57 @@ describe("active invitation rules", () => {
       }
     });
   });
+
+  it("targets only members of the selected friend group", async () => {
+    const capturedRecipientBatches: string[][] = [];
+
+    const useCase = new SendInvitationToFriendsUseCase(
+      createInvitationRepository({
+        addRecipients: async (_invitationId, userIds) => {
+          capturedRecipientBatches.push(userIds);
+        },
+        getDetails: async (): Promise<InvitationDetailsRecord | null> => buildInvitationDetails()
+      }),
+      {
+        findByIdForOwner: async () => buildFriendGroupDetails(),
+        listByOwner: async () => [],
+        create: async () => buildFriendGroupDetails(),
+        replaceMembers: async () => buildFriendGroupDetails()
+      },
+      {
+        listActiveFriends: async () => [
+          { id: "friend-a", pseudo: "alice", publicTag: "alice#1111", friendshipCreatedAt: new Date() },
+          { id: "friend-b", pseudo: "bob", publicTag: "bob#2222", friendshipCreatedAt: new Date() }
+        ]
+      },
+      { findById: async () => ({ id: USER_ID, pseudo: "nicolas", publicTag: "nicolas#0047", createdAt: new Date() }) },
+      { listByUserIds: async () => [] },
+      {
+        sendInvitationCreated: async () => undefined,
+        sendInvitationCancelled: async () => undefined,
+        sendFriendRequestCreated: async () => undefined
+      },
+      { publishToUser: async () => undefined, publishToUsers: async () => undefined }
+    );
+
+    await useCase.execute({
+      creatorId: USER_ID,
+      placeName: "Cafe Central",
+      scheduledAt: "2026-05-16T21:00:00.000Z",
+      friendGroupId: "44444444-4444-4444-8444-444444444444",
+      now: new Date("2026-05-16T10:00:00.000Z")
+    });
+
+    expect(capturedRecipientBatches).toEqual([["friend-a"]]);
+  });
 });
+
+function buildFriendGroupDetails() {
+  return {
+    id: "44444444-4444-4444-8444-444444444444",
+    ownerId: USER_ID,
+    name: "proches",
+    createdAt: new Date("2026-05-16T08:00:00.000Z"),
+    members: [{ id: "friend-a", pseudo: "alice", publicTag: "alice#1111" }]
+  };
+}

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AddFriendRequest } from "@mates/shared";
+import type { AddFriendRequest, CreateFriendGroupRequest, UpdateFriendGroupMembersRequest } from "@mates/shared";
 import { useApiClient } from "./useApiClient";
 
 export function useFriends() {
@@ -21,6 +21,39 @@ export function useAddFriend() {
       await queryClient.invalidateQueries({ queryKey: ["friends"] });
       await queryClient.invalidateQueries({ queryKey: ["friends", "requests", "received"] });
       await queryClient.invalidateQueries({ queryKey: ["friends", "requests", "sent"] });
+    }
+  });
+}
+
+export function useFriendGroups() {
+  const api = useApiClient();
+
+  return useQuery({
+    queryKey: ["friend-groups"],
+    queryFn: () => api.listFriendGroups()
+  });
+}
+
+export function useCreateFriendGroup() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CreateFriendGroupRequest) => api.createFriendGroup(input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["friend-groups"] });
+    }
+  });
+}
+
+export function useUpdateFriendGroupMembers(groupId: string) {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateFriendGroupMembersRequest) => api.updateFriendGroupMembers(groupId, input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["friend-groups"] });
     }
   });
 }

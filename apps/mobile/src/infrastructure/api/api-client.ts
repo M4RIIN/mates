@@ -2,19 +2,24 @@ import {
   authResponseSchema,
   googleAuthResponseSchema,
   currentUserSchema,
+  createFriendGroupRequestSchema,
   friendSchema,
+  friendGroupSchema,
   friendRequestSchema,
   invitationDetailsSchema,
   invitationListSchema,
   placeSearchResponseSchema,
   publicUserSchema,
   receivedInvitationListSchema,
+  updateFriendGroupMembersRequestSchema,
   type AddFriendRequest,
   type AuthResponse,
   type CompleteGoogleProfileRequest,
   type CreateInvitationRequest,
   type CurrentUserDto,
+  type CreateFriendGroupRequest,
   type FriendDto,
+  type FriendGroupDto,
   type FriendRequestDto,
   type GoogleAuthRequest,
   type GoogleAuthResponse,
@@ -23,7 +28,8 @@ import {
   type PublicUserDto,
   type ReceivedInvitationDto,
   type RegisterPushTokenRequest,
-  type RespondToInvitationRequest
+  type RespondToInvitationRequest,
+  type UpdateFriendGroupMembersRequest
 } from "@mates/shared";
 import { z } from "zod";
 
@@ -107,6 +113,23 @@ export class ApiClient {
 
   listFriends(): Promise<FriendDto[]> {
     return this.request("GET", "/friends", z.array(friendSchema));
+  }
+
+  listFriendGroups(): Promise<FriendGroupDto[]> {
+    return this.request("GET", "/friend-groups", z.array(friendGroupSchema));
+  }
+
+  createFriendGroup(input: CreateFriendGroupRequest): Promise<FriendGroupDto> {
+    return this.request("POST", "/friend-groups", friendGroupSchema, createFriendGroupRequestSchema.parse(input));
+  }
+
+  updateFriendGroupMembers(id: string, input: UpdateFriendGroupMembersRequest): Promise<FriendGroupDto> {
+    return this.request(
+      "POST",
+      `/friend-groups/${id}/members`,
+      friendGroupSchema,
+      updateFriendGroupMembersRequestSchema.parse(input)
+    );
   }
 
   listReceivedFriendRequests(): Promise<FriendRequestDto[]> {

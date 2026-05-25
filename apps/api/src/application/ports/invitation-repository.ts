@@ -1,8 +1,14 @@
 import type { ResponseStatus } from "@mates/shared";
 import type { PublicUserRecord } from "./user-repository.js";
 
+export type InvitationFriendGroupRecord = {
+  id: string;
+  name: string;
+};
+
 export type CreateInvitationRecordInput = {
   creatorId: string;
+  friendGroupId: string | null;
   placeName: string;
   placeAddress: string | null;
   latitude: number | null;
@@ -35,6 +41,7 @@ export type InvitationParticipantRecord = {
 
 export type InvitationDetailsRecord = InvitationRecord & {
   creator: PublicUserRecord;
+  friendGroup: InvitationFriendGroupRecord | null;
   recipients: InvitationParticipantRecord[];
 };
 

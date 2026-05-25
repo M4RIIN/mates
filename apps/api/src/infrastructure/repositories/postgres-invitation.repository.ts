@@ -2,6 +2,7 @@ import { and, desc, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import type {
   CreateInvitationRecordInput,
   InvitationDetailsRecord,
+  InvitationFriendGroupRecord,
   InvitationParticipantRecord,
   InvitationRecipientRecord,
   InvitationRecord,
@@ -12,12 +13,13 @@ import type {
 import { endOfLocalDay, startOfLocalDay } from "../../domain/shared/date.js";
 import type { PublicUserRecord } from "../../application/ports/user-repository.js";
 import type { AppDb } from "../db/client.js";
-import { invitationRecipients, invitations, users } from "../db/schema.js";
+import { friendGroups, invitationRecipients, invitations, users } from "../db/schema.js";
 
 function toInvitationRecord(row: typeof invitations.$inferSelect): InvitationRecord {
   return {
     id: row.id,
     creatorId: row.creatorId,
+    friendGroupId: row.friendGroupId,
     placeName: row.placeName,
     placeAddress: row.placeAddress,
     latitude: row.latitude,
@@ -25,6 +27,13 @@ function toInvitationRecord(row: typeof invitations.$inferSelect): InvitationRec
     scheduledAt: row.scheduledAt,
     createdAt: row.createdAt,
     canceledAt: row.canceledAt
+  };
+}
+
+function toInvitationFriendGroupRecord(row: typeof friendGroups.$inferSelect): InvitationFriendGroupRecord {
+  return {
+    id: row.id,
+    name: row.name
   };
 }
 
@@ -55,6 +64,7 @@ export class PostgresInvitationRepository implements InvitationRepository {
       .insert(invitations)
       .values({
         creatorId: input.creatorId,
+        friendGroupId: input.friendGroupId,
         placeName: input.placeName,
         placeAddress: input.placeAddress,
         latitude: input.latitude,
@@ -144,6 +154,10 @@ export class PostgresInvitationRepository implements InvitationRepository {
     if (creatorRow === undefined) {
       throw new Error("Invitation creator not found");
     }
+    const [friendGroupRow] =
+      invitationRow.friendGroupId === null
+        ? []
+        : await this.db.select().from(friendGroups).where(eq(friendGroups.id, invitationRow.friendGroupId)).limit(1);
 
     const recipientRows = await this.db
       .select()
@@ -175,6 +189,7 @@ export class PostgresInvitationRepository implements InvitationRepository {
     return {
       ...toInvitationRecord(invitationRow),
       creator: toPublicUserRecord(creatorRow),
+      friendGroup: friendGroupRow === undefined ? null : toInvitationFriendGroupRecord(friendGroupRow),
       recipients
     };
   }

@@ -37,6 +37,7 @@ export function toInvitationDetailsDto(invitation: InvitationDetailsRecord): Inv
   return {
     id: invitation.id,
     creator: invitation.creator,
+    friendGroup: invitation.friendGroup,
     placeName: invitation.placeName,
     placeAddress: invitation.placeAddress,
     latitude: invitation.latitude,
