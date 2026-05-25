@@ -9,12 +9,15 @@
     "test": "pnpm --filter @mates/shared build && pnpm -r test",
     "dev:api": "pnpm --filter @mates/shared build && pnpm --filter @mates/api dev",
     "dev:mobile": "pnpm --filter @mates/shared build && pnpm --filter @mates/mobile start",
+    "dev:landing": "pnpm --filter @mates/landing dev",
     "db:generate": "pnpm --filter @mates/api db:generate",
     "db:migrate": "pnpm --filter @mates/api db:migrate",
     "build:api": "pnpm --filter @mates/api... build",
     "start:api": "pnpm --filter @mates/api start",
     "build:mobile": "pnpm --filter @mates/mobile... build",
+    "build:landing": "pnpm --filter @mates/landing... build",
     "start:mobile": "pnpm --filter @mates/mobile start",
+    "start:landing": "pnpm --filter @mates/landing start",
     "deploy:ios:testflight": "pnpm build:mobile && cd apps/mobile && pnpm dlx eas-cli@latest build --platform ios --profile production --auto-submit",
     "migrate:api": "pnpm --filter @mates/api db:migrate"
   }

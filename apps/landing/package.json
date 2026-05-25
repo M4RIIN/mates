@@ -1,0 +1,10 @@
+{
+  "name": "@mates/landing",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/serve.mjs --dev",
+    "start": "node scripts/serve.mjs"
+  }
+}
