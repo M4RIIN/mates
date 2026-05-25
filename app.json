@@ -4,6 +4,9 @@
       "eas": {
         "projectId": "55b47406-99b4-4af7-a683-305cd1238eed"
       }
+    },
+    "android": {
+      "package": "com.nclmarin.mates"
     }
   }
 }

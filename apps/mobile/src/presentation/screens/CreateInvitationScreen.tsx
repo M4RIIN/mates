@@ -5,7 +5,7 @@ import { Send } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { ApiClientError } from "@/infrastructure/api/api-client";
-import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invitation/schedule";
+import { buildTodayScheduledAtFromParts, getDefaultInvitationTimeParts } from "@/domain/invitation/schedule";
 import { AppButton } from "@/presentation/components/AppButton";
 import { PageHeader } from "@/presentation/components/PageHeader";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
@@ -18,9 +18,11 @@ import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
 export function CreateInvitationScreen() {
+  const defaultTime = getDefaultInvitationTimeParts();
   const [placeQuery, setPlaceQuery] = useState("");
   const [customAddress, setCustomAddress] = useState("");
-  const [timeText, setTimeText] = useState(getDefaultInvitationTime());
+  const [hourText, setHourText] = useState(defaultTime.hour);
+  const [minuteText, setMinuteText] = useState(defaultTime.minute);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const activeInvitation = useActiveCreatedInvitation();
   const placeSearch = usePlaceSearch(placeQuery);
@@ -40,7 +42,7 @@ export function CreateInvitationScreen() {
     }
 
     try {
-      const scheduledAt = buildTodayScheduledAt(timeText);
+      const scheduledAt = buildTodayScheduledAtFromParts(hourText, minuteText);
       const address = selectedPlace?.address ?? customAddress.trim();
       const request: CreateInvitationRequest = {
         placeName,
@@ -112,7 +114,28 @@ export function CreateInvitationScreen() {
         onChangeText={setCustomAddress}
         placeholder="Optionnel"
       />
-      <TextField label="Heure aujourd’hui" value={timeText} onChangeText={setTimeText} placeholder="20:30" />
+      <View style={styles.timeRow}>
+        <View style={styles.timeField}>
+          <TextField
+            label="Heure"
+            value={hourText}
+            onChangeText={(value) => setHourText(sanitizeTimePart(value))}
+            keyboardType="number-pad"
+            placeholder="20"
+            maxLength={2}
+          />
+        </View>
+        <View style={styles.timeField}>
+          <TextField
+            label="Minute"
+            value={minuteText}
+            onChangeText={(value) => setMinuteText(sanitizeTimePart(value))}
+            keyboardType="number-pad"
+            placeholder="30"
+            maxLength={2}
+          />
+        </View>
+      </View>
       <View style={styles.buttonZone}>
         <AppButton
           title="Envoyer"
@@ -132,6 +155,13 @@ export function CreateInvitationScreen() {
 const styles = StyleSheet.create({
   results: {
     gap: spacing.xxs
+  },
+  timeRow: {
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  timeField: {
+    flex: 1
   },
   buttonZone: {
     alignItems: "center",
@@ -161,4 +191,8 @@ function getInvitationIdFromError(details: unknown): string | undefined {
 
   const invitationId = (details as { invitationId?: unknown }).invitationId;
   return typeof invitationId === "string" && invitationId.length > 0 ? invitationId : undefined;
+}
+
+function sanitizeTimePart(value: string): string {
+  return value.replace(/\D+/g, "").slice(0, 2);
 }

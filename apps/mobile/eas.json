@@ -8,6 +8,19 @@
       "environment": "production",
       "autoIncrement": true,
       "pnpm": "9.15.0"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "develop": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      }
     }
   },
   "submit": {

@@ -1,6 +1,18 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
-import { Animated, Easing, Keyboard, SafeAreaView, ScrollView, StyleSheet, TouchableWithoutFeedback, useWindowDimensions, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  View
+} from "react-native";
 import { colors, layout, motion, spacing } from "@/shared/theme";
 
 type ScreenProps = {
@@ -39,11 +51,13 @@ export function Screen({ children, scroll = true, contentStyle }: ScreenProps) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <ExperienceBackdrop width={width} />
-        <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
-          <View style={styles.fixedArea}>
-            <Animated.View style={[styles.content, responsiveContentStyle, entranceStyle, contentStyle]}>{children}</Animated.View>
-          </View>
-        </TouchableWithoutFeedback>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={spacing.sm} style={styles.keyboardArea}>
+          <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
+            <View style={styles.fixedArea}>
+              <Animated.View style={[styles.content, responsiveContentStyle, entranceStyle, contentStyle]}>{children}</Animated.View>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -51,19 +65,22 @@ export function Screen({ children, scroll = true, contentStyle }: ScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ExperienceBackdrop width={width} />
-      <ScrollView
-        alwaysBounceVertical={false}
-        contentContainerStyle={styles.scrollArea}
-        decelerationRate="fast"
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-        nestedScrollEnabled
-        showsVerticalScrollIndicator={false}
-      >
-        <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
-          <Animated.View style={[styles.content, responsiveContentStyle, entranceStyle, contentStyle]}>{children}</Animated.View>
-        </TouchableWithoutFeedback>
-      </ScrollView>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={spacing.sm} style={styles.keyboardArea}>
+        <ScrollView
+          alwaysBounceVertical={false}
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.scrollArea}
+          decelerationRate="fast"
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
+            <Animated.View style={[styles.content, responsiveContentStyle, entranceStyle, contentStyle]}>{children}</Animated.View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -153,6 +170,9 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "relative",
     backgroundColor: colors.background
+  },
+  keyboardArea: {
+    flex: 1
   },
   fixedArea: {
     flexGrow: 1,

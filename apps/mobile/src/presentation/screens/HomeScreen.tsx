@@ -6,7 +6,7 @@ import { Bell, Inbox, Send, Settings, User, Users, X } from "lucide-react-native
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { ApiClientError } from "@/infrastructure/api/api-client";
-import { buildTodayScheduledAt, getDefaultInvitationTime } from "@/domain/invitation/schedule";
+import { buildTodayScheduledAtFromParts, getDefaultInvitationTimeParts } from "@/domain/invitation/schedule";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
@@ -24,6 +24,7 @@ const guardTravel = 138;
 const holdDurationMs = 1150;
 
 export function HomeScreen() {
+  const defaultTime = getDefaultInvitationTimeParts();
   const { height, width } = useWindowDimensions();
   const isWide = width >= layout.tabletWidth;
   const isNarrow = width <= layout.compactWidth;
@@ -32,7 +33,8 @@ export function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [placeQuery, setPlaceQuery] = useState("");
   const [customAddress, setCustomAddress] = useState("");
-  const [timeText, setTimeText] = useState(getDefaultInvitationTime());
+  const [hourText, setHourText] = useState(defaultTime.hour);
+  const [minuteText, setMinuteText] = useState(defaultTime.minute);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [isArmed, setIsArmed] = useState(false);
   const guardX = useRef(new Animated.Value(0)).current;
@@ -49,7 +51,8 @@ export function HomeScreen() {
   const notificationCount = receivedInvitationCount + (receivedFriendRequests.data?.length ?? 0);
   const canArm =
     placeQuery.trim().length > 0 &&
-    timeText.trim().length > 0 &&
+    hourText.trim().length > 0 &&
+    minuteText.trim().length > 0 &&
     !createInvitation.isPending &&
     activeInvitation.data === null &&
     !activeInvitation.isLoading;
@@ -129,7 +132,7 @@ export function HomeScreen() {
     }
 
     try {
-      const scheduledAt = buildTodayScheduledAt(timeText);
+      const scheduledAt = buildTodayScheduledAtFromParts(hourText, minuteText);
       const address = selectedPlace?.address ?? customAddress.trim();
       const request: CreateInvitationRequest = {
         placeName,
@@ -296,17 +299,47 @@ export function HomeScreen() {
             />
           ) : null}
           <View style={styles.fieldRow}>
-            <View style={styles.fieldFlex}>
-              <TextField compact label="Heure" value={timeText} onChangeText={(value) => {
-                setTimeText(value);
-                resetSafety();
-              }} placeholder="20:30" />
+            <View style={styles.timeField}>
+              <TextField
+                compact
+                label="Heure"
+                value={hourText}
+                onChangeText={(value) => {
+                  setHourText(sanitizeTimePart(value));
+                  resetSafety();
+                }}
+                keyboardType="number-pad"
+                placeholder="20"
+                maxLength={2}
+              />
             </View>
+            <View style={styles.timeField}>
+              <TextField
+                compact
+                label="Minute"
+                value={minuteText}
+                onChangeText={(value) => {
+                  setMinuteText(sanitizeTimePart(value));
+                  resetSafety();
+                }}
+                keyboardType="number-pad"
+                placeholder="30"
+                maxLength={2}
+              />
+            </View>
+          </View>
+          <View style={styles.fieldRow}>
             <View style={styles.fieldFlex}>
-              <TextField compact label="Adresse" value={customAddress} onChangeText={(value) => {
-                setCustomAddress(value);
-                resetSafety();
-              }} placeholder={isNarrow ? "Opt." : "Optionnel"} />
+              <TextField
+                compact
+                label="Adresse"
+                value={customAddress}
+                onChangeText={(value) => {
+                  setCustomAddress(value);
+                  resetSafety();
+                }}
+                placeholder={isNarrow ? "Opt." : "Optionnel"}
+              />
             </View>
           </View>
         </View>
@@ -664,6 +697,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs
   },
+  timeField: {
+    flex: 1
+  },
   fieldFlex: {
     flex: 1
   },
@@ -895,3 +931,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase"
   }
 });
+
+function sanitizeTimePart(value: string): string {
+  return value.replace(/\D+/g, "").slice(0, 2);
+}

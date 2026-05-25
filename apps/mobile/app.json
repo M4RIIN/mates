@@ -9,6 +9,8 @@
     "userInterfaceStyle": "light",
     "plugins": [
       "expo-router",
+      "expo-dev-client",
+      "./plugins/withRemoveDevLauncherStripPhase",
       "expo-notifications",
       "expo-web-browser",
       "expo-location",
