@@ -128,7 +128,7 @@ export async function syncInvitationLiveActivity(
   const props = buildLiveActivityProps(invitation, response.delayMinutes);
 
   if (currentInvitationId !== null && currentInvitationId !== invitation.id) {
-    await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
+    await Promise.all(instances.map((instance) => instance.end("immediate")));
   }
 
   if (currentInvitationId === invitation.id && instances.length > 0) {
@@ -160,7 +160,7 @@ export async function syncCreatedInvitationLiveActivity(invitation: InvitationDe
   const props = buildCreatedInvitationLiveActivityProps(invitation);
 
   if (currentInvitationId !== null && currentInvitationId !== invitation.id) {
-    await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
+    await Promise.all(instances.map((instance) => instance.end("immediate")));
   }
 
   if (currentInvitationId === invitation.id && instances.length > 0) {
@@ -188,7 +188,7 @@ export async function endInvitationLiveActivity(invitationId?: string) {
   }
 
   const instances = InvitationActivity.getInstances();
-  await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
+  await Promise.all(instances.map((instance) => instance.end("immediate")));
   await AsyncStorage.removeItem(LIVE_ACTIVITY_STORAGE_KEY);
 }
 
