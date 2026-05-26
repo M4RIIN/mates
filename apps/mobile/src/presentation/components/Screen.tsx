@@ -19,9 +19,10 @@ type ScreenProps = {
   children: ReactNode;
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  dismissKeyboardOnPress?: boolean;
 };
 
-export function Screen({ children, scroll = true, contentStyle }: ScreenProps) {
+export function Screen({ children, scroll = true, contentStyle, dismissKeyboardOnPress = true }: ScreenProps) {
   const { width } = useWindowDimensions();
   const entrance = useRef(new Animated.Value(0)).current;
   const responsiveContentStyle = width <= layout.compactWidth ? styles.contentCompact : width >= layout.tabletWidth ? styles.contentWide : null;
@@ -52,11 +53,17 @@ export function Screen({ children, scroll = true, contentStyle }: ScreenProps) {
       <SafeAreaView style={styles.safeArea}>
         <ExperienceBackdrop width={width} />
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={spacing.sm} style={styles.keyboardArea}>
-          <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
+          {dismissKeyboardOnPress ? (
+            <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
+              <View style={styles.fixedArea}>
+                <Animated.View style={[styles.content, responsiveContentStyle, entranceStyle, contentStyle]}>{children}</Animated.View>
+              </View>
+            </TouchableWithoutFeedback>
+          ) : (
             <View style={styles.fixedArea}>
               <Animated.View style={[styles.content, responsiveContentStyle, entranceStyle, contentStyle]}>{children}</Animated.View>
             </View>
-          </TouchableWithoutFeedback>
+          )}
         </KeyboardAvoidingView>
       </SafeAreaView>
     );
@@ -76,9 +83,13 @@ export function Screen({ children, scroll = true, contentStyle }: ScreenProps) {
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
         >
-          <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
+          {dismissKeyboardOnPress ? (
+            <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
+              <Animated.View style={[styles.content, responsiveContentStyle, entranceStyle, contentStyle]}>{children}</Animated.View>
+            </TouchableWithoutFeedback>
+          ) : (
             <Animated.View style={[styles.content, responsiveContentStyle, entranceStyle, contentStyle]}>{children}</Animated.View>
-          </TouchableWithoutFeedback>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

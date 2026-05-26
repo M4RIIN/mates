@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
@@ -79,6 +79,7 @@ export function LoginScreen() {
   const { width } = useWindowDimensions();
   const carouselRef = useRef<ScrollView | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [carouselWidth, setCarouselWidth] = useState(0);
   const [pseudo, setPseudo] = useState("");
   const [pendingGoogleIdToken, setPendingGoogleIdToken] = useState<string | null>(null);
   const handledGoogleResponseRef = useRef<string | null>(null);
@@ -104,6 +105,15 @@ export function LoginScreen() {
         },
     googleRedirectUri === undefined ? {} : { native: googleRedirectUri }
   );
+
+  const slideWidth = carouselWidth > 0 ? carouselWidth : width;
+
+  function handleCarouselLayout(event: LayoutChangeEvent) {
+    const nextWidth = event.nativeEvent.layout.width;
+    if (nextWidth > 0 && nextWidth !== carouselWidth) {
+      setCarouselWidth(nextWidth);
+    }
+  }
 
   async function authenticate(idToken: string) {
     try {
@@ -199,16 +209,17 @@ export function LoginScreen() {
   }
 
   return (
-    <Screen scroll={false} contentStyle={styles.screenContent}>
+    <Screen scroll={false} contentStyle={styles.screenContent} dismissKeyboardOnPress={false}>
       <View style={styles.hero}>
         <ScrollView
           ref={carouselRef}
+          onLayout={handleCarouselLayout}
           horizontal
           pagingEnabled
           decelerationRate="fast"
           disableIntervalMomentum
           onMomentumScrollEnd={(event) => {
-            const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+            const nextIndex = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
             setActiveIndex(nextIndex);
           }}
           showsHorizontalScrollIndicator={false}
@@ -219,7 +230,7 @@ export function LoginScreen() {
             const Icon = slide.icon;
 
             return (
-              <View key={slide.title} style={[styles.slide, { width }]}>
+              <View key={slide.title} style={[styles.slide, { width: slideWidth }]}>
                 <View pointerEvents="none" style={styles.imageFrame}>
                   <Image source={slide.image} style={styles.image} resizeMode="cover" />
                   <View pointerEvents="none" style={styles.imageOverlay} />
