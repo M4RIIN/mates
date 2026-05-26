@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
@@ -7,7 +7,7 @@ import { ArrowRight, Sparkles, Users, UtensilsCrossed } from "lucide-react-nativ
 import { AppButton } from "@/presentation/components/AppButton";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
-import { useAuthenticateWithGoogle, useCompleteGoogleProfile } from "@/presentation/hooks/useAuth";
+import { useAuthenticateWithGoogle, useCompleteGoogleProfile, useLogin, useRegister } from "@/presentation/hooks/useAuth";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { appConfig } from "@/shared/config";
 import { borders, colors, radii, spacing } from "@/shared/theme";
@@ -81,8 +81,14 @@ export function LoginScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(0);
   const [pseudo, setPseudo] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
+  const [passwordAuthMode, setPasswordAuthMode] = useState<"login" | "register">("login");
   const [pendingGoogleIdToken, setPendingGoogleIdToken] = useState<string | null>(null);
   const handledGoogleResponseRef = useRef<string | null>(null);
+  const login = useLogin();
+  const register = useRegister();
   const authenticateWithGoogle = useAuthenticateWithGoogle();
   const completeGoogleProfile = useCompleteGoogleProfile();
   const googleClientId = getGoogleClientIdForPlatform();
@@ -166,6 +172,30 @@ export function LoginScreen() {
     }
 
     await promptAsync();
+  }
+
+  async function submitPasswordLogin() {
+    try {
+      await login.mutateAsync({
+        identifier: identifier.trim(),
+        password
+      });
+      router.replace("/home");
+    } catch (error: unknown) {
+      Alert.alert("Connexion impossible", getErrorMessage(error));
+    }
+  }
+
+  async function submitPasswordRegister() {
+    try {
+      await register.mutateAsync({
+        pseudo: identifier.trim(),
+        password
+      });
+      router.replace("/home");
+    } catch (error: unknown) {
+      Alert.alert("Inscription impossible", getErrorMessage(error));
+    }
   }
 
   async function submitProfile() {
@@ -265,13 +295,69 @@ export function LoginScreen() {
           ))}
         </View>
         <Text style={styles.hint}>Glisse horizontalement pour découvrir l’app.</Text>
-        <AppButton
-          title="Se connecter avec Google"
-          onPress={startGoogleSignIn}
-          loading={authenticateWithGoogle.isPending}
-          disabled={request === null}
-          icon={<ArrowRight size={18} color={colors.white} strokeWidth={3} />}
-        />
+        {showPasswordLogin ? (
+          <View style={styles.authPanel}>
+            <View style={styles.passwordModeSwitch}>
+              <Pressable accessibilityRole="button" onPress={() => setPasswordAuthMode("login")} style={styles.passwordModeButton}>
+                <Text style={[styles.passwordModeText, passwordAuthMode === "login" ? styles.passwordModeTextActive : null]}>
+                  Connexion
+                </Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => setPasswordAuthMode("register")} style={styles.passwordModeButton}>
+                <Text style={[styles.passwordModeText, passwordAuthMode === "register" ? styles.passwordModeTextActive : null]}>
+                  Inscription
+                </Text>
+              </Pressable>
+            </View>
+            <TextField
+              label={passwordAuthMode === "login" ? "Pseudo ou identifiant public" : "Pseudo"}
+              value={identifier}
+              onChangeText={setIdentifier}
+              placeholder={passwordAuthMode === "login" ? "nicolas ou nicolas#7647" : "nicolas"}
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            <TextField
+              label="Mot de passe"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <AppButton
+              title={passwordAuthMode === "login" ? "Se connecter" : "Créer mon compte"}
+              onPress={() => {
+                if (passwordAuthMode === "login") {
+                  void submitPasswordLogin();
+                  return;
+                }
+
+                void submitPasswordRegister();
+              }}
+              loading={passwordAuthMode === "login" ? login.isPending : register.isPending}
+              disabled={identifier.trim().length < 2 || password.length < 6}
+              icon={<ArrowRight size={18} color={colors.white} strokeWidth={3} />}
+            />
+            <Pressable accessibilityRole="button" onPress={() => setShowPasswordLogin(false)}>
+              <Text style={styles.passwordLink}>Revenir à la connexion Google</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.authPanel}>
+            <AppButton
+              title="Se connecter avec Google"
+              onPress={startGoogleSignIn}
+              loading={authenticateWithGoogle.isPending}
+              disabled={request === null}
+              icon={<ArrowRight size={18} color={colors.white} strokeWidth={3} />}
+            />
+            <Pressable accessibilityRole="button" onPress={() => setShowPasswordLogin(true)}>
+              <Text style={styles.passwordLink}>Préférer une connexion pseudo / mot de passe</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </Screen>
   );
@@ -371,6 +457,27 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     gap: spacing.sm
   },
+  authPanel: {
+    gap: spacing.sm
+  },
+  passwordModeSwitch: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: spacing.md
+  },
+  passwordModeButton: {
+    paddingVertical: spacing.xs
+  },
+  passwordModeText: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "800",
+    textTransform: "uppercase"
+  },
+  passwordModeTextActive: {
+    color: colors.primary
+  },
   pagination: {
     flexDirection: "row",
     justifyContent: "center",
@@ -388,6 +495,13 @@ const styles = StyleSheet.create({
   hint: {
     color: colors.muted,
     fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "800",
+    textAlign: "center"
+  },
+  passwordLink: {
+    color: colors.primary,
+    fontSize: 14,
     lineHeight: 18,
     fontWeight: "800",
     textAlign: "center"
