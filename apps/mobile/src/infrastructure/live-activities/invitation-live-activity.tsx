@@ -143,6 +143,38 @@ export async function syncInvitationLiveActivity(
   scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
 }
 
+export async function syncCreatedInvitationLiveActivity(invitation: InvitationDetailsDto) {
+  if (Platform.OS !== "ios") {
+    return;
+  }
+
+  const scheduledAtMs = new Date(invitation.scheduledAt).getTime();
+
+  if (invitation.canceledAt !== null || scheduledAtMs <= Date.now()) {
+    await endInvitationLiveActivity(invitation.id);
+    return;
+  }
+
+  const currentInvitationId = await AsyncStorage.getItem(LIVE_ACTIVITY_STORAGE_KEY);
+  const instances = InvitationActivity.getInstances();
+  const props = buildCreatedInvitationLiveActivityProps(invitation);
+
+  if (currentInvitationId !== null && currentInvitationId !== invitation.id) {
+    await Promise.all(instances.map((instance) => instance.end("immediate", undefined, new Date())));
+  }
+
+  if (currentInvitationId === invitation.id && instances.length > 0) {
+    await Promise.all(instances.map((instance, index) => (index === 0 ? instance.update(props) : instance.end("immediate"))));
+    await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
+    scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
+    return;
+  }
+
+  InvitationActivity.start(props, buildCreatedInvitationUrl(invitation.id));
+  await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
+  scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
+}
+
 export async function endInvitationLiveActivity(invitationId?: string) {
   if (Platform.OS !== "ios") {
     return;
@@ -173,8 +205,25 @@ function buildLiveActivityProps(
   };
 }
 
+function buildCreatedInvitationLiveActivityProps(invitation: InvitationDetailsDto): InvitationLiveActivityProps {
+  const yesCount = invitation.recipients.filter((recipient) => recipient.responseStatus === "yes").length;
+  const pendingCount = invitation.recipients.filter((recipient) => recipient.responseStatus === "pending").length;
+
+  return {
+    invitationId: invitation.id,
+    placeName: invitation.placeName,
+    placeAddress: invitation.placeAddress ?? "Adresse indisponible",
+    scheduledAt: new Date(invitation.scheduledAt).getTime(),
+    statusText: `${yesCount} oui · ${pendingCount} attente`
+  };
+}
+
 function buildInvitationUrl(invitationId: string) {
   return `mates://invitations/received/${invitationId}`;
+}
+
+function buildCreatedInvitationUrl(invitationId: string) {
+  return `mates://invitations/created/${invitationId}`;
 }
 
 function scheduleInvitationLiveActivityEnd(invitationId: string, scheduledAtMs: number) {

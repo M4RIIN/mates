@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateInvitationRequest, RespondToInvitationRequest } from "@mates/shared";
+import { Platform } from "react-native";
 import { useApiClient } from "./useApiClient";
 
 type ScheduledInvitation = {
@@ -50,7 +51,12 @@ export function useCreateInvitation() {
 
   return useMutation({
     mutationFn: (input: CreateInvitationRequest) => api.createInvitation(input),
-    onSuccess: async () => {
+    onSuccess: async (invitation) => {
+      if (Platform.OS === "ios") {
+        const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
+        await liveActivities.syncCreatedInvitationLiveActivity(invitation);
+      }
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["invitations", "created"] }),
         queryClient.invalidateQueries({ queryKey: ["invitations", "created", "active"] }),
@@ -83,7 +89,12 @@ export function useCancelInvitation(id: string) {
 
   return useMutation({
     mutationFn: () => api.cancelInvitation(id),
-    onSuccess: async () => {
+    onSuccess: async (invitation) => {
+      if (Platform.OS === "ios") {
+        const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
+        await liveActivities.endInvitationLiveActivity(invitation.id);
+      }
+
       queryClient.setQueryData(["invitations", "created", "active"], null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["invitations", id] }),

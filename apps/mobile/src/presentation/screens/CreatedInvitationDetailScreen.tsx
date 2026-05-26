@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Inbox, Send, Settings, User, Users, X } from "lucide-react-native";
 import { Ban } from "lucide-react-native";
+import { syncCreatedInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { AppButton } from "@/presentation/components/AppButton";
 import { EmptyState } from "@/presentation/components/EmptyState";
 import { ListRow } from "@/presentation/components/ListRow";
@@ -30,6 +31,16 @@ export function CreatedInvitationDetailScreen() {
   const yesCount = recipients.filter((recipient) => recipient.responseStatus === "yes").length;
   const noCount = recipients.filter((recipient) => recipient.responseStatus === "no").length;
   const pendingCount = recipients.filter((recipient) => recipient.responseStatus === "pending").length;
+
+  useEffect(() => {
+    if (invitation.data === undefined) {
+      return;
+    }
+
+    syncCreatedInvitationLiveActivity(invitation.data).catch((error: unknown) => {
+      console.warn("Failed to sync created invitation live activity", error);
+    });
+  }, [invitation.data]);
 
   function confirmCancel() {
     if (id === undefined) {
