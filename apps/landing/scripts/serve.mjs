@@ -16,6 +16,9 @@ const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".js", "application/javascript; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
+  [".ico", "image/x-icon"],
+  [".txt", "text/plain; charset=utf-8"],
+  [".xml", "application/xml; charset=utf-8"],
   [".svg", "image/svg+xml; charset=utf-8"],
   [".png", "image/png"],
   [".jpg", "image/jpeg"],
@@ -26,20 +29,20 @@ const mimeTypes = new Map([
 createServer(async (request, response) => {
   try {
     const requestPath = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`).pathname;
-    const safePath = requestPath === "/" ? "/index.html" : requestPath;
-    const filePath = path.join(baseDir, safePath);
-    const extension = path.extname(filePath);
-    const contentType = mimeTypes.get(extension) ?? "application/octet-stream";
-    const file = await readFile(filePath).catch(() => null);
+    const normalizedPath = requestPath === "/" ? "/index.html" : requestPath;
+    const candidates = buildCandidates(normalizedPath);
+    const resolved = await readFirstExistingFile(candidates);
 
-    if (file === null) {
+    if (resolved === null) {
       response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       response.end("Not found");
       return;
     }
 
+    const extension = path.extname(resolved.filePath);
+    const contentType = mimeTypes.get(extension) ?? "application/octet-stream";
     response.writeHead(200, { "content-type": contentType });
-    response.end(file);
+    response.end(resolved.file);
   } catch (error) {
     response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
     response.end(`Server error: ${error instanceof Error ? error.message : "unknown error"}`);
@@ -47,3 +50,26 @@ createServer(async (request, response) => {
 }).listen(port, () => {
   console.log(`Landing server running on http://localhost:${port} from ${baseDir}`);
 });
+
+function buildCandidates(requestPath) {
+  if (path.extname(requestPath).length > 0) {
+    return [path.join(baseDir, requestPath)];
+  }
+
+  const sanitized = requestPath.endsWith("/") ? requestPath.slice(0, -1) : requestPath;
+  return [
+    path.join(baseDir, `${sanitized}.html`),
+    path.join(baseDir, sanitized, "index.html")
+  ];
+}
+
+async function readFirstExistingFile(candidates) {
+  for (const filePath of candidates) {
+    const file = await readFile(filePath).catch(() => null);
+    if (file !== null) {
+      return { file, filePath };
+    }
+  }
+
+  return null;
+}
