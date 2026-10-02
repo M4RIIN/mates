@@ -155,6 +155,10 @@ pnpm dlx eas-cli@latest submit --platform ios --profile production --latest
 
 Lors du premier build, laisser EAS gérer les certificats et profils Apple si tu n'as pas déjà tes propres credentials iOS. Après traitement par Apple, ouvrir App Store Connect > Mates > TestFlight, ajouter le build à un groupe de testeurs internes, puis inviter les testeurs.
 
+## Guide de première connexion
+
+Après connexion, un guide flottant présente le fonctionnement de Mates, le tag public, les amis, les groupes et les invitations. Le compte conserve `onboarding_completed_at` en base quand le guide est terminé ou passé ; une fermeture de l'app avant validation laisse le guide disponible à la prochaine ouverture. La migration `0007_user_onboarding.sql` ajoute ce champ (exécuter `pnpm db:migrate` sur chaque environnement).
+
 ## Tests
 
 ```bash
