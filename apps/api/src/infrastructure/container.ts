@@ -15,6 +15,7 @@ import { CancelInvitationUseCase as CancelInvitation } from "../application/use-
 import type { GetActiveCreatedInvitationUseCase } from "../application/use-cases/get-active-created-invitation.use-case.js";
 import { GetActiveCreatedInvitationUseCase as GetActiveCreatedInvitation } from "../application/use-cases/get-active-created-invitation.use-case.js";
 import type { GetCurrentUserUseCase } from "../application/use-cases/get-current-user.use-case.js";
+import { CompleteOnboardingUseCase } from "../application/use-cases/complete-onboarding.use-case.js";
 import { GetCurrentUserUseCase as GetCurrentUser } from "../application/use-cases/get-current-user.use-case.js";
 import type { GetInvitationDetailsUseCase } from "../application/use-cases/get-invitation-details.use-case.js";
 import { GetInvitationDetailsUseCase as GetInvitationDetails } from "../application/use-cases/get-invitation-details.use-case.js";
@@ -75,6 +76,7 @@ export type AppUseCases = {
   authenticateGoogle: AuthenticateGoogleUseCase;
   completeGoogleProfile: CompleteGoogleProfileUseCase;
   getCurrentUser: GetCurrentUserUseCase;
+  completeOnboarding: CompleteOnboardingUseCase;
   addFriend: AddFriendUseCase;
   acceptFriendRequest: AcceptFriendRequestUseCase;
   listFriends: ListFriendsUseCase;
@@ -218,6 +220,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
       authenticateGoogle: new AuthenticateGoogle(users, googleIdentity, tokenService),
       completeGoogleProfile: new CompleteGoogleProfile(users, googleIdentity, tokenService),
       getCurrentUser: new GetCurrentUser(users),
+      completeOnboarding: new CompleteOnboardingUseCase(users),
       addFriend: new AddFriend(users, friendships, pushTokens, notifications, realtime),
       acceptFriendRequest: new AcceptFriendRequest(friendships, users, realtime),
       listFriends: new ListFriends(friendships),

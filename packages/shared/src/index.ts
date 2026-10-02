@@ -41,6 +41,7 @@ export const currentUserSchema = z.object({
   id: z.string().uuid(),
   pseudo: pseudoSchema,
   publicTag: publicTagSchema,
+  onboardingCompletedAt: isoDateTimeSchema.nullable().default(null),
   createdAt: isoDateTimeSchema
 });
 export type CurrentUserDto = z.infer<typeof currentUserSchema>;

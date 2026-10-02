@@ -23,4 +23,9 @@ export function registerMeRoutes(app: Hono<AppBindings>, container: AppContainer
 
     return context.json({ ok: true });
   });
+
+  app.post("/me/onboarding/complete", auth, async (context) => {
+    const user = await container.useCases.completeOnboarding.execute(context.get("currentUserId"));
+    return context.json(user);
+  });
 }

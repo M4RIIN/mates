@@ -8,10 +8,11 @@ import { useAuthStore } from "@/infrastructure/storage/auth-store";
 export function useCurrentUser() {
   const api = useApiClient();
   const token = useAuthStore((state) => state.token);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
   const setUser = useAuthStore((state) => state.setUser);
 
   const query = useQuery({
-    queryKey: ["me"],
+    queryKey: ["me", userId],
     enabled: token !== null,
     queryFn: () => api.me()
   });

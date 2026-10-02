@@ -85,6 +85,10 @@ export class ApiClient {
     return this.request("GET", "/me", currentUserSchema);
   }
 
+  completeOnboarding(): Promise<CurrentUserDto> {
+    return this.request("POST", "/me/onboarding/complete", currentUserSchema);
+  }
+
   registerPushToken(input: RegisterPushTokenRequest): Promise<{ ok: boolean }> {
     return this.request("POST", "/me/push-token", okResponseSchema, input);
   }
@@ -182,7 +186,7 @@ export class ApiClient {
   private async request<TOutput>(
     method: "GET" | "POST",
     path: string,
-    schema: z.ZodType<TOutput>,
+    schema: z.ZodType<TOutput, z.ZodTypeDef, unknown>,
     body?: unknown
   ): Promise<TOutput> {
     const headers: Record<string, string> = {

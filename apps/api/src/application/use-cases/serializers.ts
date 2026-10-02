@@ -1,5 +1,6 @@
 import type {
   AuthResponse,
+  CurrentUserDto,
   InvitationDetailsDto,
   InvitationRecipientDto,
   ReceivedInvitationDto
@@ -14,12 +15,17 @@ import type { UserRecord } from "../ports/user-repository.js";
 export function toAuthResponse(user: UserRecord, token: string): AuthResponse {
   return {
     token,
-    user: {
-      id: user.id,
-      pseudo: user.pseudo,
-      publicTag: user.publicTag,
-      createdAt: user.createdAt.toISOString()
-    }
+    user: toCurrentUserDto(user)
+  };
+}
+
+export function toCurrentUserDto(user: UserRecord): CurrentUserDto {
+  return {
+    id: user.id,
+    pseudo: user.pseudo,
+    publicTag: user.publicTag,
+    onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
+    createdAt: user.createdAt.toISOString()
   };
 }
 

@@ -11,6 +11,8 @@ import { ListRow } from "@/presentation/components/ListRow";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
+import { OnboardingGuide } from "@/presentation/components/OnboardingGuide";
+import { ActiveInvitationBanner } from "@/presentation/components/ActiveInvitationBanner";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCurrentUser } from "@/presentation/hooks/useAuth";
@@ -52,6 +54,7 @@ export function HomeScreen() {
   const vibrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdStartedAt = useRef<number | null>(null);
   const activeInvitation = useActiveCreatedInvitation();
+  const currentInvitation = activeInvitation.data;
   const receivedInvitations = useReceivedInvitations();
   const receivedFriendRequests = useReceivedFriendRequests();
   const friendGroups = useFriendGroups();
@@ -77,7 +80,7 @@ export function HomeScreen() {
     [friends.data, selectedAudience]
   );
 
-  useCurrentUser();
+  const currentUser = useCurrentUser();
   useRegisterPushNotifications();
 
   useEffect(() => {
@@ -88,12 +91,6 @@ export function HomeScreen() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (activeInvitation.data !== null && activeInvitation.data !== undefined) {
-      router.replace({ pathname: "/invitations/created/[id]", params: { id: activeInvitation.data.id } });
-    }
-  }, [activeInvitation.data]);
 
   function resetSafety() {
     stopVibrationRamp();
@@ -264,6 +261,15 @@ export function HomeScreen() {
 
   return (
     <Screen contentStyle={[styles.screen, isWide ? styles.screenWide : null, isShort ? styles.screenShort : null]}>
+      {currentUser.data?.onboardingCompletedAt === null ? (
+        <OnboardingGuide key={currentUser.data.id} user={currentUser.data} />
+      ) : null}
+      {currentInvitation != null ? (
+        <ActiveInvitationBanner
+          invitation={currentInvitation}
+          onPress={() => router.push({ pathname: "/invitations/created/[id]", params: { id: currentInvitation.id } })}
+        />
+      ) : null}
       <View style={styles.topBar}>
         <Pressable accessibilityRole="button" onPress={() => setMenuOpen((value) => !value)} style={styles.gearButton}>
           {menuOpen ? <X size={22} color={colors.ink} strokeWidth={3} /> : <Settings size={22} color={colors.ink} strokeWidth={3} />}
@@ -413,7 +419,7 @@ export function HomeScreen() {
         <Bell size={17} color={colors.ink} strokeWidth={3} />
         <Text style={styles.statusText}>
           {activeInvitation.data !== null && activeInvitation.data !== undefined
-            ? "Invitation deja en cours"
+            ? "Un rendez-vous est déjà en cours"
             : isArmed
               ? "Protection retirée"
               : "Swipe la protection, puis maintien"}
@@ -477,6 +483,7 @@ function FluxMenu({
     { label: "Reçues", icon: Inbox, href: "/invitations/received", badgeCount: receivedInvitationCount },
     { label: "Créées", icon: Send, href: "/invitations/created", badgeCount: 0 },
     { label: "Amis", icon: Users, href: "/friends", badgeCount: receivedFriendRequestCount },
+    { label: "Groupes", icon: Users, href: "/friends/groups", badgeCount: 0 },
     { label: "Profil", icon: User, href: "/profile", badgeCount: 0 }
   ] as const;
 

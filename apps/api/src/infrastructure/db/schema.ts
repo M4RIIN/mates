@@ -30,6 +30,7 @@ export const users = pgTable(
     publicTag: text("public_tag").notNull(),
     passwordHash: text("password_hash"),
     googleSub: text("google_sub"),
+    onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({

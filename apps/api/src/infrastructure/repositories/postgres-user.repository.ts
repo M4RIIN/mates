@@ -1,4 +1,4 @@
-import { inArray, eq } from "drizzle-orm";
+import { inArray, eq, sql } from "drizzle-orm";
 import type { CreateUserInput, PublicUserRecord, UserRecord, UserRepository } from "../../application/ports/user-repository.js";
 import type { AppDb } from "../db/client.js";
 import { users } from "../db/schema.js";
@@ -10,6 +10,7 @@ function toUserRecord(row: typeof users.$inferSelect): UserRecord {
     publicTag: row.publicTag,
     passwordHash: row.passwordHash,
     googleSub: row.googleSub,
+    onboardingCompletedAt: row.onboardingCompletedAt,
     createdAt: row.createdAt
   };
 }
@@ -45,6 +46,13 @@ export class PostgresUserRepository implements UserRepository {
 
   async findById(id: string): Promise<UserRecord | null> {
     const [user] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return user === undefined ? null : toUserRecord(user);
+  }
+
+  async completeOnboarding(id: string): Promise<UserRecord | null> {
+    const [user] = await this.db.update(users)
+      .set({ onboardingCompletedAt: sql`coalesce(${users.onboardingCompletedAt}, now())` })
+      .where(eq(users.id, id)).returning();
     return user === undefined ? null : toUserRecord(user);
   }
 

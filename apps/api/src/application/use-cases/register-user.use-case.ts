@@ -4,6 +4,7 @@ import { AppErrors } from "../../domain/shared/app-error.js";
 import type { PasswordHasher } from "../ports/password-hasher.js";
 import type { TokenService } from "../ports/token-service.js";
 import type { UserRepository } from "../ports/user-repository.js";
+import { toAuthResponse } from "./serializers.js";
 
 export type RegisterUserInput = {
   pseudo: string;
@@ -43,14 +44,6 @@ export class RegisterUserUseCase {
 
     const token = await this.tokenService.sign({ userId: user.id });
 
-    return {
-      token,
-      user: {
-        id: user.id,
-        pseudo: user.pseudo,
-        publicTag: user.publicTag,
-        createdAt: user.createdAt.toISOString()
-      }
-    };
+    return toAuthResponse(user, token);
   }
 }

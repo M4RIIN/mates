@@ -4,6 +4,7 @@ export type UserRecord = {
   publicTag: string;
   passwordHash: string | null;
   googleSub: string | null;
+  onboardingCompletedAt: Date | null;
   createdAt: Date;
 };
 
@@ -23,6 +24,7 @@ export type CreateUserInput = {
 export interface UserRepository {
   create(input: CreateUserInput): Promise<UserRecord>;
   findById(id: string): Promise<UserRecord | null>;
+  completeOnboarding(id: string): Promise<UserRecord | null>;
   findByPublicTag(publicTag: string): Promise<UserRecord | null>;
   findByGoogleSub(googleSub: string): Promise<UserRecord | null>;
   existsByPublicTag(publicTag: string): Promise<boolean>;

@@ -30,9 +30,11 @@ function createUserRepository(overrides: Partial<UserRepository> = {}): UserRepo
       publicTag: input.publicTag,
       passwordHash: input.passwordHash ?? null,
       googleSub: input.googleSub ?? null,
+      onboardingCompletedAt: null,
       createdAt: new Date("2026-05-22T08:00:00.000Z")
     }),
     findById: async (): Promise<UserRecord | null> => null,
+    completeOnboarding: async (): Promise<UserRecord | null> => null,
     findByPublicTag: async (): Promise<UserRecord | null> => null,
     findByGoogleSub: async (): Promise<UserRecord | null> => null,
     existsByPublicTag: async (): Promise<boolean> => false,
@@ -57,6 +59,7 @@ describe("Google auth flow", () => {
       publicTag: "nicolas#0047",
       passwordHash: null,
       googleSub: GOOGLE_SUB,
+      onboardingCompletedAt: null,
       createdAt: new Date("2026-05-22T08:00:00.000Z")
     };
     const useCase = new AuthenticateGoogleUseCase(
@@ -88,6 +91,7 @@ describe("Google auth flow", () => {
             publicTag: input.publicTag,
             passwordHash: input.passwordHash ?? null,
             googleSub: input.googleSub ?? null,
+            onboardingCompletedAt: null,
             createdAt: new Date("2026-05-22T08:00:00.000Z")
           };
         }
