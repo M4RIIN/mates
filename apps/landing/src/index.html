@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Application pour organiser des sorties entre amis | Mates</title>
+    <title>Mates — Les bons moments. Les bons amis.</title>
     <meta
       name="description"
       content="Mates est l'application pour organiser des sorties entre amis sans boucle de messages: lieu, heure, invitations, réponses, retard, itinéraire, Uber et réservation."
@@ -13,7 +13,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:site_name" content="Mates" />
-    <meta property="og:title" content="Application pour organiser des sorties entre amis | Mates" />
+    <meta property="og:title" content="Mates — Les bons moments. Les bons amis." />
     <meta
       property="og:description"
       content="L'application mobile pour inviter ses amis, fixer un lieu et une heure, suivre les réponses et se retrouver plus facilement."
@@ -24,7 +24,7 @@
       content="https://mates.app/assets/708087840_1339654864721943_1593232045811572547_n.jpg"
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Application pour organiser des sorties entre amis | Mates" />
+    <meta name="twitter:title" content="Mates — Les bons moments. Les bons amis." />
     <meta
       name="twitter:description"
       content="Mates simplifie l'organisation d'une sortie entre amis avec invitation, réponses, itinéraire et réservation."
@@ -42,7 +42,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./landing.css" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -61,334 +61,67 @@
         }
       }
     </script>
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Comment organiser une sortie entre amis sans boucle de messages ?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Mates permet de choisir un lieu, fixer une heure, inviter un ami ou un groupe, puis suivre les réponses dans une seule interface."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Quelle application pour inviter ses amis à un bar ou un resto ?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Mates sert a creer une invitation avec un lieu precis, une heure, puis a partager itineraire, Uber et reservation si besoin."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Comment savoir qui vient a une soiree ?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "L'application centralise les reponses oui, non et retard estime pour eviter les confirmations dispersees dans plusieurs conversations."
-            }
-          }
-        ]
-      }
-    </script>
   </head>
-  <body>
-    <div class="page-shell">
-      <header class="hero">
-        <nav class="topbar">
-          <a class="brand" href="/">
-            <span class="brand-mark">M</span>
-            <span class="brand-name">Mates</span>
-          </a>
-          <div class="topbar-links" aria-label="Navigation principale">
-            <a class="ghost-link" href="/app-invitation-sortie-amis/">Inviter ses amis</a>
-            <a class="ghost-link" href="/organiser-soiree-amis/">Organiser une soiree</a>
-            <a class="ghost-link" href="#download">Bientot disponible</a>
-          </div>
-        </nav>
-
-        <div class="hero-grid">
-          <section class="hero-copy">
-            <p class="eyebrow">Application sortie entre amis</p>
-            <h1>Application pour organiser des sorties entre amis.</h1>
-            <p class="hero-text">
-              Mates est l'application mobile qui aide un groupe d'amis a se retrouver
-              plus souvent. Tu choisis un lieu, tu fixes une heure, tu invites les
-              bonnes personnes et tout le monde voit enfin la meme info.
-            </p>
-            <div class="hero-actions">
-              <a class="button button-primary" href="#download">Rejoindre la liste d'attente</a>
-              <a class="button button-secondary" href="#features">Voir les fonctionnalites</a>
-            </div>
-            <ul class="hero-points" aria-label="Promesses produit">
-              <li>Invitation entre amis avec lieu, heure et destinataires clairs</li>
-              <li>Reponses oui, non ou en retard dans une seule app</li>
-              <li>Itineraire, Uber et reservation accessibles sans friction</li>
-            </ul>
-          </section>
-
-          <aside class="hero-card" aria-label="Apercu du produit">
-            <div class="phone-frame">
-              <div class="phone-stack">
-                <img
-                  class="hero-shot hero-shot-back"
-                  src="./assets/703724960_1604647940607031_401902957970179084_n.jpg"
-                  alt="Capture de l'ecran d'accueil de Mates"
-                />
-                <img
-                  class="hero-shot hero-shot-front"
-                  src="./assets/705070811_27380084231627582_6238451061523032614_n.jpg"
-                  alt="Capture de l'ecran de detail d'une invitation sur Mates"
-                />
-              </div>
-            </div>
-          </aside>
+  <body class="landing">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header wrap">
+      <a class="logo" href="/" aria-label="Mates, accueil"><span class="logo-mark">m<span>˙</span></span>mates<span class="logo-dot">.</span></a>
+      <nav aria-label="Navigation principale"><a href="#how-it-works">Le concept</a><a href="#features">L’app</a><a href="#faq">Les questions</a></nav>
+      <a class="nav-cta" href="#download">Rejoins la bande <span aria-hidden="true">↗</span></a>
+    </header>
+    <main id="main">
+      <section class="hero-section wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="tag"><span class="status-dot"></span> POUR LES AMIS. POUR DE VRAI.</p>
+          <h1 id="hero-title">Les bons moments.<br />Les bons <span class="word-friends">amis<svg viewBox="0 0 300 22" aria-hidden="true"><path d="M4 15 Q135 -2 294 12 M22 21 Q149 6 272 18" /></svg></span><span class="blue-period">.</span></h1>
+          <p class="hero-description">Un lieu, une heure, ta bande.<br />Mates s’occupe du plan. Vous, des souvenirs.</p>
+          <div class="hero-actions"><a class="btn btn-blue" href="#download">On se retrouve ? <span aria-hidden="true">↗</span></a><a class="text-link" href="#how-it-works">Comment ça marche <span aria-hidden="true">↓</span></a></div>
+          <div class="hero-note"><div class="mini-avatars" aria-hidden="true"><span>✦</span><span>☺</span><span>✿</span><span>♥</span></div><p>La vraie vie, c’est mieux ensemble.<br /><small>Bientôt sur iOS et Android.</small></p></div>
         </div>
-      </header>
-
-      <main>
-        <section class="social-proof">
-          <p>Moins de messages disperses. Plus de vraies sorties entre amis.</p>
-        </section>
-
-        <section class="section intro-section">
-          <div class="section-heading">
-            <p class="eyebrow">Pourquoi cette application</p>
-            <h2>Organiser une sortie entre amis devrait prendre quelques secondes.</h2>
+        <div class="scene-composition">
+          <span class="scene-doodle" aria-hidden="true">✳</span>
+          <div class="scene-frame">
+            <div class="scene-topline"><span><i></i> LA BANDE EST AU COMPLET</span><span>19:30</span></div>
+            <canvas id="friends-scene" width="384" height="300" role="img" aria-label="Une terrasse au coucher du soleil en pixel art : quatre amis lèvent leur verre sous une guirlande lumineuse."></canvas>
+            <div class="scene-bottomline"><span>↳ Les soirées qui commencent par « juste un verre ».</span><span aria-hidden="true">♡</span></div>
           </div>
-          <div class="content-grid">
-            <div class="feature-card prose-card">
-              <p>
-                Aujourd'hui, organiser un apero, un diner, un verre ou une soiree entre
-                amis passe souvent par une boucle de messages qui n'en finit pas. On ne
-                sait plus qui vient, quel lieu a ete retenu, ni a quelle heure il faut
-                partir.
-              </p>
-              <p>
-                Mates transforme ce chaos en un parcours simple: une invitation, un lieu,
-                une heure, un groupe cible, puis des reponses visibles par tous. Le
-                produit est pense pour les groupes d'amis qui veulent se voir souvent
-                sans passer leur temps a s'organiser.
-              </p>
-            </div>
-            <div class="feature-card">
-              <h3>Ce que Mates remplace</h3>
-              <ul class="check-list">
-                <li>Les groupes de messagerie qui tournent en rond</li>
-                <li>Les confirmations perdues entre plusieurs applis</li>
-                <li>Les lieux envoyes trop tard ou a la mauvaise personne</li>
-                <li>Les trajets et reservations cherches au dernier moment</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section class="section narrative" id="features">
-          <div class="section-heading">
-            <p class="eyebrow">Fonctionnalites</p>
-            <h2>Une application mobile pour inviter ses amis et vraiment se rejoindre.</h2>
-          </div>
-          <div class="narrative-grid">
-            <article class="feature-card">
-              <h3>Creer une invitation avec lieu et heure</h3>
-              <p>
-                Choisis un bar, un resto, une adresse ou un point de rendez-vous, puis
-                fixe l'heure. Le groupe recu voit tout de suite les bonnes informations.
-              </p>
-            </article>
-            <article class="feature-card">
-              <h3>Cibler un ami ou un groupe d'amis</h3>
-              <p>
-                Tu peux inviter tous tes amis actifs, une seule personne ou un groupe
-                deja prepare pour les sorties recurrentes.
-              </p>
-            </article>
-            <article class="feature-card">
-              <h3>Suivre les reponses sans relancer</h3>
-              <p>
-                Oui, non, retard estime: l'etat de chaque invitation est centralise pour
-                savoir qui vient vraiment et adapter la sortie.
-              </p>
-            </article>
-            <article class="feature-card">
-              <h3>Partager le trajet rapidement</h3>
-              <p>
-                Chaque personne peut ouvrir l'itineraire vers le lieu, lancer Uber ou
-                retrouver les informations utiles sans revenir dans la conversation.
-              </p>
-            </article>
-            <article class="feature-card">
-              <h3>Faciliter la reservation</h3>
-              <p>
-                Quand la sortie demande une reservation, l'app rapproche les participants
-                du lieu et de l'action, au lieu de multiplier les liens et les rappels.
-              </p>
-            </article>
-            <article class="feature-card">
-              <h3>Recevoir les bons rappels</h3>
-              <p>
-                Les notifications rendent l'information visible au bon moment, sans
-                recreer une fatigue de messages permanents.
-              </p>
-            </article>
-          </div>
-        </section>
-
-        <section class="section steps" id="how-it-works">
-          <div class="section-heading">
-            <p class="eyebrow">Comment organiser une sortie</p>
-            <h2>Trois gestes, et le rendez-vous entre amis existe deja.</h2>
-          </div>
-          <div class="steps-grid">
-            <article class="step-card">
-              <span class="step-number">01</span>
-              <h3>Choisis le spot</h3>
-              <p>Bar, restaurant, terrasse ou adresse privee: tu poses le lieu en quelques secondes.</p>
-            </article>
-            <article class="step-card">
-              <span class="step-number">02</span>
-              <h3>Fixe l'heure et les invites</h3>
-              <p>Tu selectionnes un ami ou un groupe, puis tout le monde recoit l'information claire.</p>
-            </article>
-            <article class="step-card">
-              <span class="step-number">03</span>
-              <h3>Suivez les reponses et retrouvez-vous</h3>
-              <p>Chacun confirme, annonce un retard si besoin, ouvre son trajet et rejoint le lieu plus facilement.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="section gallery-section">
-          <div class="section-heading">
-            <p class="eyebrow">Dans l'app</p>
-            <h2>Des ecrans concus pour savoir quoi faire, vite.</h2>
-          </div>
-          <div class="gallery-grid">
-            <figure class="shot-card shot-card-yellow">
-              <img
-                src="./assets/708087840_1339654864721943_1593232045811572547_n.jpg"
-                alt="Capture de l'ecran d'accueil avec le bouton d'envoi d'invitation"
-              />
-            </figure>
-            <figure class="shot-card shot-card-blue">
-              <img
-                src="./assets/703724960_1604647940607031_401902957970179084_n.jpg"
-                alt="Capture de l'ecran de creation d'une invitation"
-              />
-            </figure>
-            <figure class="shot-card shot-card-red">
-              <img
-                src="./assets/705070811_27380084231627582_6238451061523032614_n.jpg"
-                alt="Capture de l'ecran de suivi d'une invitation creee"
-              />
-            </figure>
-            <figure class="shot-card shot-card-cream">
-              <img
-                src="./assets/701368272_1033775492662256_4952283703477037679_n.jpg"
-                alt="Capture de l'ecran de detail d'un lieu avec reservation et itineraire"
-              />
-            </figure>
-          </div>
-        </section>
-
-        <section class="section cluster-section">
-          <div class="section-heading">
-            <p class="eyebrow">Guides Mates</p>
-            <h2>Des pages dediees pour chaque besoin d'organisation entre amis.</h2>
-          </div>
-          <div class="cluster-grid">
-            <a class="cluster-card" href="/app-invitation-sortie-amis/">
-              <h3>Application pour inviter ses amis</h3>
-              <p>Le meilleur angle si ton besoin principal est d'envoyer une invitation claire et rapide.</p>
-            </a>
-            <a class="cluster-card" href="/organiser-soiree-amis/">
-              <h3>Organiser une soiree entre amis</h3>
-              <p>Pour les aperos, diners, bars et sorties qui demandent un peu plus de coordination.</p>
-            </a>
-            <a class="cluster-card" href="/application-groupe-amis/">
-              <h3>Application pour groupe d'amis</h3>
-              <p>Pour preparer des cercles recurrents et cibler les bonnes personnes a chaque sortie.</p>
-            </a>
-            <a class="cluster-card" href="/application-rendez-vous-amis/">
-              <h3>Application pour fixer un rendez-vous entre amis</h3>
-              <p>Pour aligner lieu, heure, confirmations et retards dans la meme interface.</p>
-            </a>
-            <a class="cluster-card" href="/application-sortie-bar-resto/">
-              <h3>Application pour organiser un bar ou un resto entre amis</h3>
-              <p>Pour les sorties ou reservation, trajet et point de rencontre comptent vraiment.</p>
-            </a>
-          </div>
-        </section>
-
-        <section class="section faq-section">
-          <div class="section-heading">
-            <p class="eyebrow">FAQ</p>
-            <h2>Questions frequentes sur l'organisation de sorties entre amis.</h2>
-          </div>
-          <div class="faq-list">
-            <details class="faq-card" open>
-              <summary>Comment organiser une sortie entre amis facilement ?</summary>
-              <p>
-                Le plus efficace est de centraliser lieu, heure et confirmations dans un
-                seul outil. Mates est pense pour ca: une invitation claire, une audience
-                precise et un suivi des reponses sans relance manuelle.
-              </p>
-            </details>
-            <details class="faq-card">
-              <summary>Quelle application pour inviter ses amis a un resto ou un bar ?</summary>
-              <p>
-                Mates cible ce cas d'usage: choisir le lieu, envoyer l'invitation,
-                suivre qui vient, puis aider chacun a reserver ou a ouvrir son itineraire.
-              </p>
-            </details>
-            <details class="faq-card">
-              <summary>Comment savoir qui vient vraiment a une soiree ?</summary>
-              <p>
-                L'app rassemble les reponses oui, non et retard estime sur un ecran
-                unique. Le createur sait rapidement si la sortie est confirmee.
-              </p>
-            </details>
-            <details class="faq-card">
-              <summary>Est-ce utile si mon groupe utilise deja une messagerie ?</summary>
-              <p>
-                Oui. Les messageries servent a discuter, mais pas a structurer une
-                invitation. Mates apporte le cadre: lieu, heure, destinataires, reponses
-                et acces rapide au trajet.
-              </p>
-            </details>
-          </div>
-        </section>
-
-        <section class="section cta-section" id="download">
-          <div class="cta-card">
-            <div>
-              <p class="eyebrow">Bientot disponible</p>
-              <h2>L'application qui aide les amis a se voir pour de vrai.</h2>
-              <p>
-                Mates arrive bientot sur mobile. Si tu veux organiser plus facilement
-                tes sorties, diners, aperos et rendez-vous entre amis, laisse-nous un
-                point de contact.
-              </p>
-            </div>
-            <a class="button button-primary" href="mailto:contact.mates@equipe4.fr">contact.mates@equipe4.fr</a>
-          </div>
-        </section>
-      </main>
-
-      <footer class="site-footer">
-        <p class="footer-title">Explorer Mates</p>
-        <div class="footer-links">
-          <a href="/app-invitation-sortie-amis/">Inviter ses amis</a>
-          <a href="/organiser-soiree-amis/">Organiser une soiree</a>
-          <a href="/application-groupe-amis/">Groupe d'amis</a>
-          <a href="/application-rendez-vous-amis/">Rendez-vous entre amis</a>
-          <a href="/application-sortie-bar-resto/">Bar et resto entre amis</a>
+          <div class="floating-card invitation-float"><span class="float-icon" aria-hidden="true">↗</span><div><strong>Un verre ce soir ?</strong><span>La terrasse · 19:30</span></div><span class="tiny-avatar" aria-hidden="true">☺</span></div>
+          <div class="floating-card response-float"><span class="check-icon" aria-hidden="true">✓</span><div><strong>Tout le monde vient.</strong><span>Ça, c’est un bon plan.</span></div></div>
+          <div class="scene-sticker" aria-hidden="true">IRL<br /><span>&gt; URL</span></div>
+          <button class="motion-toggle" type="button" aria-pressed="false" aria-label="Mettre les animations en pause"><span aria-hidden="true">Ⅱ</span> Pause</button>
         </div>
-      </footer>
-    </div>
-
-    <script src="./main.js"></script>
+      </section>
+      <div class="good-times-strip" aria-label="Des moments entre amis"><div><span>LES « ON SE CAPTE ? »</span><b aria-hidden="true">✳</b><span>QUI DEVIENNENT DES « J’ARRIVE ! »</span><b aria-hidden="true">✳</b><span>MOINS DE BLA-BLA. PLUS DE TOI + MOI.</span><b aria-hidden="true">✳</b></div></div>
+      <section class="concept-section wrap" id="how-it-works">
+        <div class="section-heading reveal"><p class="eyebrow">LE PLAN EST SIMPLE</p><h2>Fini le « on se voit bientôt ».<br />Place au <em>« à tout à l’heure ».</em></h2><p>Les groupes de discussion, c’est pour discuter.<br />Pour se retrouver, il y a Mates.</p></div>
+        <div class="steps-grid">
+          <article class="step reveal"><div class="step-illustration spot-art" aria-hidden="true"><div class="location-pin">●</div><span class="map-road road-one"></span><span class="map-road road-two"></span><span class="map-label">Le spot parfait</span><span class="art-spark">✦</span></div><p class="step-label">01 / LE SPOT</p><h3>Ton endroit.<br />Votre rendez-vous.</h3><p>Une terrasse, un resto ou ton canapé. Choisis le lieu et l’heure, le plan est posé.</p></article>
+          <article class="step reveal"><div class="step-illustration invite-art" aria-hidden="true"><div class="invite-ticket"><span>CE SOIR, ON SORT.</span><strong>19:30 <b>↗</b></strong><div>TOI + TA BANDE</div></div><span class="art-spark">✳</span></div><p class="step-label">02 / LA BANDE</p><h3>Les bonnes personnes.<br />En un seul geste.</h3><p>Un ami, ton groupe habituel ou toute la bande. L’invitation arrive, tout est clair.</p></article>
+          <article class="step reveal"><div class="step-illustration cheers-art" aria-hidden="true"><span class="pixel-glass glass-left"></span><span class="pixel-glass glass-right"></span><span class="cheers-spark">✦</span><span class="cheers-label">À la vôtre !</span></div><p class="step-label">03 / LA VRAIE VIE</p><h3>Les réponses arrivent.<br />Les amis aussi.</h3><p>Qui vient, qui a un peu de retard, comment y aller. Tout est là. Profitez du moment.</p></article>
+        </div>
+      </section>
+      <section class="app-section" id="features"><div class="app-grid wrap">
+        <div class="app-copy reveal"><p class="eyebrow">LE QG DE VOS SORTIES</p><h2>Tout pour se voir.<br /><em>Rien pour se prendre<br />la tête.</em></h2><p>Le prochain bon souvenir commence par une petite invitation.</p><div class="app-features"><div><span aria-hidden="true">↗</span><p><strong>Une invitation qui dit tout.</strong>Le lieu, l’heure et les invités. Au même endroit.</p></div><div><span aria-hidden="true">✓</span><p><strong>Tu sais qui sera là.</strong>Les réponses et les retards, sans les relances.</p></div><div><span aria-hidden="true">⌁</span><p><strong>Du plan au point de rendez-vous.</strong>Itinéraire, Uber et réservation à portée de main.</p></div></div><a class="btn btn-yellow" href="#download">Je veux être de la partie <span aria-hidden="true">↗</span></a></div>
+        <div class="phone-composition reveal"><span class="phone-orbit orbit-one" aria-hidden="true"></span><span class="phone-orbit orbit-two" aria-hidden="true"></span><div class="phone"><div class="phone-notch"></div><img src="./assets/705070811_27380084231627582_6238451061523032614_n.jpg" width="590" height="1280" alt="L’application Mates : le détail d’une invitation entre amis." loading="lazy" /></div><div class="phone-label label-top"><span aria-hidden="true">✦</span> Le plan de ce soir ? Réglé.</div><div class="phone-label label-bottom"><span aria-hidden="true">♡</span> Les amis, c’est ici.</div><span class="phone-spark" aria-hidden="true">✳</span></div>
+      </div></section>
+      <section class="manifesto-section wrap">
+        <div class="manifesto-copy reveal"><p class="eyebrow">LE MEILLEUR RÉSEAU SOCIAL ?</p><h2>Une table.<br />Des amis.<br /><em>Et vous autour.</em></h2><p>Les apéros improvisés. Les dîners qui s’éternisent.<br />Les « une dernière et on rentre ».<br />On a créé Mates pour qu’il y en ait plus.</p><span class="manifesto-star" aria-hidden="true">✳</span></div>
+        <div class="terrace-panorama reveal">
+          <div class="panorama-heading"><span><i></i> LE BONHEUR A UNE ADRESSE.</span><span>QUELQUE PART, ENSEMBLE ↙</span></div>
+          <div class="panorama-window"><canvas id="terrace-scene" width="768" height="300" role="img" aria-label="Un panorama animé en pixel art : une terrasse chaleureuse, des amis qui trinquent, un chat et la ville au soleil couchant."></canvas></div>
+          <div class="panorama-caption"><span>Pas besoin d’un grand plan. Juste des bonnes personnes.</span><span aria-hidden="true">À la vôtre ♡</span></div>
+        </div>
+      </section>
+      <section class="faq-section wrap" id="faq"><div class="faq-heading reveal"><p class="eyebrow">ON VOUS VOIT VENIR</p><h2>Deux ou trois<br /><em>petites questions.</em></h2></div><div class="faq-list reveal">
+        <details><summary>Mates, c’est quoi exactement ?<span aria-hidden="true">+</span></summary><p>Une application mobile pour organiser des sorties entre amis. Tu choisis un lieu, une heure et tes invités. Mates rassemble les réponses et les informations utiles pour vous retrouver.</p></details>
+        <details><summary>Et si on a déjà un groupe de discussion ?<span aria-hidden="true">+</span></summary><p>Gardez-le pour les discussions et les blagues. Mates vous aide à retrouver le plan, savoir qui vient et ouvrir l’itinéraire, sans fouiller dans les messages.</p></details>
+        <details><summary>Je peux inviter juste un ami ?<span aria-hidden="true">+</span></summary><p>Oui ! Un tête-à-tête, un petit groupe ou toute la bande : tu choisis qui reçoit ton invitation. Tu peux aussi préparer des groupes pour tes sorties habituelles.</p></details>
+        <details><summary>C’est disponible quand ?<span aria-hidden="true">+</span></summary><p>Mates arrive bientôt sur iOS et Android. Écris-nous à <a href="mailto:contact.mates@equipe4.fr">contact.mates@equipe4.fr</a> pour nous faire part de ton intérêt et en savoir plus sur le lancement.</p></details>
+      </div></section>
+      <section class="join-section" id="download"><div class="wrap join-inner reveal"><span class="join-star" aria-hidden="true">✳</span><p class="tag"><span class="status-dot"></span> BIENTÔT SUR IOS & ANDROID</p><h2>Ta bande.<br />Votre prochain <em>bon moment.</em></h2><p>Les meilleurs plans commencent par quelqu’un qui propose.<br />Et si cette fois, c’était toi ?</p><a class="btn btn-ink" href="mailto:contact.mates@equipe4.fr?subject=Je%20veux%20rejoindre%20la%20bande%20Mates">Rejoins la bande <span aria-hidden="true">↗</span></a><small>Écris-nous pour en savoir plus sur le lancement.</small></div></section>
+    </main>
+    <footer class="footer wrap"><div class="footer-top"><a class="logo" href="/">mates<span class="logo-dot">.</span></a><p>Moins d’écran. Plus de moments.</p><a href="mailto:contact.mates@equipe4.fr">On se parle ? ↗</a></div><div class="footer-guides" aria-label="Explorer Mates"><a href="/app-invitation-sortie-amis/">Inviter ses amis</a><a href="/organiser-soiree-amis/">Organiser une soirée</a><a href="/application-groupe-amis/">Groupes d’amis</a><a href="/application-rendez-vous-amis/">Rendez-vous entre amis</a><a href="/application-sortie-bar-resto/">Bars & restos</a></div><div class="footer-bottom"><span>© 2026 Mates</span><span>Fait pour les vrais liens. ♡</span><a href="#hero-title">Tout là-haut ↑</a></div></footer>
+    <script src="./main.js" defer></script>
+    <script src="./scene.js" defer></script>
   </body>
 </html>

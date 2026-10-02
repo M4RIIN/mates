@@ -26,7 +26,7 @@ const mimeTypes = new Map([
   [".webp", "image/webp"]
 ]);
 
-createServer(async (request, response) => {
+const server = createServer(async (request, response) => {
   try {
     const requestPath = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`).pathname;
     const normalizedPath = requestPath === "/" ? "/index.html" : requestPath;
@@ -47,9 +47,27 @@ createServer(async (request, response) => {
     response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
     response.end(`Server error: ${error instanceof Error ? error.message : "unknown error"}`);
   }
-}).listen(port, () => {
-  console.log(`Landing server running on http://localhost:${port} from ${baseDir}`);
 });
+
+let activePort = port;
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE" && isDev && process.env.PORT === undefined && activePort < port + 10) {
+    console.log(`Port ${activePort} is already in use, trying ${activePort + 1}…`);
+    activePort += 1;
+    server.listen(activePort);
+    return;
+  }
+
+  console.error(error.code === "EADDRINUSE"
+    ? `Port ${activePort} is already in use. Stop the existing server or choose another port with PORT=<port>.`
+    : `Landing server failed: ${error.message}`);
+  process.exitCode = 1;
+});
+server.on("listening", () => {
+  const address = server.address();
+  console.log(`Landing server running on http://localhost:${address.port} from ${baseDir}`);
+});
+server.listen(activePort);
 
 function buildCandidates(requestPath) {
   if (path.extname(requestPath).length > 0) {
