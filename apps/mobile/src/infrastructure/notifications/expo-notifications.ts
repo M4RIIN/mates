@@ -1,5 +1,6 @@
 import * as Device from "expo-device";
 import Constants from "expo-constants";
+import { isRunningInExpoGo } from "expo";
 import { Platform } from "react-native";
 import type { PushPlatform } from "@mates/shared";
 
@@ -9,7 +10,7 @@ export type DevicePushToken = {
 };
 
 export async function getDevicePushToken(): Promise<DevicePushToken | null> {
-  if (Platform.OS === "web" || !Device.isDevice) {
+  if (Platform.OS === "web" || isRunningInExpoGo() || !Device.isDevice) {
     return null;
   }
 

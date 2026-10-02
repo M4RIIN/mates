@@ -1,6 +1,6 @@
 # Mates
 
-Monorepo pnpm pour une app mobile iOS/Android React Native Expo et une API Hono/PostgreSQL en architecture propre.
+Monorepo pnpm pour une app mobile iOS/Android React Native Expo SDK 57 et une API Hono/PostgreSQL en architecture propre.
 
 ## Structure
 
@@ -8,11 +8,14 @@ Monorepo pnpm pour une app mobile iOS/Android React Native Expo et une API Hono/
 apps/
   api/      Hono + TypeScript + Drizzle + PostgreSQL + JWT + notifications
   mobile/   Expo + Expo Router + Zustand + TanStack Query
+  landing/  Site de présentation statique
 packages/
   shared/   DTO, schémas Zod et types partagés
 ```
 
 ## Installation
+
+Pré-requis : Node.js 22 et PostgreSQL en cours d'exécution (port 5432 par défaut).
 
 ```bash
 corepack enable
@@ -23,6 +26,15 @@ pnpm --filter @mates/shared build
 
 ## Variables d’environnement
 
+Copier les exemples avant le premier lancement :
+
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+Dans `apps/api/.env`, remplacer `JWT_SECRET` par un secret aléatoire (générable avec `openssl rand -hex 48`). Pour démarrer sans configuration OAuth Google, définir `AUTH_GOOGLE_ENABLED=false` et conserver `AUTH_PASSWORD_ENABLED=true`. Le mobile utilise alors la connexion et l'inscription par mot de passe avec `EXPO_PUBLIC_AUTH_PASSWORD_ENABLED=true`. Pour activer Google, renseigner les identifiants OAuth dans les deux fichiers et remettre `AUTH_GOOGLE_ENABLED=true`.
+
 API, fichier `apps/api/.env` :
 
 ```bash
@@ -30,6 +42,8 @@ PORT=3000
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/mates
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN_DAYS=30
+AUTH_PASSWORD_ENABLED=true
+AUTH_GOOGLE_ENABLED=false
 # Renseigner GOOGLE_CLIENT_IDS ou les variables par plateforme.
 GOOGLE_CLIENT_IDS=
 GOOGLE_WEB_CLIENT_ID=
@@ -50,6 +64,7 @@ Mobile, fichier `apps/mobile/.env` :
 
 ```bash
 EXPO_PUBLIC_API_URL=http://localhost:3000
+EXPO_PUBLIC_AUTH_PASSWORD_ENABLED=true
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=
 EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=
 EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
@@ -61,7 +76,7 @@ EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=
 
 ## Base de données
 
-Créer une base PostgreSQL puis lancer :
+Créer une base PostgreSQL si elle n'existe pas (`createdb mates` avec une installation locale), adapter `DATABASE_URL` à ses identifiants, puis lancer :
 
 ```bash
 pnpm db:migrate
@@ -77,13 +92,28 @@ API :
 pnpm dev:api
 ```
 
-Mobile :
+Mobile, dans un second terminal :
 
 ```bash
 pnpm dev:mobile
 ```
 
+Vérifier l'API sur `http://localhost:3000/health` (réponse attendue : `{"ok":true}`). `pnpm dev:mobile` cible Expo Go : utiliser une version compatible SDK 57 et scanner le QR code. Dans le terminal Expo, appuyer sur `w` pour le navigateur, `i` pour le simulateur iOS ou `a` pour Android.
+
+Les Live Activities (`expo-widgets`) et les notifications push sont désactivées par l'app dans Expo Go. Elles restent disponibles dans les builds natifs. Pour utiliser un build de développement installé sur l'appareil, lancer `pnpm --filter @mates/mobile start:dev-client`. Après la migration vers SDK 57, reconstruire les anciens builds de développement.
+
+Pour lancer directement la version web :
+
+```bash
+pnpm --filter @mates/shared build
+pnpm --filter @mates/mobile start --web
+```
+
+Sur un téléphone physique, remplacer `localhost` dans `apps/mobile/.env` par l'adresse IP locale de l'ordinateur et connecter les deux appareils au même réseau Wi-Fi.
+
 Sur simulateur Android, remplacer `EXPO_PUBLIC_API_URL=http://localhost:3000` par `http://10.0.2.2:3000` si l’API tourne sur la machine hôte.
+
+Le site de présentation se lance séparément avec `pnpm dev:landing`, sur `http://localhost:4321`.
 
 ## Déploiement iOS TestFlight
 

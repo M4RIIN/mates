@@ -28,7 +28,8 @@
             }
           ]
         }
-      ]
+      ],
+      "expo-font"
     ],
     "ios": {
       "icon": "./assets/icon.png",

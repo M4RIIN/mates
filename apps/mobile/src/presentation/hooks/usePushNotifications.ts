@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { router } from "expo-router";
+import { isRunningInExpoGo } from "expo";
 import { Platform } from "react-native";
 import { useApiClient } from "./useApiClient";
 import { getDevicePushToken } from "@/infrastructure/notifications/expo-notifications";
@@ -43,7 +44,7 @@ export function useNotificationNavigation() {
   const handledNotificationRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === "web" || !hasHydrated || token === null) {
+    if (Platform.OS === "web" || isRunningInExpoGo() || !hasHydrated || token === null) {
       return;
     }
 
