@@ -53,8 +53,12 @@ export function useCreateInvitation() {
     mutationFn: (input: CreateInvitationRequest) => api.createInvitation(input),
     onSuccess: async (invitation) => {
       if (Platform.OS === "ios") {
-        const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
-        await liveActivities.syncCreatedInvitationLiveActivity(invitation);
+        try {
+          const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
+          await liveActivities.syncCreatedInvitationLiveActivity(invitation);
+        } catch (error: unknown) {
+          console.warn("Failed to sync created invitation live activity", error);
+        }
       }
 
       await Promise.all([
@@ -91,8 +95,12 @@ export function useCancelInvitation(id: string) {
     mutationFn: () => api.cancelInvitation(id),
     onSuccess: async (invitation) => {
       if (Platform.OS === "ios") {
-        const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
-        await liveActivities.endInvitationLiveActivity(invitation.id);
+        try {
+          const liveActivities = await import("@/infrastructure/live-activities/invitation-live-activity");
+          await liveActivities.endInvitationLiveActivity(invitation.id);
+        } catch (error: unknown) {
+          console.warn("Failed to end invitation live activity", error);
+        }
       }
 
       queryClient.setQueryData(["invitations", "created", "active"], null);

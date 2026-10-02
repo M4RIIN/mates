@@ -15,19 +15,19 @@ export async function getDevicePushToken(): Promise<DevicePushToken | null> {
   }
 
   const Notifications = await loadExpoNotifications();
+  // Android 13 requires a channel before requesting notification permission.
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX
+    });
+  }
   const currentPermissions = await Notifications.getPermissionsAsync();
   const finalPermissions =
     currentPermissions.status === "granted" ? currentPermissions : await Notifications.requestPermissionsAsync();
 
   if (finalPermissions.status !== "granted") {
     return null;
-  }
-
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.MAX
-    });
   }
 
   const projectId = getExpoProjectId();
@@ -39,7 +39,7 @@ export async function getDevicePushToken(): Promise<DevicePushToken | null> {
   };
 }
 
-async function loadExpoNotifications() {
+export async function loadExpoNotifications() {
   const Notifications = await import("expo-notifications");
   Notifications.setNotificationHandler({
     handleNotification: async () => ({

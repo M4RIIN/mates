@@ -180,12 +180,12 @@ export async function endInvitationLiveActivity(invitationId?: string) {
     return;
   }
 
-  clearInvitationLiveActivityEndTimer();
-
   const currentInvitationId = await AsyncStorage.getItem(LIVE_ACTIVITY_STORAGE_KEY);
   if (invitationId !== undefined && currentInvitationId !== invitationId) {
     return;
   }
+
+  clearInvitationLiveActivityEndTimer();
 
   const instances = InvitationActivity.getInstances();
   await Promise.all(instances.map((instance) => instance.end("immediate")));

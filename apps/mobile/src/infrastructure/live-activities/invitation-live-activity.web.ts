@@ -6,3 +6,5 @@ export async function syncInvitationLiveActivity(
 ) {}
 
 export async function endInvitationLiveActivity(_invitationId?: string) {}
+
+export async function syncCreatedInvitationLiveActivity(_invitation: InvitationDetailsDto) {}

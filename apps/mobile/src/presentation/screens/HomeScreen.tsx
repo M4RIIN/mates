@@ -20,7 +20,7 @@ import { useFriendGroups, useFriends, useReceivedFriendRequests } from "@/presen
 import { countUpcomingInvitations, useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { useReceivedInvitations } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
-import { useRegisterPushNotifications } from "@/presentation/hooks/usePushNotifications";
+import { syncCreatedInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { borders, colors, layout, radii, spacing } from "@/shared/theme";
 
 const guardTravel = 138;
@@ -81,7 +81,12 @@ export function HomeScreen() {
   );
 
   const currentUser = useCurrentUser();
-  useRegisterPushNotifications();
+  useEffect(() => {
+    if (currentInvitation == null) return;
+    syncCreatedInvitationLiveActivity(currentInvitation).catch((error: unknown) => {
+      console.warn("Failed to sync created invitation live activity", error);
+    });
+  }, [currentInvitation]);
 
   useEffect(() => {
     return () => {

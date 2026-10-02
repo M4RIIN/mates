@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/infrastructure/api/query-client";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
-import { useNotificationNavigation } from "@/presentation/hooks/usePushNotifications";
+import { useNotificationNavigation, useRegisterPushNotifications } from "@/presentation/hooks/usePushNotifications";
 import { useRealtimeUpdates } from "@/presentation/hooks/useRealtimeUpdates";
 import { colors } from "@/shared/theme";
 
@@ -11,11 +11,11 @@ export default function RootLayout() {
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const isAuthenticated = hasHydrated && token !== null;
   const isGuest = hasHydrated && token === null;
-  useNotificationNavigation();
 
   return (
     <QueryClientProvider client={queryClient}>
       <RealtimeBridge />
+      <NotificationBridge />
       <Stack
         screenOptions={{
           headerBackTitle: "Retour",
@@ -60,5 +60,11 @@ export default function RootLayout() {
 
 function RealtimeBridge() {
   useRealtimeUpdates();
+  return null;
+}
+
+function NotificationBridge() {
+  useRegisterPushNotifications();
+  useNotificationNavigation();
   return null;
 }

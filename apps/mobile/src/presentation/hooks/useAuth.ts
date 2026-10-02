@@ -89,7 +89,9 @@ export function useLogout() {
   const clearSession = useAuthStore((state) => state.clearSession);
 
   return async () => {
-    await endLiveActivityOnLogout();
+    await endLiveActivityOnLogout().catch((error: unknown) => {
+      console.warn("Failed to end invitation live activity", error);
+    });
     clearSession();
     await queryClient.clear();
   };

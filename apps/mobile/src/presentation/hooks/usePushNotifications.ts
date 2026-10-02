@@ -1,39 +1,47 @@
 import { useEffect, useRef } from "react";
 import { router } from "expo-router";
 import { isRunningInExpoGo } from "expo";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { useApiClient } from "./useApiClient";
-import { getDevicePushToken } from "@/infrastructure/notifications/expo-notifications";
+import { getDevicePushToken, loadExpoNotifications } from "@/infrastructure/notifications/expo-notifications";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
 
 export function useRegisterPushNotifications() {
   const api = useApiClient();
   const token = useAuthStore((state) => state.token);
-  const registeredTokenRef = useRef<string | null>(null);
+  const registeredTokenRef = useRef<{ session: string; pushToken: string } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+    let isRegistering = false;
 
     async function register() {
-      if (token === null) {
+      if (token === null || isRegistering) {
         return;
       }
-
-      const deviceToken = await getDevicePushToken();
-      if (!isMounted || deviceToken === null || registeredTokenRef.current === deviceToken.token) {
-        return;
+      isRegistering = true;
+      try {
+        const deviceToken = await getDevicePushToken();
+        if (!isMounted || deviceToken === null || (
+          registeredTokenRef.current?.session === token && registeredTokenRef.current.pushToken === deviceToken.token
+        )) return;
+        await api.registerPushToken(deviceToken);
+        if (isMounted) registeredTokenRef.current = { session: token, pushToken: deviceToken.token };
+      } finally {
+        isRegistering = false;
       }
-
-      await api.registerPushToken(deviceToken);
-      registeredTokenRef.current = deviceToken.token;
     }
 
     register().catch((error: unknown) => {
       console.warn("Push token registration failed", error);
     });
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") register().catch((error: unknown) => console.warn("Push token registration failed", error));
+    });
 
     return () => {
       isMounted = false;
+      subscription.remove();
     };
   }, [api, token]);
 }
@@ -85,7 +93,7 @@ export function useNotificationNavigation() {
       }
     }
 
-    const notificationSubscriptionPromise = import("expo-notifications")
+    const notificationSubscriptionPromise = loadExpoNotifications()
       .then((Notifications) => {
         if (isCancelled) {
           return null;

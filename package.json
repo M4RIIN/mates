@@ -20,5 +20,8 @@
     "start:landing": "pnpm --filter @mates/landing start",
     "deploy:ios:testflight": "pnpm build:mobile && cd apps/mobile && pnpm dlx eas-cli@latest build --platform ios --profile production --auto-submit",
     "migrate:api": "pnpm --filter @mates/api db:migrate"
+  },
+  "dependencies": {
+    "expo": "~57.0.26"
   }
 }

@@ -78,6 +78,8 @@ export function RespondInvitationScreen() {
         await syncInvitationLiveActivity(invitation.data, {
           responseStatus: "yes",
           delayMinutes: delayMinutes ?? null
+        }).catch((error: unknown) => {
+          console.warn("Failed to sync invitation live activity", error);
         });
       }
       router.back();
@@ -93,7 +95,9 @@ export function RespondInvitationScreen() {
 
     try {
       await respond.mutateAsync({ status: "no" });
-      await endInvitationLiveActivity(id);
+      await endInvitationLiveActivity(id).catch((error: unknown) => {
+        console.warn("Failed to end invitation live activity", error);
+      });
       router.back();
     } catch (error: unknown) {
       Alert.alert("Réponse impossible", getErrorMessage(error));
