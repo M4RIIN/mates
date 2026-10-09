@@ -1,4 +1,9 @@
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Alert, Share, StyleSheet, Text, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import QRCode from "react-native-qrcode-svg";
+import { profileLink } from "@/domain/profile-links";
+import { appConfig } from "@/shared/config";
 import { router } from "expo-router";
 import { LogOut } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
@@ -12,6 +17,21 @@ export function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
   useCurrentUser();
+  const [message, setMessage] = useState<string | null>(null);
+  let link: string | null = null;
+  try { if (user?.publicTag) link = profileLink(user.publicTag, appConfig.profileShareBaseUrl); } catch { /* Keep identifier available if config is invalid. */ }
+
+  async function copy(value: string, label: string) {
+    try {
+      const copied = await Clipboard.setStringAsync(value);
+      setMessage(copied ? label : "Copie impossible. Sélectionne le texte pour le copier.");
+    } catch { setMessage("Copie impossible. Sélectionne le texte pour le copier."); }
+  }
+  async function shareProfile() {
+    if (!link) return;
+    try { await Share.share({ message: `Retrouve-moi sur Mates : ${link}\nMon identifiant : ${user?.publicTag}` }); }
+    catch { setMessage("Partage impossible. Tu peux copier le lien ci-dessous."); }
+  }
 
   async function submitLogout() {
     await logout();
@@ -36,6 +56,18 @@ export function ProfileScreen() {
           </Text>
         </View>
       </View>
+      {user?.publicTag ? <AppButton title="Copier mon identifiant" variant="secondary" onPress={() => { void copy(user.publicTag, "Identifiant copié."); }} /> : null}
+      {link ? <View style={styles.panel}>
+        <Text style={styles.label}>Partager mon profil</Text>
+        <Text style={styles.help}>Ton ami ouvre ce lien ou scanne ce QR code, puis choisit de t’envoyer une demande.</Text>
+        <View accessible accessibilityRole="image" accessibilityLabel="QR code de mon profil, également disponible par le lien et le bouton Copier" style={styles.qr}>
+          <QRCode value={link} size={180} quietZone={12} ecl="M" color="#000000" backgroundColor="#ffffff" />
+        </View>
+        <Text selectable style={styles.help}>{link}</Text>
+        <AppButton title="Partager mon profil" onPress={shareProfile} />
+        <AppButton title="Copier le lien" variant="secondary" onPress={() => { void copy(link, "Lien copié."); }} />
+      </View> : <Text style={styles.help}>Le partage par lien n’est pas disponible. Utilise ton identifiant public.</Text>}
+      {message ? <Text accessibilityLiveRegion="polite" style={styles.help}>{message}</Text> : null}
       <AppButton
         title="Déconnexion"
         onPress={() => {
@@ -52,6 +84,8 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  qr: { alignSelf: "center", backgroundColor: "#ffffff", padding: 4 },
+  help: { color: colors.text, fontSize: 14, lineHeight: 21 },
   panel: {
     borderRadius: radii.md,
     backgroundColor: colors.surface,

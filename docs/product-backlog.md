@@ -296,7 +296,7 @@ Restant avant clôture : clavier, marges de sécurité, caractères agrandis et 
 
 | ID | Ticket | Priorité | Statut |
 | --- | --- | --- | --- |
-| PR01 | Partager son profil par lien et QR code | P1 | À faire |
+| PR01 | Partager son profil par lien et QR code | P1 | À vérifier |
 | PR02 | Inviter par lien avec réponse web | P1 | À faire |
 | PR03 | Autoriser demain et les dates futures | P1 | À faire |
 | PR04 | Modifier le lieu et l’heure après envoi | P1 | À faire |
@@ -311,15 +311,29 @@ Restant avant clôture : clavier, marges de sécurité, caractères agrandis et 
 
 ### PR01 Partage du profil
 
-Ajouter Partager mon profil et un QR code ; conserver la recherche par tag.
+Implémenté le 9 octobre 2026 ; déploiement Railway et validations natives restants.
 
-- [ ] Le lien ouvre le bon profil et permet d’envoyer une demande d’amitié.
+Ajouter Partager mon profil et un QR code ; conserver la recherche par identifiant.
 
-- [ ] Un utilisateur non connecté retrouve la destination après connexion.
+- [x] Le lien ouvre le bon profil et permet d’envoyer une demande d’amitié.
 
-- [ ] La demande ne s’accepte pas automatiquement.
+- [x] Un utilisateur non connecté retrouve la destination après connexion ou inscription.
 
-- [ ] Le tag reste consultable et copiable.
+- [x] La demande ne s’accepte pas automatiquement.
+
+- [x] L’identifiant reste consultable et copiable.
+
+Décision retenue avec l’utilisateur : l’API héberge directement les pages publiques et le parcours web sur https://matesapi-production.up.railway.app. Aucun changement de landing nécessaire. Les liens sont /u/pseudo%231234 ; le caractère # est encodé. Le domaine est configurable via EXPO_PUBLIC_PROFILE_SHARE_BASE_URL.
+
+Réalisation : Profil propose le QR code, Partager mon profil, Copier le lien et Copier mon identifiant. Le partage de l’état sans amis utilise aussi le lien. L’API Hono rend une page HTML avec le pseudo et l’identifiant vérifiés, les choix Continuer dans le navigateur et Ouvrir dans l’application. L’application web est exportée sous /app et servie par l’API. La connexion et l’inscription se déroulent dans la destination du profil, conservée dans l’URL ; aucune demande n’est envoyée automatiquement. L’envoi reste volontaire, verrouillé contre les doubles appuis, et l’acceptation reste nécessaire. Profil personnel, amis existants et demandes en attente ont des états distincts ; une demande reçue mène vers Amis pour y répondre.
+
+Les pages publiques distinguent lien invalide (400), profil introuvable (404) et indisponibilité (503). Les champs HTML sont échappés ; seules les informations publiques sont affichées. Pas d’indexation ni de cache de profil. Le build API inclut l’export web ; livrer apps/api/public/app avec dist et migrations. Configuration et livraison documentées dans README.md.
+
+Validation : typecheck mobile et build API avec export web sous /app réussis ; 56 tests réussis, 3 tests BDD ignorés sans TEST_DATABASE_URL. Cinq tests de partage couvrent encodage des liens, profil HTML sans authentification ni mutation d’amitié, erreurs 400/404/503, échappement HTML et protection des fichiers web. Essais web sur Hono avec comptes fictifs : page publique, profil du destinataire avant connexion, retour au même profil après connexion et après inscription manuelles, zéro envoi avant clic explicite, erreur puis nouvelle tentative, une seule demande créée restant pending ; profil personnel ne proposant pas de demande à soi-même. QR affiché et confirmations de copie du lien et de l’identifiant ; à 320 px, actions accessibles par défilement. [Page publique](assets/pr01-profil-public.jpg) · [Partage du profil](assets/pr01-partage.jpg). Les captures utilisent une API locale fictive.
+
+Correctif de configuration après essai local : le build API ne force plus Railway. Le web hébergé sous /app utilise le domaine de la page à l’exécution pour les appels API et les liens de partage ; Expo et natif respectent leur configuration d’API. Trois tests couvrent une page locale malgré une configuration de build production, une page Railway malgré une configuration locale, et le développement Expo/natif. Typecheck mobile, huit tests ciblés et build API/export réussis après correction. Vérification dans le navigateur sur l’API locale réelle : /app/u/test%235157 affiche bien test#5157, sans connexion ni envoi de demande. [Profil local vérifié](assets/pr01-api-locale.jpg).
+
+Restant avant clôture : redéployer Railway avec le dossier web exporté et les dépendances du workspace complet au build, reconstruire le natif pour expo-clipboard ; vérifier scan réel du QR, feuille de partage, presse-papiers et ouverture mates:// sur iOS/Android, connexion Google dans ce parcours, lecteurs d’écran et caractères agrandis. Les liens HTTPS ouvrent la page publique ; le bouton dédié ouvre l’app installée, sans association Universal Links/App Links. Aucun déploiement ni test sur compte de production n’a été effectué.
 
 ### PR02 Invitation par lien et réponse web
 

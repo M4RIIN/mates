@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { ArrowRight, Sparkles, Users, UtensilsCrossed } from "lucide-react-native";
@@ -75,7 +75,7 @@ function getGoogleRedirectUriForPlatform(): string | undefined {
   return undefined;
 }
 
-export function LoginScreen() {
+export function LoginScreen({ returnTo }: { returnTo?: Href } = {}) {
   const { width } = useWindowDimensions();
   const carouselRef = useRef<ScrollView | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -126,7 +126,7 @@ export function LoginScreen() {
       const result = await authenticateWithGoogle.mutateAsync({ idToken });
 
       if (result.status === "authenticated") {
-        router.replace("/sorties");
+        router.replace(returnTo ?? "/sorties");
         return;
       }
 
@@ -180,7 +180,7 @@ export function LoginScreen() {
         identifier: identifier.trim(),
         password
       });
-      router.replace("/sorties");
+      router.replace(returnTo ?? "/sorties");
     } catch (error: unknown) {
       Alert.alert("Connexion impossible", getErrorMessage(error));
     }
@@ -192,7 +192,7 @@ export function LoginScreen() {
         pseudo: identifier.trim(),
         password
       });
-      router.replace("/sorties");
+      router.replace(returnTo ?? "/sorties");
     } catch (error: unknown) {
       Alert.alert("Inscription impossible", getErrorMessage(error));
     }
@@ -208,7 +208,7 @@ export function LoginScreen() {
         idToken: pendingGoogleIdToken,
         pseudo: pseudo.trim()
       });
-      router.replace("/sorties");
+      router.replace(returnTo ?? "/sorties");
     } catch (error: unknown) {
       Alert.alert("Création impossible", getErrorMessage(error));
     }
@@ -282,6 +282,7 @@ export function LoginScreen() {
         </ScrollView>
       </View>
       <View style={styles.bottomDock}>
+        {returnTo ? <Text style={styles.hint}>Après connexion, retrouve le profil partagé pour envoyer ta demande.</Text> : null}
         <View style={styles.pagination}>
           {onboardingSlides.map((slide, index) => (
             <View

@@ -11,3 +11,4 @@ coverage
 *.log
 ios
 android
+apps/api/public/app/

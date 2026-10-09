@@ -10,6 +10,8 @@ import { registerInvitationRoutes } from "./routes/invitation-routes.js";
 import { registerMeRoutes } from "./routes/me-routes.js";
 import { registerPlaceRoutes } from "./routes/place-routes.js";
 import { registerUserRoutes } from "./routes/user-routes.js";
+import { registerProfilePageRoutes } from "./routes/profile-page-routes.js";
+import { registerWebAppRoutes } from "./routes/web-app-routes.js";
 import type { AppBindings } from "./types.js";
 
 function getHttpLogContext(context: Context<AppBindings>, status: number): Record<string, unknown> {
@@ -52,6 +54,8 @@ export function createHttpApp(container: AppContainer): Hono<AppBindings> {
   registerAuthRoutes(app, container);
   registerMeRoutes(app, container);
   registerUserRoutes(app, container);
+  registerProfilePageRoutes(app, container);
+  registerWebAppRoutes(app);
   registerFriendRoutes(app, container);
   registerPlaceRoutes(app, container);
   registerInvitationRoutes(app, container);

@@ -1,3 +1,6 @@
+import { Platform } from "react-native";
+import { resolveServiceUrls } from "@/domain/service-urls";
+
 type PlacesProviderName = "api" | "mapbox" | "mock";
 
 function resolveBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
@@ -31,7 +34,12 @@ function resolveOptionalEnv(value: string | undefined): string | undefined {
 }
 
 export const appConfig = {
-  apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000",
+  ...resolveServiceUrls({
+    apiHostedWeb: process.env.EXPO_PUBLIC_API_HOSTED_WEB === "true",
+    webOrigin: Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : undefined,
+    configuredApiUrl: process.env.EXPO_PUBLIC_API_URL,
+    configuredProfileShareBaseUrl: process.env.EXPO_PUBLIC_PROFILE_SHARE_BASE_URL
+  }),
   passwordAuthEnabled: resolveBooleanEnv(process.env.EXPO_PUBLIC_AUTH_PASSWORD_ENABLED, true),
   placesProvider: resolvePlacesProvider(process.env.EXPO_PUBLIC_PLACES_PROVIDER),
   mapboxAccessToken: resolveOptionalEnv(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN),

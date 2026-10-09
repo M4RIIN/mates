@@ -121,6 +121,18 @@ Sur simulateur Android, remplacer `EXPO_PUBLIC_API_URL=http://localhost:3000` pa
 
 Le site de présentation se lance séparément avec `pnpm dev:landing`, sur `http://localhost:4321`.
 
+## Liens de profil et parcours web
+
+Profil → Partager mon profil affiche un QR code et permet de partager ou copier le lien. L’identifiant reste consultable et copiable. Sur Expo et natif, `EXPO_PUBLIC_PROFILE_SHARE_BASE_URL` définit le domaine des liens ; sans valeur, il reprend `EXPO_PUBLIC_API_URL`. Sur le web servi par l’API sous `/app`, les liens utilisent automatiquement le domaine courant. Les liens prennent la forme `/u/pseudo%231234` : le `#` doit être encodé dans l’URL.
+
+L’API sert directement une page HTML publique sur `/u/:tag`, avec uniquement le pseudo et l’identifiant vérifiés en base. Aucun compte ni aucune demande d’amitié ne sont créés à l’ouverture. La page propose `mates://u/:tag` pour un build natif installé ou `/app/u/:tag` pour continuer dans le navigateur. Sur web, connexion et inscription conservent cette destination ; l’envoi d’une demande exige un clic explicite et l’amitié exige l’acceptation du destinataire.
+
+`pnpm build:api` compile l’API et exporte l’application web sous `/app` dans `apps/api/public/app`. Le build nécessite les dépendances du workspace mobile et du package partagé, donc installer le workspace complet avant de construire l’API. Livrer **`apps/api/public/app`**, **`apps/api/dist`** et **`apps/api/migrations`** ensemble, puis utiliser `pnpm start:api`. Les routes et fichiers web sont servis par Hono ; aucun hébergement de landing ni proxy supplémentaire n’est nécessaire.
+
+Le bundle web exporté par le build API utilise le domaine courant à l’exécution pour ses appels API et ses liens de profil : ouvrir `http://192.168.1.45:3000/app/u/test%235157` appelle `http://192.168.1.45:3000/users/search`, tandis que le même bundle servi par Railway appelle Railway. Il ne force aucune URL de production. `EXPO_PUBLIC_API_HOSTED_WEB=true` est un marqueur interne ajouté par le script d’export API ; ne pas l’activer dans le développement Expo séparé. Pour Expo et les builds natifs, `EXPO_PUBLIC_API_URL` conserve son rôle habituel et doit pointer vers l’API locale accessible en développement. Les autres variables Expo restent intégrées au bundle et nécessitent un nouveau build après modification.
+
+Redéployer Railway après ces changements et reconstruire les apps natives pour `expo-clipboard`. Vérifier le scan du QR code et l’ouverture de `mates://` sur iOS/Android. Les liens HTTPS ouvrent la page publique ; l’ouverture native se fait par le bouton dédié, sans association Universal Links/App Links.
+
 ## Déploiement iOS TestFlight
 
 L'app mobile utilise EAS depuis `apps/mobile`. Les commandes EAS doivent être lancées depuis ce dossier :

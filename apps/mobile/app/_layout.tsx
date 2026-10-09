@@ -42,6 +42,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="u/[tag]" options={{ title: "Profil partagé", headerRight: () => null }} />
             <Stack.Protected guard={isGuest}>
               <Stack.Screen name="auth/login" options={{ headerShown: false }} />
               <Stack.Screen name="auth/register" options={{ headerShown: false }} />

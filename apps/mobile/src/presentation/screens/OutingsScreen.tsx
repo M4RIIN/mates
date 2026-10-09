@@ -1,3 +1,5 @@
+import { profileLink } from "@/domain/profile-links";
+import { appConfig } from "@/shared/config";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { isPendingUpcomingInvitation } from "@/domain/invitation/status";
@@ -51,7 +53,7 @@ export function OutingsScreen() {
     const tag = currentUser.data?.publicTag;
     if (!tag) return;
     try {
-      await Share.share({ message: `Retrouve-moi sur Mates avec mon identifiant ${tag}. Dans Amis, choisis Ajouter un ami et saisis cet identifiant.` });
+      await Share.share({ message: `Retrouve-moi sur Mates : ${profileLink(tag, appConfig.profileShareBaseUrl)}\nMon identifiant : ${tag}` });
     } catch {
       Alert.alert("Partage impossible", "Tu peux retrouver et copier ton identifiant dans Profil.");
     }
