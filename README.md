@@ -2,6 +2,10 @@
 
 Monorepo pnpm pour une app mobile iOS/Android React Native Expo SDK 57 et une API Hono/PostgreSQL en architecture propre.
 
+## Suivi produit
+
+La [fiche de suivi des fonctionnalités et améliorations produit](docs/product-backlog.md) regroupe les tickets UX, produit, rétention, acquisition et mesure, avec leurs priorités et critères de validation.
+
 ## Structure
 
 ```txt
@@ -76,7 +80,9 @@ EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=
 
 ## Base de données
 
-Créer une base PostgreSQL si elle n'existe pas (`createdb mates` avec une installation locale), adapter `DATABASE_URL` à ses identifiants, puis lancer :
+Créer une base PostgreSQL si elle n'existe pas (`createdb mates` avec une installation locale), puis adapter `DATABASE_URL` à ses identifiants. Au démarrage de l’API, en développement comme en production, les migrations s’exécutent automatiquement avant l’ouverture du serveur HTTP. Drizzle conserve leur historique dans `drizzle.__drizzle_migrations` et ignore celles déjà appliquées. Un verrou PostgreSQL sérialise les migrations si plusieurs instances démarrent en même temps. En cas d’échec, l’API ne démarre pas et termine avec un code de sortie 1.
+
+Le dossier `apps/api/migrations` (SQL et `meta/_journal.json`) doit être livré avec `apps/api/dist` en production. Le compte PostgreSQL utilisé doit pouvoir appliquer les changements de schéma. La commande manuelle reste disponible :
 
 ```bash
 pnpm db:migrate
@@ -157,7 +163,7 @@ Lors du premier build, laisser EAS gérer les certificats et profils Apple si tu
 
 ## Guide de première connexion
 
-Après connexion, un guide flottant présente le fonctionnement de Mates, le tag public, les amis, les groupes et les invitations. Le compte conserve `onboarding_completed_at` en base quand le guide est terminé ou passé ; une fermeture de l'app avant validation laisse le guide disponible à la prochaine ouverture. La migration `0007_user_onboarding.sql` ajoute ce champ (exécuter `pnpm db:migrate` sur chaque environnement).
+Après connexion, un guide flottant présente le fonctionnement de Mates, le tag public, les amis, les groupes et les invitations. Le compte conserve `onboarding_completed_at` en base quand le guide est terminé ou passé ; une fermeture de l'app avant validation laisse le guide disponible à la prochaine ouverture. La migration `0007_user_onboarding.sql` ajoute ce champ et s’applique automatiquement au prochain démarrage de l’API.
 
 ## Tests
 
@@ -166,6 +172,8 @@ pnpm --filter @mates/api test
 ```
 
 Les tests unitaires couvrent la génération du `publicTag`, le flux Google avec profil à compléter, la contrainte d’invitation dans la journée courante, les réponses oui/non avec retard, et l’impossibilité de répondre à une invitation non reçue.
+
+Les tests d’intégration des migrations nécessitent `TEST_DATABASE_URL` vers un serveur PostgreSQL de test autorisant la création de bases. Ils créent et suppriment des bases temporaires pour vérifier la mise à niveau, le redémarrage, les démarrages simultanés et la récupération après erreur. Sans cette variable, ces tests sont ignorés.
 
 ## Architecture
 

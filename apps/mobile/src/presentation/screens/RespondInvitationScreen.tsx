@@ -82,7 +82,8 @@ export function RespondInvitationScreen() {
           console.warn("Failed to sync invitation live activity", error);
         });
       }
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace("/sorties");
     } catch (error: unknown) {
       Alert.alert("Réponse impossible", getErrorMessage(error));
     }
@@ -98,7 +99,8 @@ export function RespondInvitationScreen() {
       await endInvitationLiveActivity(id).catch((error: unknown) => {
         console.warn("Failed to end invitation live activity", error);
       });
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace("/sorties");
     } catch (error: unknown) {
       Alert.alert("Réponse impossible", getErrorMessage(error));
     }

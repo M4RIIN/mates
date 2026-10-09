@@ -2,6 +2,7 @@ import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { createHttpApp } from "./http/app.js";
 import { createContainerFromEnv } from "./infrastructure/container.js";
+import { migrateDatabase } from "./infrastructure/db/migrate.js";
 import { logger, serializeError } from "./infrastructure/logger.js";
 import { createNodeRealtimeServer } from "./infrastructure/realtime/node-realtime-server.js";
 
@@ -25,6 +26,12 @@ try {
   if (Number.isNaN(port)) {
     throw new Error(`Invalid PORT environment variable: ${process.env.PORT}`);
   }
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (databaseUrl === undefined || databaseUrl.trim().length === 0) {
+    throw new Error("Missing required environment variable: DATABASE_URL");
+  }
+  await migrateDatabase(databaseUrl);
 
   const container = createContainerFromEnv(process.env);
   const app = createHttpApp(container);

@@ -18,31 +18,31 @@ const steps = [
     title: "Ton tag,\nton point de rencontre.",
     body: "Chaque compte a un identifiant unique. Partage le tien avec tes amis pour qu’ils puissent te retrouver, même si vous avez le même pseudo.",
     hint: "Tu retrouveras toujours ton tag dans Profil.",
-    location: "Menu ⚙ → Profil", icon: Hash, color: colors.blueSoft
+    location: "Bouton Profil en haut de l’écran", icon: Hash, color: colors.blueSoft
   },
   {
     title: "Commence\npar ton crew.",
     body: "Dans Amis, appuie sur Ajouter un ami. Saisis son tag complet, puis envoie la demande. Vous pourrez vous inviter dès qu’il l’aura acceptée.",
     hint: "Tes demandes reçues et en attente sont dans Amis.",
-    location: "Menu ⚙ → Amis → Ajouter un ami", icon: UserPlus, color: colors.yellowSoft
+    location: "Amis → Ajouter un ami", icon: UserPlus, color: colors.yellowSoft
   },
   {
     title: "Les bonnes personnes,\ndans le bon groupe.",
-    body: "Dans Groupes, donne un nom à ton groupe et sélectionne au moins un ami actif. Crée-le, puis retrouve-le dans Limiter à pour cibler tes invitations.",
+    body: "Dans Amis, ouvre Mes groupes, donne un nom à ton groupe et sélectionne au moins un ami actif. Crée-le, puis retrouve-le dans Limiter à pour cibler tes invitations.",
     hint: "Tu peux modifier les membres en ouvrant le groupe.",
-    location: "Menu ⚙ → Groupes", icon: Users, color: colors.blueSoft
+    location: "Amis → Mes groupes", icon: Users, color: colors.blueSoft
   },
   {
     title: "Lance le plan.\nOn se retrouve là-bas.",
-    body: "Sur l’accueil, choisis un lieu et une heure aujourd’hui. Limiter à te permet de choisir un groupe ou un ami ; sinon, tous tes amis actifs sont invités.",
+    body: "Dans Proposer, choisis un lieu et une heure aujourd’hui. Limiter à te permet de choisir un groupe ou un ami ; sinon, tous tes amis actifs sont invités.",
     hint: "Glisse la protection, puis maintiens le bouton pour envoyer.",
-    location: "Accueil → Rencard → Limiter à", icon: Send, color: colors.redSoft
+    location: "Proposer → Rencard → Limiter à", icon: Send, color: colors.redSoft
   },
   {
     title: "Un oui, un non.\nEt tout le monde sait.",
-    body: "Ouvre Reçues pour répondre aux invitations. Tu peux accepter, refuser ou préciser ton retard. Dans Créées, suis les réponses à tes propres rendez-vous.",
+    body: "Dans Sorties, À répondre affiche les invitations qui attendent ta réponse. Tu peux accepter, refuser ou préciser ton retard. Organisées te permet de suivre tes propres rendez-vous.",
     hint: "Tu es prêt. Le prochain bon moment commence avec toi.",
-    location: "Menu ⚙ → Reçues / Créées", icon: Inbox, color: colors.yellow
+    location: "Sorties → À répondre / Organisées", icon: Inbox, color: colors.yellow
   }
 ] as const;
 

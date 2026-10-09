@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
-import { Check, UserPlus } from "lucide-react-native";
+import { Check, UserPlus, Users } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
 import { EmptyState } from "@/presentation/components/EmptyState";
 import { ListRow } from "@/presentation/components/ListRow";
@@ -28,6 +28,12 @@ export function FriendsScreen() {
         subtitle={friends.data !== undefined ? `${friends.data.length} ami(s) actif(s)` : "Chargement"}
         tone="yellow"
         compact
+      />
+      <AppButton
+        title="Mes groupes"
+        onPress={() => router.push("/friends/groups")}
+        variant="secondary"
+        icon={<Users size={18} color={colors.ink} strokeWidth={3} />}
       />
       <AppButton
         title="Ajouter un ami"

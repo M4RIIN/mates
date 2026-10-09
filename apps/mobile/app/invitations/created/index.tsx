@@ -1,5 +1,5 @@
-import { CreatedInvitationsScreen } from "@/presentation/screens/CreatedInvitationsScreen";
+import { Redirect } from "expo-router";
 
 export default function CreatedInvitationsRoute() {
-  return <CreatedInvitationsScreen />;
+  return <Redirect href={{ pathname: "/sorties", params: { filter: "created" } }} />;
 }

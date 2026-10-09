@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { GestureResponderHandlers, LayoutChangeEvent } from "react-native";
 import { ActivityIndicator, Alert, Animated, Easing, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
 import { router } from "expo-router";
-import { Bell, ChevronDown, Inbox, Send, Settings, User, Users, X } from "lucide-react-native";
+import { Bell, ChevronDown, Users, X } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { ApiClientError } from "@/infrastructure/api/api-client";
@@ -16,9 +16,8 @@ import { ActiveInvitationBanner } from "@/presentation/components/ActiveInvitati
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCurrentUser } from "@/presentation/hooks/useAuth";
-import { useFriendGroups, useFriends, useReceivedFriendRequests } from "@/presentation/hooks/useFriends";
-import { countUpcomingInvitations, useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
-import { useReceivedInvitations } from "@/presentation/hooks/useInvitations";
+import { useFriendGroups, useFriends } from "@/presentation/hooks/useFriends";
+import { useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
 import { syncCreatedInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { borders, colors, layout, radii, spacing } from "@/shared/theme";
@@ -38,7 +37,6 @@ export function HomeScreen() {
   const measuredGuardTravel = Math.max(0, guardTrackWidth - guardPlateWidth - guardTrackPadding * 2);
   const fallbackGuardTravel = Math.max(84, Math.min(guardTravel, width - 230));
   const effectiveGuardTravel = measuredGuardTravel > 0 ? measuredGuardTravel : fallbackGuardTravel;
-  const [menuOpen, setMenuOpen] = useState(false);
   const [placeQuery, setPlaceQuery] = useState("");
   const [customAddress, setCustomAddress] = useState("");
   const [hourText, setHourText] = useState(defaultTime.hour);
@@ -55,14 +53,10 @@ export function HomeScreen() {
   const holdStartedAt = useRef<number | null>(null);
   const activeInvitation = useActiveCreatedInvitation();
   const currentInvitation = activeInvitation.data;
-  const receivedInvitations = useReceivedInvitations();
-  const receivedFriendRequests = useReceivedFriendRequests();
   const friendGroups = useFriendGroups();
   const friends = useFriends();
   const placeSearch = usePlaceSearch(placeQuery);
   const createInvitation = useCreateInvitation();
-  const receivedInvitationCount = countUpcomingInvitations(receivedInvitations.data);
-  const notificationCount = receivedInvitationCount + (receivedFriendRequests.data?.length ?? 0);
   const canArm =
     placeQuery.trim().length > 0 &&
     hourText.trim().length > 0 &&
@@ -275,25 +269,6 @@ export function HomeScreen() {
           onPress={() => router.push({ pathname: "/invitations/created/[id]", params: { id: currentInvitation.id } })}
         />
       ) : null}
-      <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" onPress={() => setMenuOpen((value) => !value)} style={styles.gearButton}>
-          {menuOpen ? <X size={22} color={colors.ink} strokeWidth={3} /> : <Settings size={22} color={colors.ink} strokeWidth={3} />}
-          {notificationCount > 0 ? (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>{formatNotificationCount(notificationCount)}</Text>
-            </View>
-          ) : null}
-        </Pressable>
-      </View>
-
-      {menuOpen ? (
-        <FluxMenu
-          onClose={() => setMenuOpen(false)}
-          receivedInvitationCount={receivedInvitationCount}
-          receivedFriendRequestCount={receivedFriendRequests.data?.length ?? 0}
-        />
-      ) : null}
-
       <View style={[styles.cockpit, isWide ? styles.cockpitWide : null]}>
         <View style={[styles.formPanel, isWide ? styles.formPanelWide : null]}>
           <View pointerEvents="none" style={styles.formGlow} />
@@ -469,62 +444,6 @@ function getInvitationIdFromError(details: unknown): string | undefined {
 
   const invitationId = (details as { invitationId?: unknown }).invitationId;
   return typeof invitationId === "string" && invitationId.length > 0 ? invitationId : undefined;
-}
-
-function formatNotificationCount(count: number): string {
-  return count > 99 ? "99+" : String(count);
-}
-
-function FluxMenu({
-  onClose,
-  receivedInvitationCount,
-  receivedFriendRequestCount
-}: {
-  onClose: () => void;
-  receivedInvitationCount: number;
-  receivedFriendRequestCount: number;
-}) {
-  const items = [
-    { label: "Reçues", icon: Inbox, href: "/invitations/received", badgeCount: receivedInvitationCount },
-    { label: "Créées", icon: Send, href: "/invitations/created", badgeCount: 0 },
-    { label: "Amis", icon: Users, href: "/friends", badgeCount: receivedFriendRequestCount },
-    { label: "Groupes", icon: Users, href: "/friends/groups", badgeCount: 0 },
-    { label: "Profil", icon: User, href: "/profile", badgeCount: 0 }
-  ] as const;
-
-  return (
-    <View style={styles.menuPanel}>
-      <View style={styles.menuHeader}>
-        <Text style={styles.menuTitle}>Flux</Text>
-        <View style={styles.menuRule} />
-      </View>
-      <View style={styles.menuItems}>
-        {items.map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <Pressable
-              key={item.href}
-              accessibilityRole="button"
-              onPress={() => {
-                onClose();
-                router.push(item.href);
-              }}
-              style={styles.menuItem}
-            >
-              <Icon size={18} color={colors.ink} strokeWidth={3} />
-              <Text style={styles.menuItemText}>{item.label}</Text>
-              {item.badgeCount > 0 ? (
-                <View style={styles.menuItemBadge}>
-                  <Text style={styles.menuItemBadgeText}>{formatNotificationCount(item.badgeCount)}</Text>
-                </View>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
 }
 
 function HomeSelectionChip({ label, onClear }: { label: string; onClear: () => void }) {
@@ -731,126 +650,6 @@ const styles = StyleSheet.create({
   },
   screenWide: {
     maxWidth: 860
-  },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start"
-  },
-  gearButton: {
-    position: "relative",
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.yellow,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 0,
-    elevation: 2
-  },
-  notificationBadge: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.red,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4
-  },
-  notificationBadgeText: {
-    color: colors.white,
-    fontSize: 11,
-    lineHeight: 12,
-    fontWeight: "900"
-  },
-  menuPanel: {
-    position: "absolute",
-    top: 56,
-    left: spacing.lg,
-    right: spacing.lg,
-    zIndex: 20,
-    borderRadius: radii.md,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceStrong,
-    padding: spacing.md,
-    gap: spacing.md,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.16,
-    shadowRadius: 0,
-    elevation: 8
-  },
-  menuHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm
-  },
-  menuTitle: {
-    color: colors.text,
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  menuRule: {
-    flex: 1,
-    height: borders.regular,
-    backgroundColor: colors.border
-  },
-  menuItems: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  menuItem: {
-    minHeight: 46,
-    flexGrow: 1,
-    flexBasis: "44%",
-    borderRadius: radii.md,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.navyWash,
-    paddingHorizontal: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm
-  },
-  menuItemText: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  menuItemBadge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.red,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 5
-  },
-  menuItemBadgeText: {
-    color: colors.white,
-    fontSize: 11,
-    lineHeight: 12,
-    fontWeight: "900"
   },
   cockpit: {
     flex: 1,
