@@ -43,8 +43,8 @@ Les tickets commerciaux peuvent avancer pendant le développement. Ne pas lancer
 | UX03 | Alléger le formulaire de création | P1 | À vérifier |
 | UX04 | Créer le bouton à capot et appui long | P1 | À vérifier |
 | UX05 | Choisir explicitement les destinataires | P1 | À vérifier |
-| UX06 | Remonter les réponses sur le détail organisateur | P1 | À faire |
-| UX07 | Remonter les actions sur le détail invité | P1 | À faire |
+| UX06 | Remonter les réponses sur le détail organisateur | P1 | À vérifier |
+| UX07 | Remonter les actions sur le détail invité | P1 | À vérifier |
 | UX08 | Simplifier les mots et la hiérarchie visuelle | P1 | À faire |
 | UX09 | Rendre les groupes existants plus accessibles | P2 | À faire |
 
@@ -198,27 +198,51 @@ Restant avant clôture : vérifier les gestes réels (dont ouverture du sélecte
 
 ### UX06 Détail organisateur
 
+Implémenté le 9 octobre 2026 ; validations natives restantes.
+
 Afficher le résumé de participation et les personnes avant la grande carte. Placer l’annulation dans les actions secondaires.
 
-- [ ] Le nombre de personnes qui viennent et qui n’ont pas répondu est visible dans la première partie de l’écran.
+- [x] Le nombre de personnes qui viennent et qui n’ont pas répondu est visible dans la première partie de l’écran.
 
-- [ ] Les retards sont associés aux personnes concernées.
+- [x] Les retards sont associés aux personnes concernées.
 
-- [ ] Annuler la sortie est accessible mais ne domine plus la page.
+- [x] Annuler la sortie est accessible mais ne domine plus la page.
 
-- [ ] La confirmation d’annulation explique que les invités seront informés.
+- [x] La confirmation d’annulation explique que les invités seront informés.
+
+Réalisation : `CreatedInvitationDetailScreen` présente un seul résumé lieu/date/heure, puis les compteurs Viennent / À répondre / Ne viennent pas et les participants avant la carte. Les retards figurent sur les personnes concernées. Sans réponse remplace À répondre pour les sorties passées ou annulées, avec actualisation de l’horloge et au retour dans l’application. Les réponses d’une sortie annulée sont présentées comme historiques. Annuler la sortie devient une action secondaire en bas, avec cible tactile de 44 px.
+
+Le dialogue propose Garder la sortie / Annuler la sortie et explique que les invités seront informés. Le corps défile si une erreur est longue ; les boutons restent visibles. Pendant la requête, fermeture et actions sont bloquées. Une erreur reste affichée pour réessayer ; le succès ramène à Sorties. L’écran propose aussi Réessayer en cas d’échec du chargement. Les effets de synchronisation des Live Activities sont conservés, ainsi que leur arrêt via le hook d’annulation.
+
+Validation : typecheck mobile et export web réussis ; 7 tests existants de services natifs réussis, dont 4 sur le cycle des Live Activities. Essais web avec données fictives à 390 × 844 : compteurs, participants et retard avant la carte. À 320 × 640 : compteurs lisibles, confirmation, erreur longue défilante avec boutons visibles, actions bloquées pendant la requête, nouvelle tentative réussie et retour à Sorties. État annulé vérifié : bannière, Réponses avant annulation, Sans réponse et absence d’action d’annulation. [Aperçu du détail organisateur](assets/ux06-organisateur.jpg).
+
+Récapitulatif final de l’agent UI/UX `ux01_review` : les réponses deviennent l’information principale du détail ; résumé compact, compteurs puis participants avant la carte, retards associés et annulation secondaire. Revue du code et de la capture cohérente. Retours intégrés : horloge pour Sans réponse, dialogue défilant avec actions fixes et retour à Sorties. Aucun autre défaut bloquant relevé. Les essais web sont réalisés par l’agent principal.
+
+Restant avant clôture : défilement, marges, lecteurs d’écran et notifications d’annulation sur iOS/Android. Les tests utilisent des services natifs simulés ; l’affichage réel des Live Activities reste à vérifier sur iPhone.
 
 ### UX07 Détail invité
 
+Implémenté le 9 octobre 2026 ; validations natives restantes.
+
 Placer Je viens et Je ne peux pas juste après le résumé de la sortie ; proposer le retard et l’itinéraire ensuite.
 
-- [ ] La réponse est accessible avant une grande carte.
+- [x] La réponse est accessible avant une grande carte.
 
-- [ ] Une confirmation visible suit la réponse ; celle-ci peut être modifiée.
+- [x] Une confirmation visible suit la réponse ; celle-ci peut être modifiée.
 
-- [ ] Une sortie annulée affiche son état et ne propose pas de répondre.
+- [x] Une sortie annulée affiche son état et ne propose pas de répondre.
 
-- [ ] Le lieu et l’heure restent visibles après la réponse.
+- [x] Le lieu et l’heure restent visibles après la réponse.
+
+Réalisation : `RespondInvitationScreen` présente le lieu et la date/heure une seule fois, puis Je viens / Je ne peux pas avant la carte. La réponse enregistrée reste sur le détail avec Modifier ma réponse. Garder ma réponse permet d’abandonner une modification sans envoi. Signaler un retard apparaît après acceptation ; sa valeur est préremplie, modifiable et 0 retire le retard. Validation stricte d’un entier entre 0 et 1 440 minutes, conformément à l’API. Reconfirmer Je viens conserve le retard existant.
+
+Une erreur conserve la réponse précédente et les saisies ; un verrou immédiat et des contrôles désactivés empêchent les envois concurrents. La réponse locale sert uniquement de secours jusqu’à confirmation serveur. Les sorties annulées ou passées affichent leur état et la dernière réponse, sans contrôles de réponse ni lancement automatique d’itinéraire. L’horloge actualise l’échéance. Le chargement en erreur propose Réessayer. Les synchronisations et l’arrêt des Live Activities sont conservés.
+
+Validation : typecheck mobile et export web réussis ; 7 tests existants de services natifs réussis, dont 4 sur les Live Activities. Essais web avec données fictives à 390 × 844 et 320 × 640 : choix avant la carte, erreur visible sans fausse confirmation, nouvelle tentative puis Réponse enregistrée sans quitter le détail, champ de retard modifiable, refus de `10abc` sans requête, enregistrement de 15 minutes, contrôles bloqués pendant l’envoi, modification vers Je ne peux pas. Lieu et horaire restent sur le détail. États annulé et passé vérifiés sans boutons de réponse ni de transport. Le conteneur de cet écran n’intercepte plus le focus du champ pour fermer le clavier ; celui-ci est fermé lors de l’envoi. [Aperçu du détail invité](assets/ux07-repondre.jpg).
+
+Récapitulatif de l’agent UI/UX `ux01_review` : réponse immédiatement accessible, confirmation sur place, modification possible, retard séparé et états annulé/passé explicites. Correctifs confirmés : réponse locale temporaire, message de réussite distinct et conservation du retard existant. Aucun autre défaut bloquant relevé dans le code. Les essais web sont réalisés par l’agent principal.
+
+Restant avant clôture : clavier et défilement, lecteurs d’écran, ouverture d’itinéraire depuis une notification, notifications et Live Activities sur appareil iOS/Android.
 
 ### UX08 Mots et lisibilité
 

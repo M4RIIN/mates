@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Ban } from "lucide-react-native";
 import { syncCreatedInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
@@ -12,7 +12,8 @@ import { Screen } from "@/presentation/components/Screen";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCancelInvitation, useInvitationDetails } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
-import { formatDateTime, formatTime } from "@/shared/date-format";
+import { useInvitationClock } from "@/presentation/hooks/useInvitationClock";
+import { formatDateTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
 export function CreatedInvitationDetailScreen() {
@@ -20,10 +21,13 @@ export function CreatedInvitationDetailScreen() {
   const invitation = useInvitationDetails(id);
   const cancelInvitation = useCancelInvitation(id ?? "");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const now = useInvitationClock();
   const recipients = invitation.data?.recipients ?? [];
   const yesCount = recipients.filter((recipient) => recipient.responseStatus === "yes").length;
   const noCount = recipients.filter((recipient) => recipient.responseStatus === "no").length;
   const pendingCount = recipients.filter((recipient) => recipient.responseStatus === "pending").length;
+  const awaitingResponse = invitation.data !== undefined && invitation.data.canceledAt === null && new Date(invitation.data.scheduledAt).getTime() > now.getTime();
 
   useEffect(() => {
     if (invitation.data === undefined) {
@@ -40,23 +44,20 @@ export function CreatedInvitationDetailScreen() {
       return;
     }
 
+    setCancelError(null);
     setCancelDialogOpen(true);
   }
 
   function cancelCreatedInvitation() {
+    if (cancelInvitation.isPending) return;
+    setCancelError(null);
     cancelInvitation.mutate(undefined, {
       onSuccess: () => {
         setCancelDialogOpen(false);
-        router.replace("/home");
+        router.replace("/sorties");
       },
       onError: (error: unknown) => {
-        setCancelDialogOpen(false);
-        if (typeof window !== "undefined" && typeof window.alert === "function") {
-          window.alert(getErrorMessage(error));
-          return;
-        }
-
-        console.warn("Annulation impossible", error);
+        setCancelError(getErrorMessage(error));
       }
     });
   }
@@ -66,6 +67,7 @@ export function CreatedInvitationDetailScreen() {
       <CancelInvitationDialog
         open={cancelDialogOpen}
         loading={cancelInvitation.isPending}
+        error={cancelError}
         onClose={() => {
           if (!cancelInvitation.isPending) {
             setCancelDialogOpen(false);
@@ -74,67 +76,62 @@ export function CreatedInvitationDetailScreen() {
         onConfirm={cancelCreatedInvitation}
       />
       {invitation.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+      {invitation.isError ? <View style={styles.errorPanel}><Text accessibilityRole="alert" style={styles.dialogError}>Impossible de charger la sortie : {getErrorMessage(invitation.error)}</Text><AppButton title="Réessayer" variant="secondary" loading={invitation.isFetching} onPress={() => { void invitation.refetch(); }} /></View> : null}
       {invitation.data !== undefined ? (
         <>
           <PageHeader
-            eyebrow="Invitation créée"
+            eyebrow="Ta sortie"
             title={invitation.data.placeName}
             subtitle={formatDateTime(invitation.data.scheduledAt)}
             tone="red"
             compact
           />
-          <View style={styles.timeHero}>
-            <Text style={styles.timeHeroLabel}>Heure de rendez-vous</Text>
-            <Text style={styles.timeHeroValue}>{formatTime(invitation.data.scheduledAt)}</Text>
-          </View>
           {invitation.data.canceledAt !== null ? (
             <View style={styles.closedBanner}>
-              <Text style={styles.closedLabel}>Invitation annulée</Text>
-              <Text style={styles.closedValue}>Clôturée le {formatDateTime(invitation.data.canceledAt)}</Text>
+              <Text style={styles.closedLabel}>Sortie annulée</Text>
+              <Text style={styles.closedValue}>Annulée le {formatDateTime(invitation.data.canceledAt)}</Text>
             </View>
-          ) : (
-            <View style={styles.cancelRow}>
-              <AppButton
-                title="Fermer l'invitation"
-                onPress={confirmCancel}
-                loading={cancelInvitation.isPending}
-                variant="danger"
-                icon={<Ban size={18} color={colors.white} strokeWidth={3} />}
-              />
+          ) : null}
+          <Text accessibilityRole="header" style={styles.sectionTitle}>{invitation.data.canceledAt !== null ? "Réponses avant annulation" : "Les réponses"}</Text>
+          <View accessibilityLiveRegion="polite" style={styles.stats}>
+            <View style={[styles.stat, styles.statYes]}>
+              <Text style={styles.statNumber}>{yesCount}</Text>
+              <Text style={styles.statLabel}>Viennent</Text>
             </View>
-          )}
+            <View style={[styles.stat, styles.statPending]}>
+              <Text style={[styles.statNumber, styles.statTextLight]}>{pendingCount}</Text>
+              <Text style={[styles.statLabel, styles.statTextLight]}>{awaitingResponse ? "À répondre" : "Sans réponse"}</Text>
+            </View>
+            <View style={[styles.stat, styles.statNo]}>
+              <Text style={styles.statNumber}>{noCount}</Text>
+              <Text style={styles.statLabel}>Ne viennent pas</Text>
+            </View>
+          </View>
+          {recipients.length === 0 ? (
+            <EmptyState title="Aucun invité" subtitle="Choisis des amis lors de ta prochaine sortie." />
+          ) : null}
+          {recipients.map((recipient) => (
+            <ListRow
+              key={recipient.id}
+              title={recipient.user.pseudo}
+              subtitle={formatRecipientStatus(recipient.responseStatus, recipient.delayMinutes, awaitingResponse)}
+            />
+          ))}
           <PlaceVenuePanel
             invitationId={invitation.data.id}
             title={invitation.data.placeName}
             address={invitation.data.placeAddress}
             latitude={invitation.data.latitude}
             longitude={invitation.data.longitude}
-            showReserveButton
+            showReserveButton={invitation.data.canceledAt === null}
+            showTransportActions={invitation.data.canceledAt === null}
           />
-          <View style={styles.stats}>
-            <View style={[styles.stat, styles.statYes]}>
-              <Text style={styles.statNumber}>{yesCount}</Text>
-              <Text style={styles.statLabel}>Oui</Text>
-            </View>
-            <View style={[styles.stat, styles.statNo]}>
-              <Text style={[styles.statNumber, styles.statTextLight]}>{noCount}</Text>
-              <Text style={[styles.statLabel, styles.statTextLight]}>Non</Text>
-            </View>
-            <View style={[styles.stat, styles.statPending]}>
-              <Text style={[styles.statNumber, styles.statTextLight]}>{pendingCount}</Text>
-              <Text style={[styles.statLabel, styles.statTextLight]}>Attente</Text>
-            </View>
-          </View>
-          {recipients.length === 0 ? (
-            <EmptyState title="Aucun destinataire" subtitle="Ajoute des amis actifs avant la prochaine invitation." />
+          {invitation.data.canceledAt === null ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Annuler la sortie" accessibilityState={{ disabled: cancelInvitation.isPending }} disabled={cancelInvitation.isPending} onPress={confirmCancel} style={styles.cancelRow}>
+              <Ban size={17} color={colors.muted} />
+              <Text style={styles.cancelLabel}>Annuler la sortie</Text>
+            </Pressable>
           ) : null}
-          {recipients.map((recipient) => (
-            <ListRow
-              key={recipient.id}
-              title={recipient.user.pseudo}
-              subtitle={formatRecipientStatus(recipient.responseStatus, recipient.delayMinutes)}
-            />
-          ))}
         </>
       ) : null}
     </Screen>
@@ -144,11 +141,13 @@ export function CreatedInvitationDetailScreen() {
 function CancelInvitationDialog({
   open,
   loading,
+  error,
   onClose,
   onConfirm
 }: {
   open: boolean;
   loading: boolean;
+  error: string | null;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -156,15 +155,18 @@ function CancelInvitationDialog({
     <Modal transparent visible={open} animationType="fade" onRequestClose={onClose}>
       <View style={styles.dialogScrim}>
         <Pressable style={styles.dialogBackdrop} onPress={onClose} />
-        <View style={styles.dialogCard}>
-          <Text style={styles.dialogTitle}>Annuler l'invitation</Text>
-          <Text style={styles.dialogText}>Tous les destinataires recevront une notification d'annulation.</Text>
+        <View accessibilityViewIsModal style={styles.dialogCard}>
+          <Text accessibilityRole="header" style={styles.dialogTitle}>Annuler la sortie ?</Text>
+          <ScrollView style={styles.dialogBody} contentContainerStyle={styles.dialogBodyContent}>
+            <Text style={styles.dialogText}>Les invités seront informés de l’annulation. Ils ne pourront plus répondre à cette sortie.</Text>
+            {error !== null ? <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={styles.dialogError}>Annulation impossible : {error}</Text> : null}
+          </ScrollView>
           <View style={styles.dialogActions}>
             <View style={styles.dialogAction}>
-              <AppButton title="Retour" onPress={onClose} variant="secondary" />
+              <AppButton title="Garder la sortie" onPress={onClose} variant="secondary" disabled={loading} />
             </View>
             <View style={styles.dialogAction}>
-              <AppButton title="Confirmer" onPress={onConfirm} variant="danger" loading={loading} />
+              <AppButton title="Annuler la sortie" onPress={onConfirm} variant="danger" loading={loading} />
             </View>
           </View>
         </View>
@@ -173,42 +175,21 @@ function CancelInvitationDialog({
   );
 }
 
-function formatRecipientStatus(status: "pending" | "yes" | "no", delayMinutes: number | null): string {
+function formatRecipientStatus(status: "pending" | "yes" | "no", delayMinutes: number | null, awaitingResponse: boolean): string {
   if (status === "pending") {
-    return "Pas encore répondu";
+    return awaitingResponse ? "À répondre" : "Sans réponse";
   }
 
   if (status === "no") {
-    return "Non";
+    return "Ne vient pas";
   }
 
-  return delayMinutes === null ? "Oui" : `Oui · retard ${delayMinutes} min`;
+  return delayMinutes === null || delayMinutes === 0 ? "Vient" : `Vient · retard de ${delayMinutes} min`;
 }
 
 const styles = StyleSheet.create({
-  timeHero: {
-    borderRadius: radii.md,
-    borderWidth: borders.heavy,
-    borderColor: colors.border,
-    backgroundColor: colors.yellow,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    gap: spacing.xs
-  },
-  timeHeroLabel: {
-    color: colors.text,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  timeHeroValue: {
-    color: colors.text,
-    fontSize: 42,
-    lineHeight: 46,
-    fontWeight: "900"
-  },
+  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: "800" },
+  errorPanel: { gap: spacing.sm },
   closedBanner: {
     borderRadius: radii.md,
     borderWidth: borders.regular,
@@ -231,8 +212,14 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   cancelRow: {
-    width: "100%"
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs
   },
+  cancelLabel: { color: colors.muted, fontSize: 14, fontWeight: "600", textDecorationLine: "underline" },
+  dialogError: { color: colors.red, fontSize: 14, lineHeight: 20, fontWeight: "700" },
   dialogScrim: {
     flex: 1,
     backgroundColor: colors.scrim,
@@ -250,6 +237,7 @@ const styles = StyleSheet.create({
   dialogCard: {
     width: "100%",
     maxWidth: 420,
+    maxHeight: "90%",
     borderRadius: radii.md,
     borderWidth: borders.regular,
     borderColor: colors.border,
@@ -270,11 +258,12 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   dialogActions: {
-    flexDirection: "row",
     gap: spacing.sm
   },
+  dialogBody: { flexShrink: 1 },
+  dialogBodyContent: { gap: spacing.sm },
   dialogAction: {
-    flex: 1
+    width: "100%"
   },
   stats: {
     flexDirection: "row",
@@ -282,7 +271,7 @@ const styles = StyleSheet.create({
   },
   stat: {
     flex: 1,
-    minHeight: 88,
+    minHeight: 84,
     borderRadius: radii.md,
     borderWidth: borders.regular,
     borderColor: colors.border,
@@ -293,7 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.yellow
   },
   statNo: {
-    backgroundColor: colors.red
+    backgroundColor: colors.surface
   },
   statPending: {
     backgroundColor: colors.primary
@@ -308,8 +297,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: "900",
-    textTransform: "uppercase"
+    fontWeight: "700"
   },
   statTextLight: {
     color: colors.white
