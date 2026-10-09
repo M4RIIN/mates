@@ -15,7 +15,7 @@ export default function IndexRoute() {
     );
   }
 
-  return <Redirect href={token === null ? "/auth/login" : "/home"} />;
+  return <Redirect href={token === null ? "/auth/login" : "/sorties"} />;
 }
 
 const styles = StyleSheet.create({

@@ -39,7 +39,7 @@ Les tickets commerciaux peuvent avancer pendant le développement. Ne pas lancer
 | ID | Ticket | Priorité | Statut |
 | --- | --- | --- | --- |
 | UX01 | Rendre la navigation principale visible | P1 | À vérifier |
-| UX02 | Donner la priorité aux sorties sur l’accueil | P1 | À faire |
+| UX02 | Donner la priorité aux sorties sur l’accueil | P1 | À vérifier |
 | UX03 | Alléger le formulaire de création | P1 | À faire |
 | UX04 | Créer le bouton à capot et appui long | P1 | À faire |
 | UX05 | Choisir explicitement les destinataires | P1 | À faire |
@@ -74,15 +74,25 @@ Restant avant clôture : vérifier les marges de sécurité, le clavier et l’o
 
 ### UX02 Accueil orienté vers l’action utile
 
+Implémenté le 9 octobre 2026 ; vérifications natives restantes.
+
 Afficher À répondre, Prochaines sorties et Proposer une sortie. Adapter l’accueil à une personne sans amis ou sans invitation.
 
-- [ ] Une invitation à répondre est visible dès l’ouverture.
+- [x] Une invitation à répondre est visible dès l’ouverture.
 
-- [ ] Sans amis, une action invite à partager son profil ou sa première sortie.
+- [x] Sans amis, une action invite à partager son identifiant public ; Ajouter un ami et Proposer une sortie restent accessibles.
 
-- [ ] Un état vide, un chargement et une erreur réseau ont des contenus distincts et une action utile.
+- [x] Un état vide, un chargement et une erreur réseau ont des contenus distincts et une action utile.
 
-- [ ] Les sorties organisées et rejointes sont identifiables.
+- [x] Les sorties organisées et rejointes sont identifiables.
+
+Réalisation : Sorties devient la destination à l’ouverture et après connexion/inscription. La vue Toutes présente À répondre, Proposer une sortie, puis Prochaines sorties (organisées ou acceptées), sans doublons. Les invitations refusées et l’historique restent accessibles. Sans amis, un bloc propose de partager son identifiant public ou d’ajouter un ami ; il ne masque pas les sorties existantes. Le partage contient le tag et les instructions pour retrouver la personne, sans annoncer un lien de profil inexistant. Le guide d’accueil est déplacé de Proposer vers Sorties. Le formulaire et son geste de création sont conservés.
+
+Validation : typecheck mobile et export web réussis. Essais web avec données fictives à 390 × 844 : ouverture de la racine sur Sorties, invitation à répondre prioritaire, sorties organisées/acceptées distinctes, refusées séparées ; cas sans amis ni sortie ; chargement ; erreur réseau sans faux état vide ; Réessayer rétablit les listes. [Aperçu de l’accueil](assets/ux02-accueil.jpg).
+
+Récapitulatif de l’agent UI/UX (`ux01_review`) : la hiérarchie À répondre → Proposer une sortie → Prochaines sorties suit les actions utiles. Le bloc sans amis vient ensuite ; le guide est bien déplacé et les états réseau restent distincts. Aucun défaut bloquant supplémentaire relevé dans la revue du code corrigé. Les essais web ont été réalisés par l’agent principal.
+
+Restant avant clôture : partage natif de l’identifiant, marges de sécurité et ouverture depuis les notifications sur iOS et Android. Le statut À vérifier reflète ces contrôles restants.
 
 Dépendance : UX01. Les actions de partage deviennent complètes avec PR01 et PR02.
 

@@ -126,7 +126,7 @@ export function LoginScreen() {
       const result = await authenticateWithGoogle.mutateAsync({ idToken });
 
       if (result.status === "authenticated") {
-        router.replace("/home");
+        router.replace("/sorties");
         return;
       }
 
@@ -180,7 +180,7 @@ export function LoginScreen() {
         identifier: identifier.trim(),
         password
       });
-      router.replace("/home");
+      router.replace("/sorties");
     } catch (error: unknown) {
       Alert.alert("Connexion impossible", getErrorMessage(error));
     }
@@ -192,7 +192,7 @@ export function LoginScreen() {
         pseudo: identifier.trim(),
         password
       });
-      router.replace("/home");
+      router.replace("/sorties");
     } catch (error: unknown) {
       Alert.alert("Inscription impossible", getErrorMessage(error));
     }
@@ -208,7 +208,7 @@ export function LoginScreen() {
         idToken: pendingGoogleIdToken,
         pseudo: pseudo.trim()
       });
-      router.replace("/home");
+      router.replace("/sorties");
     } catch (error: unknown) {
       Alert.alert("Création impossible", getErrorMessage(error));
     }

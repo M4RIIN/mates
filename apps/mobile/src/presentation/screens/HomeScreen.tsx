@@ -11,11 +11,9 @@ import { ListRow } from "@/presentation/components/ListRow";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
-import { OnboardingGuide } from "@/presentation/components/OnboardingGuide";
 import { ActiveInvitationBanner } from "@/presentation/components/ActiveInvitationBanner";
 import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
-import { useCurrentUser } from "@/presentation/hooks/useAuth";
 import { useFriendGroups, useFriends } from "@/presentation/hooks/useFriends";
 import { useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
@@ -74,7 +72,6 @@ export function HomeScreen() {
     [friends.data, selectedAudience]
   );
 
-  const currentUser = useCurrentUser();
   useEffect(() => {
     if (currentInvitation == null) return;
     syncCreatedInvitationLiveActivity(currentInvitation).catch((error: unknown) => {
@@ -260,9 +257,6 @@ export function HomeScreen() {
 
   return (
     <Screen contentStyle={[styles.screen, isWide ? styles.screenWide : null, isShort ? styles.screenShort : null]}>
-      {currentUser.data?.onboardingCompletedAt === null ? (
-        <OnboardingGuide key={currentUser.data.id} user={currentUser.data} />
-      ) : null}
       {currentInvitation != null ? (
         <ActiveInvitationBanner
           invitation={currentInvitation}
