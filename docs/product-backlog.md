@@ -46,7 +46,7 @@ Les tickets commerciaux peuvent avancer pendant le développement. Ne pas lancer
 | UX06 | Remonter les réponses sur le détail organisateur | P1 | À vérifier |
 | UX07 | Remonter les actions sur le détail invité | P1 | À vérifier |
 | UX08 | Simplifier les mots et la hiérarchie visuelle | P1 | À vérifier |
-| UX09 | Rendre les groupes existants plus accessibles | P2 | À faire |
+| UX09 | Rendre les groupes existants plus accessibles | P2 | À vérifier |
 
 ### UX01 Navigation visible
 
@@ -272,13 +272,25 @@ Restant avant clôture : caractères agrandis, lecteurs d’écran et rendu de l
 
 ### UX09 Groupes
 
+Implémenté le 9 octobre 2026 ; validations natives restantes.
+
 Afficher les groupes existants avant le formulaire ; ouvrir la création via Créer un groupe.
 
-- [ ] Un groupe peut être consulté, modifié et choisi facilement pour une sortie.
+- [x] Un groupe peut être consulté, modifié et choisi facilement pour une sortie.
 
-- [ ] Les états sans groupe ou sans ami proposent une prochaine action claire.
+- [x] Les états sans groupe ou sans ami proposent une prochaine action claire.
 
-- [ ] Les groupes restent décrits comme des listes d’invités personnelles tant qu’ils ne sont pas des espaces partagés.
+- [x] Les groupes restent décrits comme des listes d’invités personnelles tant qu’ils ne sont pas des espaces partagés.
+
+Réalisation : la liste Mes groupes apparaît en premier, suivie de Créer un groupe. Le formulaire est ouvert dans une fenêtre avec corps défilant et boutons Créer / Annuler fixes. Nom limité à 48 caractères, sélection de 1 à 100 amis disponibles avec cases accessibles ; le brouillon est conservé à la fermeture et après erreur, puis vidé après succès. Un verrou immédiat empêche les doubles créations. La vérification des amis et les personnes devenues indisponibles sont signalées. Une erreur apparaît en haut du corps, qui revient au début pour la rendre visible. Sans ami, Ajouter un ami ouvre la demande d’amitié.
+
+Les groupes restent des listes personnelles. La liste ouvre directement la modification des membres et indique où retrouver les groupes dans Proposer → Qui invites-tu ? L’écran de modification distingue une erreur réseau d’un groupe introuvable, propose Réessayer et Ajouter un ami si nécessaire ; la sauvegarde est bloquée pendant une vérification ou une erreur.
+
+Validation : typecheck mobile, export web et contrôle du diff réussis. Essais web avec données fictives à 320 × 640 : liste des groupes avant création, fenêtre de 12 amis avec boutons fixes, erreur de création conservant le nom et le membre puis nouvelle tentative réussie, nouveau groupe dans la liste, modification de deux à un membre, sélection du groupe créé dans Qui invites-tu ? et validation du destinataire. États sans groupe et sans ami vérifiés, Ajouter un ami ouvre le bon écran. Le défilement automatique vers l’erreur est ajouté après le premier essai ; le clavier et les annonces natives restent à vérifier. [Aperçu des groupes](assets/ux09-groupes.jpg).
+
+Récapitulatif de l’agent UI/UX `ux01_review` : hiérarchie, accès à la modification, choix dans une sortie et caractère personnel cohérents. Retours intégrés : indiquer la vérification des amis et les exclusions de personnes indisponibles. Revue finale : aucun défaut bloquant supplémentaire relevé dans le code corrigé ; création séparée, brouillon et visibilité des erreurs confirmés. Les essais web sont réalisés par l’agent principal.
+
+Restant avant clôture : clavier, marges de sécurité, caractères agrandis et lecteurs d’écran sur iOS/Android ; vérifier le déplacement vers une erreur longue sur appareil.
 
 ## Tickets de fonctionnalités
 

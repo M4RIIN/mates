@@ -59,17 +59,18 @@ export function EditFriendGroupScreen() {
       <PageHeader
         eyebrow="Organisation"
         title={group?.name ?? "Groupe"}
-        subtitle="Ajoute ou retire des amis de ce groupe."
+        subtitle="Ta liste d’invités personnelle. Ajoute ou retire des amis pour tes prochaines sorties."
         tone="yellow"
         compact
       />
       {friendGroups.isLoading || friends.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
-      {group === undefined && !friendGroups.isLoading ? (
+      {friendGroups.isError || friends.isError ? <View style={styles.card}><Text accessibilityRole="alert" style={styles.helper}>Impossible de charger le groupe ou tes amis.</Text><AppButton title="Réessayer" onPress={() => { void friendGroups.refetch(); void friends.refetch(); }} /></View> : null}
+      {group === undefined && !friendGroups.isLoading && !friendGroups.isError ? (
         <EmptyState title="Groupe introuvable" subtitle="Ce groupe n'existe plus ou n'est plus accessible." />
       ) : null}
       {group !== undefined ? (
         <View style={styles.card}>
-          <Text style={styles.helper}>{selectedMemberIds.length} ami(s) dans ce groupe</Text>
+          <Text style={styles.helper}>{selectedMemberIds.length} {selectedMemberIds.length > 1 ? "amis dans ce groupe" : "ami dans ce groupe"}</Text>
           {friends.data?.map((friend) => (
             <ListRow
               key={friend.id}
@@ -84,14 +85,14 @@ export function EditFriendGroupScreen() {
             />
           ))}
           {friends.data?.length === 0 ? (
-            <EmptyState title="Aucun ami" subtitle="Ajoute des amis avant de modifier ce groupe." />
+            <View style={{ gap: spacing.sm }}><EmptyState title="Aucun ami" subtitle="Ajoute des amis avant de modifier ce groupe." /><AppButton title="Ajouter un ami" onPress={() => router.push("/friends/add")} /></View>
           ) : null}
           <AppButton
             title="Enregistrer"
             onPress={submit}
             variant="success"
             loading={updateFriendGroupMembers.isPending}
-            disabled={selectedMemberIds.length === 0}
+            disabled={selectedMemberIds.length === 0 || selectedMemberIds.length > 100 || friends.isFetching || friends.isError || friendGroups.isError}
             icon={<Users size={18} color={colors.ink} strokeWidth={3} />}
           />
         </View>
