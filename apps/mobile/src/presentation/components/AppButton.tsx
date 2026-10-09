@@ -39,6 +39,7 @@ export function AppButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       onPress={onPress}
       onPressIn={() => {

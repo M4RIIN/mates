@@ -28,15 +28,15 @@ const steps = [
   },
   {
     title: "Les bonnes personnes,\ndans le bon groupe.",
-    body: "Dans Amis, ouvre Mes groupes, donne un nom à ton groupe et sélectionne au moins un ami actif. Crée-le, puis retrouve-le dans Limiter à pour cibler tes invitations.",
+    body: "Dans Amis, ouvre Mes groupes, donne un nom à ton groupe et sélectionne au moins un ami actif. Retrouve-le ensuite dans Choisir mes invités pour sélectionner ses membres.",
     hint: "Tu peux modifier les membres en ouvrant le groupe.",
     location: "Amis → Mes groupes", icon: Users, color: colors.blueSoft
   },
   {
     title: "Lance le plan.\nOn se retrouve là-bas.",
-    body: "Dans Proposer, choisis un lieu et une heure aujourd’hui. Limiter à te permet de choisir un groupe ou un ami ; sinon, tous tes amis actifs sont invités.",
+    body: "Dans Proposer, choisis un lieu et une heure aujourd’hui. Ouvre Choisir mes invités, coche tes amis ou choisis un groupe, puis valide. Tous mes amis reste un choix explicite. Vérifie les noms avant d’envoyer.",
     hint: "Glisse la protection, puis maintiens le bouton pour envoyer.",
-    location: "Proposer → Rencard → Limiter à", icon: Send, color: colors.redSoft
+    location: "Proposer → Invités → Valider", icon: Send, color: colors.redSoft
   },
   {
     title: "Un oui, un non.\nEt tout le monde sait.",

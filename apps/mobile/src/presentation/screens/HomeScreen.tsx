@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GestureResponderHandlers, LayoutChangeEvent } from "react-native";
-import { ActivityIndicator, Alert, Animated, Easing, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
 import { router } from "expo-router";
 import { Bell, ChevronDown, Users, X } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { ApiClientError } from "@/infrastructure/api/api-client";
 import { buildTodayScheduledAtFromParts, getDefaultInvitationTimeParts } from "@/domain/invitation/schedule";
-import { ListRow } from "@/presentation/components/ListRow";
+import { AudiencePicker } from "@/presentation/components/AudiencePicker";
+import { AppButton } from "@/presentation/components/AppButton";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
 import { PlaceVenuePanel } from "@/presentation/components/PlaceVenuePanel";
 import { Screen } from "@/presentation/components/Screen";
@@ -40,9 +41,8 @@ export function HomeScreen() {
   const [hourText, setHourText] = useState(defaultTime.hour);
   const [minuteText, setMinuteText] = useState(defaultTime.minute);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [selectedAudience, setSelectedAudience] = useState<HomeAudienceSelection | null>(null);
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
-  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [isArmed, setIsArmed] = useState(false);
   const guardX = useRef(new Animated.Value(0)).current;
   const holdProgress = useRef(new Animated.Value(0)).current;
@@ -55,22 +55,18 @@ export function HomeScreen() {
   const friends = useFriends();
   const placeSearch = usePlaceSearch(placeQuery);
   const createInvitation = useCreateInvitation();
+  const selectedFriends = useMemo(() => (friends.data ?? []).filter((friend) => selectedFriendIds.includes(friend.id)), [friends.data, selectedFriendIds]);
+  const recipientKey = selectedFriends.map((friend) => friend.id).sort().join(",");
   const canArm =
     placeQuery.trim().length > 0 &&
     hourText.trim().length > 0 &&
     minuteText.trim().length > 0 &&
+    selectedFriends.length > 0 && selectedFriends.length <= 100 && friends.isSuccess && !friends.isFetching && !audienceModalOpen &&
     !createInvitation.isPending &&
     activeInvitation.data === null &&
     !activeInvitation.isLoading;
   const canLaunch = canArm && isArmed;
-  const selectedGroup = useMemo(
-    () => (selectedAudience?.type === "group" ? friendGroups.data?.find((group) => group.id === selectedAudience.groupId) : undefined),
-    [friendGroups.data, selectedAudience]
-  );
-  const selectedFriend = useMemo(
-    () => (selectedAudience?.type === "friend" ? friends.data?.find((friend) => friend.id === selectedAudience.friendId) : undefined),
-    [friends.data, selectedAudience]
-  );
+  useEffect(() => { resetSafety(); }, [recipientKey, canArm]);
 
   useEffect(() => {
     if (currentInvitation == null) return;
@@ -89,6 +85,8 @@ export function HomeScreen() {
   }, []);
 
   function resetSafety() {
+    if (holdTimer.current !== null) { clearTimeout(holdTimer.current); holdTimer.current = null; }
+    holdProgress.stopAnimation();
     stopVibrationRamp();
     setIsArmed(false);
     Animated.spring(guardX, {
@@ -136,6 +134,11 @@ export function HomeScreen() {
   }
 
   async function launchInvitation() {
+    if (selectedFriends.length === 0 || selectedFriends.length > 100 || !friends.isSuccess || friends.isFetching || audienceModalOpen) {
+      Alert.alert("Invités manquants", "Choisis entre 1 et 100 amis avant d’envoyer.");
+      resetSafety();
+      return;
+    }
     const placeName = selectedPlace?.name ?? placeQuery.trim();
     if (placeName.length === 0) {
       Alert.alert("Lieu manquant", "Ajoute un lieu avant d’armer le bouton.");
@@ -152,8 +155,7 @@ export function HomeScreen() {
         ...(address.length > 0 ? { placeAddress: address } : {}),
         ...(selectedPlace?.latitude !== null && selectedPlace?.latitude !== undefined ? { latitude: selectedPlace.latitude } : {}),
         ...(selectedPlace?.longitude !== null && selectedPlace?.longitude !== undefined ? { longitude: selectedPlace.longitude } : {}),
-        ...(selectedAudience?.type === "group" ? { friendGroupId: selectedAudience.groupId } : {}),
-        ...(selectedAudience?.type === "friend" ? { friendUserIds: [selectedAudience.friendId] } : {})
+        friendUserIds: selectedFriends.map((friend) => friend.id)
       };
 
       const invitation = await createInvitation.mutateAsync(request);
@@ -347,29 +349,24 @@ export function HomeScreen() {
             </View>
           </View>
           <View style={styles.audienceBlock}>
-            <Text style={styles.limitSectionLabel}>Diffusion</Text>
-            <Pressable accessibilityRole="button" onPress={() => setAudienceModalOpen(true)} style={styles.audienceButton}>
+            <Text style={styles.limitSectionLabel}>Invités</Text>
+            <Pressable accessibilityRole="button" onPress={() => { resetSafety(); setAudienceModalOpen(true); }} style={styles.audienceButton}>
               <View style={styles.audienceButtonIcon}>
                 <Users size={16} color={colors.ink} strokeWidth={3} />
               </View>
               <View style={styles.audienceButtonTextBlock}>
-                <Text style={styles.audienceButtonLabel}>Limiter a</Text>
+                <Text style={styles.audienceButtonLabel}>Choisir les destinataires</Text>
                 <Text style={styles.audienceButtonValue}>
-                  {selectedAudience === null ? "Tous mes amis actifs" : selectedAudience.type === "group" ? "Un groupe" : "Un ami"}
+                  {selectedFriends.length === 0 ? "Choisir mes invités" : `${selectedFriends.length} personne(s) invitée(s)`}
                 </Text>
               </View>
               <ChevronDown size={18} color={colors.ink} strokeWidth={3} />
             </Pressable>
-            {selectedAudience !== null ? (
-              <View style={styles.chipRow}>
-                {selectedAudience.type === "group" && selectedGroup !== undefined ? (
-                  <HomeSelectionChip label={`Groupe · ${selectedGroup.name}`} onClear={() => setSelectedAudience(null)} />
-                ) : null}
-                {selectedAudience.type === "friend" && selectedFriend !== undefined ? (
-                  <HomeSelectionChip label={`Ami · ${selectedFriend.pseudo}`} onClear={() => setSelectedAudience(null)} />
-                ) : null}
-              </View>
-            ) : null}
+            {selectedFriends.map((friend) => <HomeSelectionChip key={friend.id} label={friend.pseudo} onClear={() => { setSelectedFriendIds((ids) => ids.filter((id) => id !== friend.id)); resetSafety(); }} />)}
+            {selectedFriendIds.length > selectedFriends.length ? <Text style={styles.audienceButtonLabel}>Certains amis ne sont plus disponibles et ne seront pas invités.</Text> : null}
+            {selectedFriends.length === 0 ? <Text style={styles.audienceButtonLabel}>Choisis au moins un ami pour pouvoir envoyer.</Text> : null}
+            {friends.isFetching ? <Text style={styles.audienceButtonLabel}>Vérification des invités…</Text> : null}
+            {friends.isError ? <><Text accessibilityRole="alert" style={styles.audienceButtonLabel}>Impossible de vérifier tes invités. Réessaie avant d’envoyer.</Text><AppButton title="Réessayer pour les invités" variant="secondary" onPress={() => { void friends.refetch(); }} /></> : null}
           </View>
         </View>
 
@@ -399,34 +396,20 @@ export function HomeScreen() {
               : "Swipe la protection, puis maintien"}
         </Text>
       </View>
-      <HomeAudiencePickerModal
-        open={audienceModalOpen}
+      {audienceModalOpen ? <AudiencePicker
         groups={friendGroups.data ?? []}
         friends={friends.data ?? []}
-        loading={friendGroups.isLoading || friends.isLoading}
-        expandedGroupIds={expandedGroupIds}
+        initialIds={selectedFriends.map((friend) => friend.id)}
+        loading={friends.isLoading || friends.isFetching}
+        failed={friends.isError} groupsFailed={friendGroups.isError} groupsLoading={friendGroups.isLoading}
+        onRetry={() => { void friends.refetch(); void friendGroups.refetch(); }}
         onClose={() => setAudienceModalOpen(false)}
-        onToggleGroup={(groupId) =>
-          setExpandedGroupIds((current) =>
-            current.includes(groupId) ? current.filter((entry) => entry !== groupId) : [...current, groupId]
-          )
-        }
-        onSelectAll={() => {
-          setSelectedAudience(null);
+        onConfirm={(ids) => {
+          setSelectedFriendIds(ids);
           setAudienceModalOpen(false);
           resetSafety();
         }}
-        onSelectGroup={(groupId) => {
-          setSelectedAudience({ type: "group", groupId });
-          setAudienceModalOpen(false);
-          resetSafety();
-        }}
-        onSelectFriend={(friendId) => {
-          setSelectedAudience({ type: "friend", friendId });
-          setAudienceModalOpen(false);
-          resetSafety();
-        }}
-      />
+      /> : null}
     </Screen>
   );
 }
@@ -444,106 +427,10 @@ function HomeSelectionChip({ label, onClear }: { label: string; onClear: () => v
   return (
     <View style={styles.chip}>
       <Text style={styles.chipText}>{label}</Text>
-      <Pressable accessibilityRole="button" onPress={onClear}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Retirer ${label}`} onPress={onClear} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
         <X size={14} color={colors.ink} strokeWidth={3} />
       </Pressable>
     </View>
-  );
-}
-
-function HomeAudiencePickerModal({
-  open,
-  groups,
-  friends,
-  loading,
-  expandedGroupIds,
-  onClose,
-  onToggleGroup,
-  onSelectAll,
-  onSelectGroup,
-  onSelectFriend
-}: {
-  open: boolean;
-  groups: Array<{ id: string; name: string; members: Array<{ id: string; pseudo: string }> }>;
-  friends: Array<{ id: string; pseudo: string; publicTag: string }>;
-  loading: boolean;
-  expandedGroupIds: string[];
-  onClose: () => void;
-  onToggleGroup: (groupId: string) => void;
-  onSelectAll: () => void;
-  onSelectGroup: (groupId: string) => void;
-  onSelectFriend: (friendId: string) => void;
-}) {
-  return (
-    <Modal transparent visible={open} animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalScrim}>
-        <View style={styles.modalCard}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Limiter a</Text>
-            <Pressable accessibilityRole="button" onPress={onClose}>
-              <X size={22} color={colors.ink} strokeWidth={3} />
-            </Pressable>
-          </View>
-          {loading ? <ActivityIndicator color={colors.primary} /> : null}
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Tous</Text>
-              <ListRow title="Tous mes amis actifs" subtitle="Aucune limitation" onPress={onSelectAll} />
-            </View>
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Mes groupes</Text>
-              {groups.map((group) => {
-                const isExpanded = expandedGroupIds.includes(group.id);
-
-                return (
-                  <View key={group.id} style={styles.groupCard}>
-                    <View style={styles.groupCardHeader}>
-                      <View style={styles.groupCardTitleBlock}>
-                        <Text style={styles.groupCardTitle}>{group.name}</Text>
-                        <Text style={styles.groupCardSubtitle}>{group.members.length} ami(s)</Text>
-                      </View>
-                      <View style={styles.groupCardActions}>
-                        <Pressable accessibilityRole="button" onPress={() => onToggleGroup(group.id)} style={styles.miniButton}>
-                          <Text style={styles.miniButtonText}>{isExpanded ? "Masquer" : "Voir"}</Text>
-                        </Pressable>
-                        <Pressable
-                          accessibilityRole="button"
-                          onPress={() => onSelectGroup(group.id)}
-                          style={[styles.miniButton, styles.miniButtonActive]}
-                        >
-                          <Text style={styles.miniButtonText}>Choisir</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                    {isExpanded ? (
-                      <View style={styles.memberList}>
-                        {group.members.map((member) => (
-                          <View key={member.id} style={styles.memberPill}>
-                            <Text style={styles.memberPillText}>{member.pseudo}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              })}
-            </View>
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Mes amis</Text>
-              {friends.map((friend) => (
-                <ListRow
-                  key={friend.id}
-                  title={friend.pseudo}
-                  subtitle={friend.publicTag}
-                  onPress={() => onSelectFriend(friend.id)}
-                  right={<Text style={[styles.miniButtonText, { paddingHorizontal: spacing.xs }]}>Ami</Text>}
-                />
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
   );
 }
 
@@ -627,8 +514,6 @@ function LaunchConsole({
     </View>
   );
 }
-
-type HomeAudienceSelection = { type: "group"; groupId: string } | { type: "friend"; friendId: string };
 
 const styles = StyleSheet.create({
   screen: {

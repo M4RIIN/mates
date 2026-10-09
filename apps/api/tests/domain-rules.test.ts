@@ -381,7 +381,11 @@ describe("active invitation rules", () => {
     expect(capturedRecipientBatches).toEqual([["friend-a"]]);
   });
 
-  it("targets only the selected friend", async () => {
+  it.each([
+    { selected: ["friend-b"], expected: ["friend-b"] },
+    { selected: ["friend-a", "friend-b"], expected: ["friend-a", "friend-b"] },
+    { selected: ["friend-b", "friend-b"], expected: ["friend-b"] }
+  ])("targets exactly the selected friends: $selected", async ({ selected, expected }) => {
     const capturedRecipientBatches: string[][] = [];
 
     const useCase = new SendInvitationToFriendsUseCase(
@@ -417,11 +421,11 @@ describe("active invitation rules", () => {
       creatorId: USER_ID,
       placeName: "Cafe Central",
       scheduledAt: "2026-05-16T21:00:00.000Z",
-      friendUserIds: ["friend-b"],
+      friendUserIds: selected,
       now: new Date("2026-05-16T10:00:00.000Z")
     });
 
-    expect(capturedRecipientBatches).toEqual([["friend-b"]]);
+    expect(capturedRecipientBatches).toEqual([expected]);
   });
 });
 

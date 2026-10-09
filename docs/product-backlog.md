@@ -42,7 +42,7 @@ Les tickets commerciaux peuvent avancer pendant le développement. Ne pas lancer
 | UX02 | Donner la priorité aux sorties sur l’accueil | P1 | À vérifier |
 | UX03 | Alléger le formulaire de création | P1 | À faire |
 | UX04 | Créer le bouton à capot et appui long | P1 | À faire |
-| UX05 | Choisir explicitement les destinataires | P1 | À faire |
+| UX05 | Choisir explicitement les destinataires | P1 | À vérifier |
 | UX06 | Remonter les réponses sur le détail organisateur | P1 | À faire |
 | UX07 | Remonter les actions sur le détail invité | P1 | À faire |
 | UX08 | Simplifier les mots et la hiérarchie visuelle | P1 | À faire |
@@ -146,15 +146,27 @@ Dépendances : UX03 et UX05 pour le récapitulatif. Le bouton reste un élément
 
 ### UX05 Destinataires explicites
 
+Implémenté le 9 octobre 2026 ; validations natives restantes.
+
 Remplacer la diffusion automatique à tous les amis par une sélection claire. Autoriser plusieurs amis choisis librement, un groupe ou tous les amis.
 
-- [ ] Les noms et le nombre de personnes invitées sont visibles avant l’envoi.
+- [x] Les noms et le nombre de personnes invitées sont visibles avant l’envoi.
 
-- [ ] Plusieurs amis peuvent être cochés sans créer un groupe.
+- [x] Plusieurs amis peuvent être cochés sans créer un groupe.
 
-- [ ] Tous mes amis est un choix explicite.
+- [x] Tous mes amis est un choix explicite.
 
-- [ ] Une sélection devenue vide empêche l’envoi et explique comment ajouter des invités.
+- [x] Une sélection devenue vide empêche l’envoi et explique comment ajouter des invités.
+
+Réalisation : aucun destinataire sélectionné initialement. Fenêtre de sélection avec cases à cocher, brouillon et Valider ; fermer sans valider conserve le choix précédent. Tous mes amis et les groupes présélectionnent des personnes ajustables. Les groupes servent de raccourcis : l’attribution du groupe n’est pas enregistrée dans l’invitation, car l’envoi utilise toujours la liste explicite `friendUserIds` (1 à 100 personnes). Les noms et le nombre sont affichés sur le formulaire ; chaque personne peut être retirée.
+
+Sécurité du geste : ouvrir le sélecteur, confirmer une modification ou modifier la liste disponible annule le maintien et referme la protection. Une liste vide, une vérification en cours ou une erreur des amis bloque l’envoi avec une explication. Les amis devenus indisponibles sont exclus et signalés. Une erreur des groupes n’empêche pas le choix individuel. Le glissement suivi du maintien de 1 150 ms est conservé.
+
+Validation : typecheck mobile, export web et `git diff --check` réussis ; 42 tests réussis, 3 tests BDD ignorés. Tests serveur étendus à plusieurs destinataires explicites et à la suppression des doublons. Essais web avec données fictives : zéro invité initial et validation désactivée ; sélection de deux amis et récapitulatif des noms ; Tous mes amis puis annulation conserve le choix validé ; groupe remplace la présélection ; Valider reste visible à 390 × 844 et 320 × 640 pendant le défilement. [Aperçu du sélecteur](assets/ux05-invites.jpg).
+
+Récapitulatif final de l’agent UI/UX `ux01_review` : sélection claire et volontaire ; aucun invité par défaut, choix multiamis, validation et récapitulatif cohérents. Corrections intégrées sur les explications de blocage réseau, la modalité pour les lecteurs d’écran et l’état désactivé du bouton. Aucun défaut bloquant supplémentaire relevé dans la revue du code corrigé. Les essais web sont réalisés par l’agent principal ; l’erreur des amis affiche bien une explication et Réessayer, avec envoi bloqué.
+
+Restant avant clôture : vérifier les gestes réels (dont ouverture du sélecteur pendant maintien), les lecteurs d’écran, les marges natives et la disparition d’un ami pendant composition sur iOS et Android.
 
 ### UX06 Détail organisateur
 
