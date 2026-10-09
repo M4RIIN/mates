@@ -15,26 +15,26 @@ const steps = [
     location: "Bienvenue dans Mates", icon: Sparkles, color: colors.yellow
   },
   {
-    title: "Ton tag,\nton point de rencontre.",
+    title: "Ton identifiant,\nton point de rencontre.",
     body: "Chaque compte a un identifiant unique. Partage le tien avec tes amis pour qu’ils puissent te retrouver, même si vous avez le même pseudo.",
-    hint: "Tu retrouveras toujours ton tag dans Profil.",
+    hint: "Tu retrouveras toujours ton identifiant dans Profil.",
     location: "Bouton Profil en haut de l’écran", icon: Hash, color: colors.blueSoft
   },
   {
     title: "Commence\npar ton crew.",
-    body: "Dans Amis, appuie sur Ajouter un ami. Saisis son tag complet, puis envoie la demande. Vous pourrez vous inviter dès qu’il l’aura acceptée.",
+    body: "Dans Amis, appuie sur Ajouter un ami. Saisis son identifiant complet, puis envoie la demande. Vous pourrez vous inviter dès qu’il l’aura acceptée.",
     hint: "Tes demandes reçues et en attente sont dans Amis.",
     location: "Amis → Ajouter un ami", icon: UserPlus, color: colors.yellowSoft
   },
   {
     title: "Les bonnes personnes,\ndans le bon groupe.",
-    body: "Dans Amis, ouvre Mes groupes, donne un nom à ton groupe et sélectionne au moins un ami actif. Retrouve-le ensuite dans Choisir mes invités pour sélectionner ses membres.",
+    body: "Dans Amis, ouvre Mes groupes, donne un nom à ton groupe et sélectionne au moins un ami. Retrouve-le ensuite dans Qui invites-tu ? pour sélectionner ses membres.",
     hint: "Tu peux modifier les membres en ouvrant le groupe.",
     location: "Amis → Mes groupes", icon: Users, color: colors.blueSoft
   },
   {
     title: "Lance le plan.\nOn se retrouve là-bas.",
-    body: "Dans Proposer, choisis un lieu et une heure aujourd’hui. Ouvre Choisir mes invités, coche tes amis ou choisis un groupe, puis valide. Tous mes amis reste un choix explicite. Vérifie les noms avant d’envoyer.",
+    body: "Dans Proposer, choisis un lieu et une heure aujourd’hui. Ouvre Qui invites-tu ?, coche tes amis ou choisis un groupe, puis valide. Tous mes amis reste un choix explicite. Vérifie les noms avant d’envoyer.",
     hint: "Glisse le capot vers la droite, puis maintiens le bouton 1,15 seconde pour inviter tes amis.",
     location: "Proposer → Invités → Valider", icon: Send, color: colors.redSoft
   },
@@ -87,7 +87,7 @@ export function OnboardingGuide({ user }: { user: CurrentUserDto }) {
                   <View style={styles.previewCaption}>
                     {index === 0 || index === 4 ? <MapPin size={13} color={colors.ink} /> : <Check size={13} color={colors.ink} />}
                     <Text style={styles.previewSubtitle}>{[
-                      "Un lieu. Une heure. On y va.", "", "Demande envoyée → Acceptée", "Tes amis actifs, réunis", "Diffusion : le crew du vendredi", "Les réponses sont au même endroit"
+                      "Un lieu. Une heure. On y va.", "", "Demande envoyée → Acceptée", "Tes amis, réunis", "Invités : le crew du vendredi", "Les réponses sont au même endroit"
                     ][index]}</Text>
                   </View>
                 </View>

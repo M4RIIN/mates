@@ -45,7 +45,7 @@ Les tickets commerciaux peuvent avancer pendant le développement. Ne pas lancer
 | UX05 | Choisir explicitement les destinataires | P1 | À vérifier |
 | UX06 | Remonter les réponses sur le détail organisateur | P1 | À vérifier |
 | UX07 | Remonter les actions sur le détail invité | P1 | À vérifier |
-| UX08 | Simplifier les mots et la hiérarchie visuelle | P1 | À faire |
+| UX08 | Simplifier les mots et la hiérarchie visuelle | P1 | À vérifier |
 | UX09 | Rendre les groupes existants plus accessibles | P2 | À faire |
 
 ### UX01 Navigation visible
@@ -246,17 +246,29 @@ Restant avant clôture : clavier et défilement, lecteurs d’écran, ouverture 
 
 ### UX08 Mots et lisibilité
 
+Implémenté le 9 octobre 2026 ; validations natives restantes.
+
 Remplacer Rencard par Proposer une sortie, Diffusion et Limiter à par Qui invites-tu ?, Amis actifs par Amis, Fermer l’invitation par Annuler la sortie. Harmoniser accents, états et libellés.
 
-- [ ] Les coordonnées GPS disparaissent du contenu utilisateur courant.
+- [x] Les coordonnées GPS disparaissent du contenu utilisateur courant.
 
-- [ ] Les noms longs et adresses longues restent lisibles.
+- [x] Les noms longs et adresses longues restent lisibles.
 
-- [ ] L’adresse et la carte ne répètent pas plusieurs fois le même lieu.
+- [x] L’adresse et la carte ne répètent pas plusieurs fois le même lieu.
 
-- [ ] Les couleurs sont accompagnées de textes pour distinguer oui, non et attente.
+- [x] Les couleurs sont accompagnées de textes pour distinguer oui, non et attente.
 
-- [ ] La palette et les contours caractéristiques de Mates sont conservés.
+- [x] La palette et les contours caractéristiques de Mates sont conservés.
+
+Réalisation : vocabulaire Sorties / Invités / Amis dans les écrans et le guide ; Qui invites-tu ? dans le formulaire et la sélection. Retrait d’Amis actifs, correction des accents des groupes, des erreurs et d’Itinéraire. Les boutons utilisent la casse normale et leur texte complet peut revenir à la ligne. Chercher une réservation décrit la recherche existante au lieu de promettre une réservation directe.
+
+Les titres de détails, résultats de recherche et bannières conservent les noms complets ; les adresses longues restent affichées. Les boutons de transport s’empilent à 360 px ou moins. Le cartouche natif superposé avec nom et coordonnées GPS est retiré, ainsi que le nom répété dans le bloc de remplacement de la carte. Les coordonnées restent utilisées par le marqueur, les itinéraires et Uber. Le message d’absence de carte propose l’itinéraire uniquement lorsque cette action est visible.
+
+Validation : typecheck mobile et export web réussis. Recherche de l’ancienne terminologie dans la présentation sans occurrence restante. Essais web avec données fictives à 320 × 640 : nom de lieu d’environ 150 caractères complet, adresse d’environ 230 caractères complète, nom d’ami et identifiant longs lisibles, accents et libellés des groupes, bannière avec nom complet, titre Qui invites-tu ? dans le formulaire et la sélection. Uber / Itinéraire empilés sans coupure ; Chercher une réservation sur deux lignes. [Aperçu de la lisibilité](assets/ux08-lisibilite.jpg).
+
+Récapitulatif de l’agent UI/UX `ux01_review` : vocabulaire et lisibilité harmonisés, accents, retrait du GPS visible et libellé de réservation fidèle à l’action. Conseil d’itinéraire cohérent avec sa disponibilité. Les essais web sont réalisés par l’agent principal ; aucun autre défaut bloquant relevé.
+
+Restant avant clôture : caractères agrandis, lecteurs d’écran et rendu de la carte native sur iOS/Android. Le fonctionnement de la carte web reste inchangé ; l’absence de carte interactive web constitue un sujet distinct.
 
 ### UX09 Groupes
 

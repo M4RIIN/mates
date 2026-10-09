@@ -14,16 +14,16 @@ export function ActiveInvitationBanner({ invitation, onPress }: {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Rendez-vous en cours : ${invitation.placeName}, ${time}`}
-      accessibilityHint="Ouvrir le détail du rendez-vous"
+      accessibilityLabel={`Sortie en cours : ${invitation.placeName}, ${time}`}
+      accessibilityHint="Ouvrir le détail de la sortie"
       onPress={onPress}
       style={({ pressed }) => [styles.banner, pressed ? styles.pressed : null]}
     >
       <View style={styles.icon}><MapPin size={22} color={colors.ink} strokeWidth={2.5} /></View>
       <View style={styles.copy}>
-        <Text style={styles.label}>RENDEZ-VOUS EN COURS</Text>
-        <Text style={styles.place} numberOfLines={1}>{invitation.placeName}</Text>
-        <Text style={styles.details} numberOfLines={1}>
+        <Text style={styles.label}>SORTIE EN COURS</Text>
+        <Text style={styles.place}>{invitation.placeName}</Text>
+        <Text style={styles.details}>
           {time} · {confirmedCount}/{invitation.recipients.length} confirmations
         </Text>
       </View>

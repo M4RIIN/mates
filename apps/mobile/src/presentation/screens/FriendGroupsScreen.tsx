@@ -24,12 +24,12 @@ export function FriendGroupsScreen() {
 
   async function submit() {
     if (name.trim().length === 0) {
-      Alert.alert("Nom manquant", "Donne un nom a ton groupe.");
+      Alert.alert("Nom manquant", "Donne un nom à ton groupe.");
       return;
     }
 
     if (selectedMemberIds.length === 0) {
-      Alert.alert("Groupe vide", "Selectionne au moins un ami.");
+      Alert.alert("Groupe vide", "Sélectionne au moins un ami.");
       return;
     }
 
@@ -41,7 +41,7 @@ export function FriendGroupsScreen() {
       setName("");
       setSelectedMemberIds([]);
     } catch (error: unknown) {
-      Alert.alert("Creation impossible", getErrorMessage(error));
+      Alert.alert("Création impossible", getErrorMessage(error));
     }
   }
 
@@ -63,10 +63,10 @@ export function FriendGroupsScreen() {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Nouveau groupe</Text>
         <TextField label="Nom du groupe" value={name} onChangeText={setName} placeholder="Ex: Foot, proches, taf..." />
-        <Text style={styles.helper}>{selectedCount} ami(s) selectionne(s)</Text>
+        <Text style={styles.helper}>{selectedCount} ami(s) sélectionné(s)</Text>
         {friends.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
         {friends.data?.length === 0 ? (
-          <EmptyState title="Aucun ami actif" subtitle="Ajoute des amis avant de creer un groupe." />
+          <EmptyState title="Aucun ami" subtitle="Ajoute des amis avant de créer un groupe." />
         ) : null}
         {friends.data?.map((friend) => (
           <ListRow
@@ -82,7 +82,7 @@ export function FriendGroupsScreen() {
           />
         ))}
         <AppButton
-          title="Creer le groupe"
+          title="Créer le groupe"
           onPress={submit}
           variant="success"
           loading={createFriendGroup.isPending}
@@ -94,7 +94,7 @@ export function FriendGroupsScreen() {
         <Text style={styles.sectionTitle}>Groupes existants</Text>
         {friendGroups.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
         {friendGroups.data?.length === 0 ? (
-          <EmptyState title="Aucun groupe" subtitle="Cree ton premier groupe pour cibler tes invitations." />
+          <EmptyState title="Aucun groupe" subtitle="Crée un groupe pour retrouver facilement tes amis lors d’une sortie." />
         ) : null}
         {friendGroups.data?.map((group) => (
           <ListRow

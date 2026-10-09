@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { CarFront, MapPinned, UtensilsCrossed } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
 import { useApiClient } from "@/presentation/hooks/useApiClient";
@@ -28,6 +28,7 @@ export function PlaceVenuePanel({
   compact = false
 }: PlaceVenuePanelProps) {
   const api = useApiClient();
+  const { width } = useWindowDimensions();
   const [isUberOpening, setIsUberOpening] = useState(false);
   const [isReserveOpening, setIsReserveOpening] = useState(false);
   const place = {
@@ -93,25 +94,15 @@ export function PlaceVenuePanel({
               style={styles.webview}
             />
           ) : null}
-          <View pointerEvents="none" style={styles.mapOverlay}>
-            <View style={styles.pinChip}>
-              <Text numberOfLines={1} style={styles.pinText}>
-                {title}
-              </Text>
-              <Text style={styles.pinSubtext}>
-                {formatCoordinate(latitude)} / {formatCoordinate(longitude)}
-              </Text>
-            </View>
-          </View>
+
         </View>
       ) : (
         <View style={[styles.mapFallback, compact ? styles.mapFallbackCompact : null]}>
           <View style={styles.fallbackIcon}>
             <MapPinned size={24} color={colors.white} strokeWidth={3} />
           </View>
-          <Text style={styles.fallbackTitle}>{title}</Text>
           <Text style={styles.fallbackText}>
-            {hasCoordinates ? "Carte interactive indisponible sur ce support." : "Coordonnees indisponibles pour ce lieu."}
+            {hasCoordinates ? showTransportActions ? "Carte indisponible sur ce support. Utilise l’itinéraire pour rejoindre le lieu." : "Carte indisponible sur ce support." : "Carte indisponible pour ce lieu."}
           </Text>
         </View>
       )}
@@ -119,7 +110,7 @@ export function PlaceVenuePanel({
       {address !== null && address !== undefined ? <Text style={styles.address}>{address}</Text> : null}
 
       {showTransportActions ? (
-        <View style={styles.actions}>
+        <View style={[styles.actions, width <= 360 ? styles.actionsStacked : null]}>
           <View style={styles.actionItem}>
             <AppButton
               title="Uber"
@@ -134,7 +125,7 @@ export function PlaceVenuePanel({
           </View>
           <View style={styles.actionItem}>
             <AppButton
-              title="Itineraire"
+              title="Itinéraire"
               onPress={() => openDirectionsChooser(place)}
               variant="primary"
               icon={<MapPinned size={18} color={colors.white} strokeWidth={3} />}
@@ -146,7 +137,7 @@ export function PlaceVenuePanel({
       {showReserveButton ? (
         <View style={styles.reserveRow}>
           <AppButton
-            title="Reserver"
+            title="Chercher une réservation"
             onPress={() => {
               handleReservePress().catch(() => undefined);
             }}
@@ -210,34 +201,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.blueSoft
   },
-  mapOverlay: {
-    position: "absolute",
-    left: spacing.sm,
-    right: spacing.sm,
-    bottom: spacing.sm
-  },
-  pinChip: {
-    alignSelf: "stretch",
-    borderRadius: radii.md,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceStrong,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm
-  },
-  pinText: {
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  pinSubtext: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700"
-  },
   mapFallback: {
     minHeight: 148,
     borderRadius: radii.md,
@@ -262,13 +225,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
-  fallbackTitle: {
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: "900",
-    textAlign: "center"
-  },
   fallbackText: {
     color: colors.muted,
     fontSize: 13,
@@ -286,6 +242,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm
   },
+  actionsStacked: { flexDirection: "column" },
   actionItem: {
     flex: 1
   },
@@ -293,10 +250,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxs
   }
 });
-
-function formatCoordinate(value: number | null | undefined): string {
-  return value === null || value === undefined ? "--" : value.toFixed(4);
-}
 
 function buildLeafletHtml({ latitude, longitude, title }: { latitude: number; longitude: number; title: string }): string {
   const escapedTitle = escapeHtml(title);

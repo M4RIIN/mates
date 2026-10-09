@@ -25,7 +25,7 @@ export function FriendsScreen() {
       <PageHeader
         eyebrow="Réseau"
         title="Amis"
-        subtitle={friends.data !== undefined ? `${friends.data.length} ami(s) actif(s)` : "Chargement"}
+        subtitle={friends.data !== undefined ? `${friends.data.length} ami(s)` : "Chargement"}
         tone="yellow"
         compact
       />
@@ -76,7 +76,7 @@ export function FriendsScreen() {
       {friends.data?.length === 0 &&
       (receivedRequests.data?.length ?? 0) === 0 &&
       (sentRequests.data?.length ?? 0) === 0 ? (
-        <EmptyState title="Aucun ami actif" subtitle="Ajoute un identifiant public pour envoyer tes invitations." />
+        <EmptyState title="Aucun ami" subtitle="Ajoute un identifiant public pour envoyer tes invitations." />
       ) : null}
       {friends.data?.map((friend) => (
         <ListRow key={friend.id} title={friend.pseudo} subtitle={friend.publicTag} />

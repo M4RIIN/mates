@@ -26,7 +26,7 @@ export function AudiencePicker({ groups, friends, initialIds, loading, failed, g
     <Modal transparent visible animationType="fade" onRequestClose={onClose}>
       <View style={styles.scrim}><View accessibilityViewIsModal style={styles.card}>
         <View style={styles.header}>
-          <Text accessibilityRole="header" style={styles.title}>Choisir mes invités</Text>
+          <Text accessibilityRole="header" style={styles.title}>Qui invites-tu ?</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Annuler la sélection" onPress={onClose} style={styles.close}><X size={22} color={colors.ink} /></Pressable>
         </View>
         {loading ? <ActivityIndicator accessibilityLabel="Chargement des amis" color={colors.primary} /> : null}

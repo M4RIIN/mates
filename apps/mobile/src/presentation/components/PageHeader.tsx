@@ -29,7 +29,7 @@ export function PageHeader({ title, eyebrow, subtitle, tone = "blue", compact = 
         {eyebrow !== undefined && eyebrow.length > 0 ? <Text style={styles.eyebrow}>{eyebrow}</Text> : <View />}
         <View style={[styles.tonePill, toneStyles[tone]]} />
       </View>
-      <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={compact ? 3 : 2} style={titleStyle}>
+      <Text style={titleStyle}>
         {title}
       </Text>
       {subtitle !== undefined && subtitle.length > 0 ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -110,6 +110,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border
   },
   eyebrow: {
+    flexShrink: 1,
+    minWidth: 0,
     color: colors.text,
     fontSize: 12,
     lineHeight: 16,

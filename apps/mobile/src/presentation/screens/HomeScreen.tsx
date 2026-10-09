@@ -322,9 +322,9 @@ export function HomeScreen() {
                 <Users size={16} color={colors.ink} strokeWidth={3} />
               </View>
               <View style={styles.audienceButtonTextBlock}>
-                <Text style={styles.audienceButtonLabel}>Choisir les destinataires</Text>
+                <Text style={styles.audienceButtonLabel}>Qui invites-tu ?</Text>
                 <Text style={styles.audienceButtonValue}>
-                  {selectedFriends.length === 0 ? "Choisir mes invités" : `${selectedFriends.length} personne(s) invitée(s)`}
+                  {selectedFriends.length === 0 ? "Choisir des amis ou un groupe" : `${selectedFriends.length} ${selectedFriends.length === 1 ? "personne invitée" : "personnes invitées"}`}
                 </Text>
               </View>
               <ChevronDown size={18} color={colors.ink} strokeWidth={3} />

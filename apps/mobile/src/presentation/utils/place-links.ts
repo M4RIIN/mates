@@ -11,7 +11,7 @@ export async function openUber(place: PlaceLinkInput): Promise<void> {
   const latitude = place.latitude;
   const longitude = place.longitude;
   if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
-    Alert.alert("Uber indisponible", "Ce lieu n'a pas de coordonnees precises.");
+    Alert.alert("Uber indisponible", "La position exacte de ce lieu est indisponible.");
     return;
   }
 
@@ -43,7 +43,7 @@ export function openDirectionsChooser(place: PlaceLinkInput): void {
     }
   ];
 
-  Alert.alert("Itineraire", "Choisis ton application.", [
+  Alert.alert("Itinéraire", "Choisis ton application.", [
     ...options.map((option) => ({
       text: option.label,
       onPress: () => {

@@ -44,7 +44,7 @@ export function EditFriendGroupScreen() {
       });
       router.back();
     } catch (error: unknown) {
-      Alert.alert("Mise a jour impossible", getErrorMessage(error));
+      Alert.alert("Mise à jour impossible", getErrorMessage(error));
     }
   }
 
@@ -84,7 +84,7 @@ export function EditFriendGroupScreen() {
             />
           ))}
           {friends.data?.length === 0 ? (
-            <EmptyState title="Aucun ami actif" subtitle="Ajoute des amis avant de modifier ce groupe." />
+            <EmptyState title="Aucun ami" subtitle="Ajoute des amis avant de modifier ce groupe." />
           ) : null}
           <AppButton
             title="Enregistrer"

@@ -12,6 +12,7 @@ export function PlaceResultRow({ title, subtitle, onPress }: PlaceResultRowProps
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={[title, subtitle].filter(Boolean).join(", ")}
       hitSlop={4}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed ? styles.rowPressed : null]}
@@ -20,11 +21,11 @@ export function PlaceResultRow({ title, subtitle, onPress }: PlaceResultRowProps
         <MapPin size={16} color={colors.ink} strokeWidth={3} />
       </View>
       <View style={styles.texts}>
-        <Text numberOfLines={1} style={styles.title}>
+        <Text style={styles.title}>
           {title}
         </Text>
         {subtitle !== undefined ? (
-          <Text numberOfLines={1} style={styles.subtitle}>
+          <Text style={styles.subtitle}>
             {subtitle}
           </Text>
         ) : null}

@@ -66,7 +66,7 @@ export function AppButton({
         ) : (
           <View style={[styles.content, big ? styles.bigContent : null]}>
             {icon}
-            <Text style={[styles.title, usesDarkText ? styles.titleDark : null, big ? styles.bigTitle : null]} numberOfLines={2}>
+            <Text style={[styles.title, usesDarkText ? styles.titleDark : null, big ? styles.bigTitle : null]}>
               {title}
             </Text>
           </View>
@@ -113,7 +113,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 20,
     textAlign: "center",
-    textTransform: "uppercase"
+    flexShrink: 1,
+    minWidth: 0
   },
   titleDark: {
     color: colors.ink
