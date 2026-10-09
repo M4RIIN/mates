@@ -35,7 +35,7 @@ const steps = [
   {
     title: "Lance le plan.\nOn se retrouve là-bas.",
     body: "Dans Proposer, choisis un lieu et une heure aujourd’hui. Ouvre Choisir mes invités, coche tes amis ou choisis un groupe, puis valide. Tous mes amis reste un choix explicite. Vérifie les noms avant d’envoyer.",
-    hint: "Glisse la protection, puis maintiens le bouton pour envoyer.",
+    hint: "Glisse le capot vers la droite, puis maintiens le bouton 1,15 seconde pour inviter tes amis.",
     location: "Proposer → Invités → Valider", icon: Send, color: colors.redSoft
   },
   {

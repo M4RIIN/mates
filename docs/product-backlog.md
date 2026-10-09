@@ -41,7 +41,7 @@ Les tickets commerciaux peuvent avancer pendant le développement. Ne pas lancer
 | UX01 | Rendre la navigation principale visible | P1 | À vérifier |
 | UX02 | Donner la priorité aux sorties sur l’accueil | P1 | À vérifier |
 | UX03 | Alléger le formulaire de création | P1 | À vérifier |
-| UX04 | Créer le bouton à capot et appui long | P1 | À faire |
+| UX04 | Créer le bouton à capot et appui long | P1 | À vérifier |
 | UX05 | Choisir explicitement les destinataires | P1 | À vérifier |
 | UX06 | Remonter les réponses sur le détail organisateur | P1 | À faire |
 | UX07 | Remonter les actions sur le détail invité | P1 | À faire |
@@ -128,37 +128,49 @@ Dépendances : UX04, UX05 ; PR03 pour les dates futures.
 
 ### UX04 Bouton protégé par un capot transparent
 
+Implémenté le 9 octobre 2026 ; validations natives restantes.
+
 Conserver la signature du produit : un bouton rouge, un socle jaune cohérent avec Mates et un capot transparent avec charnière. Les photos fournies décrivent la mécanique et l’apparence souhaitées ; elles servent de références de conception.
 
 États attendus : capot fermé → ouverture par glissement → capot ouvert → maintien en cours → envoi → confirmation ou erreur.
 
-- [ ] Le capot couvre réellement le bouton à l’état fermé ; le bouton ne peut pas envoyer.
+- [x] Le capot couvre réellement le bouton à l’état fermé ; le bouton ne peut pas envoyer.
 
-- [ ] Un glissement ouvre ou retire visuellement le capot avec une animation articulée, plutôt qu’une poignée qui se déplace sur un rail.
+- [x] Un glissement ouvre ou retire visuellement le capot avec une animation articulée, plutôt qu’une poignée qui se déplace sur un rail.
 
-- [ ] Le sens du geste est montré clairement ; son orientation exacte est choisie lors du prototype.
+- [x] Le sens du geste est montré clairement : vers la droite, avec charnière à droite.
 
-- [ ] Un geste incomplet revient à l’état fermé.
+- [x] Un geste incomplet revient à l’état fermé.
 
-- [ ] Après ouverture, un appui long reste indispensable ; conserver initialement les 1 150 ms actuelles.
+- [x] Après ouverture, un appui long de 1 150 ms reste indispensable dans le parcours tactile/pointeur. Exception accessible : ouverture dédiée puis confirmation explicite au clavier ou lecteur d’écran.
 
-- [ ] Une progression visuelle et un retour haptique signalent le maintien.
+- [ ] Une progression visuelle et un retour haptique signalent le maintien. Progression linéaire vérifiée sur web ; vibrations intégrées, à tester sur appareil.
 
-- [ ] Relâcher trop tôt annule la progression sans envoyer.
+- [x] Relâcher trop tôt annule la progression sans envoyer.
 
-- [ ] Le récapitulatif indique clairement le lieu, la date, l’heure et les destinataires avant le maintien.
+- [x] Le récapitulatif indique clairement le lieu, la date, l’heure et les destinataires avant le maintien.
 
-- [ ] Changer les informations de la sortie referme la protection.
+- [x] Changer les informations de la sortie referme la protection.
 
-- [ ] Pendant l’envoi, les gestes sont neutralisés ; des appuis répétés ne créent pas plusieurs invitations.
+- [x] Pendant l’envoi, les gestes sont neutralisés ; des appuis répétés ne créent pas plusieurs invitations.
 
-- [ ] Une erreur laisse un message explicite et une nouvelle tentative avec protection refermée.
+- [x] Une erreur laisse un message explicite et une nouvelle tentative avec protection refermée.
 
-- [ ] Les états sont annoncés aux lecteurs d’écran ; un contrôle accessible permet d’ouvrir le capot sans devoir réaliser le glissement, tout en conservant une confirmation volontaire.
+- [ ] Les états sont annoncés aux lecteurs d’écran ; un contrôle accessible permet d’ouvrir le capot sans devoir réaliser le glissement, tout en conservant une confirmation volontaire. Annonces natives intégrées ; parcours clavier web vérifié, lecteurs d’écran natifs à tester.
 
 - [ ] Le prototype est vérifié sur petit écran, avec réduction des animations et sur iOS et Android.
 
 Dépendances : UX03 et UX05 pour le récapitulatif. Le bouton reste un élément ludique ; ses textes doivent parler d’inviter ses amis et d’envoyer une sortie.
+
+Réalisation : nouveau composant `ProtectedInvitationButton`, capot transparent avec reflet et rotation autour de la charnière, socle jaune et bouton rouge. Ouverture au seuil de 72 % du trajet ; aucun raccourci par vitesse. Un contrôleur partagé avec les tests impose les phases fermé / ouvert / maintien / envoi et verrouille immédiatement l’envoi. Modification du formulaire, changement d’écran et passage en arrière-plan annulent le maintien. Les contrôles sont bloqués pendant la requête. Après erreur, les saisies sont conservées et le capot se referme. Le guide explique le nouveau geste.
+
+Accessibilité : alternative d’ouverture puis confirmation avec récapitulatif défilant et boutons fixes ; réduction des animations prise en compte. Sur web, l’ouverture alternative apparaît au focus clavier ; le pointeur conserve glissement et maintien. Sur natif, elle est proposée au lecteur d’écran.
+
+Validation : typecheck mobile et export web réussis ; 51 tests réussis, 3 tests BDD ignorés sans `TEST_DATABASE_URL`. Cinq tests du contrôleur couvrent durée complète, relâchement, interruption, verrouillage des doubles envois, seuil du glissement et confirmation accessible. Essais web avec données fictives à 390 × 844 : geste de 25 px restant fermé, geste complet ouvrant le capot, appui de 300 ms sans envoi, maintien de 1 350 ms produisant une seule requête, boutons désactivés pendant l’envoi, erreur explicite avec protection refermée, confirmation clavier puis annulation, modification du lieu refermant le capot. À 320 × 640, le bouton entier reste accessible par défilement. [Capot fermé](assets/ux04-capot-ferme.jpg) · [Capot ouvert](assets/ux04-capot-ouvert.jpg).
+
+Récapitulatif final de l’agent UI/UX `ux01_review` : mécanique cohérente avec le bouton protégé souhaité ; revue du code confirmant capot articulé, maintien de 1 150 ms, progression linéaire, verrouillage des envois répétés et fermeture après erreur. La prise du geste dès le contact a été corrigée et le glissement réel vérifié par l’agent principal. Aucun autre défaut bloquant relevé dans le code corrigé.
+
+Restant avant clôture : iOS/Android pour animation et superposition, vibrations, lecteurs d’écran, réduction des animations et gestes avec défilement. Le scénario de succès de l’envoi reste à confirmer sur l’application connectée ; l’API fictive des essais web renvoie volontairement une erreur.
 
 ### UX05 Destinataires explicites
 

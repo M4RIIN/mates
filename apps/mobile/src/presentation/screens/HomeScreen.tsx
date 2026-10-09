@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { GestureResponderHandlers, LayoutChangeEvent } from "react-native";
-import { ActivityIndicator, Alert, Animated, Easing, Keyboard, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
-import { router } from "expo-router";
-import { Bell, ChevronDown, Users, X } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Animated, AppState, Easing, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import { InvitationSafetyGate, invitationHoldDurationMs } from "@/domain/invitation/safety-gate";
+import { ProtectedInvitationButton } from "@/presentation/components/ProtectedInvitationButton";
+import { ChevronDown, Users, X } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
 import { buildInvitationPlaceInput } from "@/domain/invitation/place-input";
@@ -24,9 +25,7 @@ import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
 import { syncCreatedInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { borders, colors, layout, radii, spacing } from "@/shared/theme";
 
-const guardTravel = 138;
-const guardTrackPadding = 5;
-const holdDurationMs = 1150;
+const holdDurationMs = invitationHoldDurationMs;
 
 export function HomeScreen() {
   const defaultTime = getDefaultInvitationTimeParts();
@@ -34,11 +33,6 @@ export function HomeScreen() {
   const isWide = width >= layout.tabletWidth;
   const isNarrow = width <= layout.compactWidth;
   const isShort = height < 740;
-  const [guardTrackWidth, setGuardTrackWidth] = useState(0);
-  const [guardPlateWidth, setGuardPlateWidth] = useState(0);
-  const measuredGuardTravel = Math.max(0, guardTrackWidth - guardPlateWidth - guardTrackPadding * 2);
-  const fallbackGuardTravel = Math.max(84, Math.min(guardTravel, width - 230));
-  const effectiveGuardTravel = measuredGuardTravel > 0 ? measuredGuardTravel : fallbackGuardTravel;
   const [placeQuery, setPlaceQuery] = useState("");
   const [customAddress, setCustomAddress] = useState("");
   const [hourText, setHourText] = useState(defaultTime.hour);
@@ -50,7 +44,12 @@ export function HomeScreen() {
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
   const [isArmed, setIsArmed] = useState(false);
-  const guardX = useRef(new Animated.Value(0)).current;
+  const [coverRevision, setCoverRevision] = useState(0);
+  const [isHolding, setIsHolding] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [accessibleConfirmOpen, setAccessibleConfirmOpen] = useState(false);
+  const safetyGate = useRef(new InvitationSafetyGate()).current;
   const holdProgress = useRef(new Animated.Value(0)).current;
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const vibrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,11 +70,19 @@ export function HomeScreen() {
   const canArm =
     placeError === null && timeError === null && addressError === null && !timePickerOpen &&
     selectedFriends.length > 0 && selectedFriends.length <= 100 && friends.isSuccess && !friends.isFetching && !audienceModalOpen &&
-    !createInvitation.isPending &&
+    !createInvitation.isPending && !isSending &&
     activeInvitation.data === null &&
     !activeInvitation.isLoading;
   const canLaunch = canArm && isArmed;
-  useEffect(() => { resetSafety(); }, [recipientKey, canArm]);
+  useEffect(() => { resetSafety(); }, [recipientKey, canArm, placeQuery, customAddress, hourText, minuteText, now.toDateString()]);
+  useEffect(() => { setSendError(null); }, [recipientKey, placeQuery, customAddress, hourText, minuteText]);
+  useFocusEffect(useCallback(() => () => { resetSafety(); setAccessibleConfirmOpen(false); }, []));
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") { resetSafety(); setAccessibleConfirmOpen(false); }
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (currentInvitation == null) return;
@@ -94,16 +101,13 @@ export function HomeScreen() {
   }, []);
 
   function resetSafety() {
+    setCoverRevision((value) => value + 1);
     if (holdTimer.current !== null) { clearTimeout(holdTimer.current); holdTimer.current = null; }
     holdProgress.stopAnimation();
     stopVibrationRamp();
-    setIsArmed(false);
-    Animated.spring(guardX, {
-      toValue: 0,
-      tension: 150,
-      friction: 18,
-      useNativeDriver: true
-    }).start();
+    safetyGate.reset();
+    if (safetyGate.phase !== "sending") setIsArmed(false);
+    setIsHolding(false);
     holdProgress.setValue(0);
   }
 
@@ -146,21 +150,22 @@ export function HomeScreen() {
   }
 
   async function launchInvitation() {
+    setSendError(null);
     const currentTimeError = getInvitationTimeError(hourText, minuteText);
     if (placeError !== null || addressError !== null || currentTimeError !== null) {
       Alert.alert("Vérifie ta sortie", placeError ?? addressError ?? currentTimeError ?? "Vérifie les informations.");
-      resetSafety();
+      safetyGate.settle(); setIsSending(false); resetSafety();
       return;
     }
     if (selectedFriends.length === 0 || selectedFriends.length > 100 || !friends.isSuccess || friends.isFetching || audienceModalOpen) {
       Alert.alert("Invités manquants", "Choisis entre 1 et 100 amis avant d’envoyer.");
-      resetSafety();
+      safetyGate.settle(); setIsSending(false); resetSafety();
       return;
     }
     const placeName = selectedPlace?.name ?? placeQuery.trim();
     if (placeName.length === 0) {
       Alert.alert("Lieu manquant", "Ajoute un lieu avant d’armer le bouton.");
-      resetSafety();
+      safetyGate.settle(); setIsSending(false); resetSafety();
       return;
     }
 
@@ -186,25 +191,34 @@ export function HomeScreen() {
       }
 
       Alert.alert("Envoi impossible", getErrorMessage(error));
+      setSendError(getErrorMessage(error));
+      resetSafety();
+    } finally {
+      safetyGate.settle();
+      setIsSending(false);
       resetSafety();
     }
   }
 
   function startHold() {
-    if (!canLaunch || holdTimer.current !== null) {
+    if (!canLaunch || holdTimer.current !== null || !safetyGate.beginHold(Date.now())) {
       return;
     }
+    setIsHolding(true);
 
     Animated.timing(holdProgress, {
       toValue: 1,
       duration: holdDurationMs,
-      easing: Easing.out(Easing.cubic),
+      easing: Easing.linear,
       useNativeDriver: false
     }).start();
     startVibrationRamp();
 
     holdTimer.current = setTimeout(() => {
       holdTimer.current = null;
+      if (!safetyGate.finishHold(Date.now())) { resetSafety(); return; }
+      setIsHolding(false);
+      setIsSending(true);
       stopVibrationRamp();
       Vibration.vibrate([0, 35, 35, 95]);
       launchInvitation().catch((error: unknown) => {
@@ -215,6 +229,8 @@ export function HomeScreen() {
   }
 
   function stopHold() {
+    safetyGate.cancelHold();
+    setIsHolding(false);
     if (holdTimer.current !== null) {
       clearTimeout(holdTimer.current);
       holdTimer.current = null;
@@ -228,49 +244,6 @@ export function HomeScreen() {
     }
   }
 
-  const guardResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => canArm && !isArmed,
-    onMoveShouldSetPanResponder: (_, gesture) => canArm && !isArmed && Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
-    onPanResponderGrant: () => {
-      Keyboard.dismiss();
-      guardX.stopAnimation();
-    },
-    onPanResponderMove: (_, gesture) => {
-      if (!canArm || isArmed) {
-        return;
-      }
-
-      guardX.setValue(Math.min(Math.max(gesture.dx, 0), effectiveGuardTravel));
-    },
-    onPanResponderRelease: (_, gesture) => {
-      if (!canArm || isArmed) {
-        return;
-      }
-
-      const currentX = Math.min(Math.max(gesture.dx, 0), effectiveGuardTravel);
-      const progress = effectiveGuardTravel > 0 ? currentX / effectiveGuardTravel : 0;
-      const nearEndThreshold = Math.max(effectiveGuardTravel - 28, effectiveGuardTravel * 0.72);
-      const shouldArm = currentX >= nearEndThreshold || progress >= 0.72 || (progress >= 0.35 && gesture.vx > 0.55);
-      setIsArmed(shouldArm);
-      Vibration.vibrate(shouldArm ? 42 : 12);
-      Animated.spring(guardX, {
-        toValue: shouldArm ? effectiveGuardTravel : 0,
-        tension: 150,
-        friction: 18,
-        useNativeDriver: true
-      }).start();
-    },
-    onPanResponderTerminate: () => {
-      if (!isArmed) {
-        Animated.spring(guardX, {
-          toValue: 0,
-          tension: 150,
-          friction: 18,
-          useNativeDriver: true
-        }).start();
-      }
-    }
-  });
 
   return (
     <Screen contentStyle={[styles.screen, isWide ? styles.screenWide : null, isShort ? styles.screenShort : null]}>
@@ -281,7 +254,7 @@ export function HomeScreen() {
         />
       ) : null}
       <View style={[styles.cockpit, isWide ? styles.cockpitWide : null]}>
-        <View style={[styles.formPanel, isWide ? styles.formPanelWide : null]}>
+        <View pointerEvents={isSending ? "none" : "auto"} style={[styles.formPanel, isWide ? styles.formPanelWide : null]}>
           <View pointerEvents="none" style={styles.formGlow} />
           <Text style={styles.sectionLabel}>Ta sortie</Text>
           {selectedPlace === null ? <TextField
@@ -364,32 +337,38 @@ export function HomeScreen() {
           </View>
         </View>
 
-        <LaunchConsole
+        <ProtectedInvitationButton
+          revision={coverRevision}
           armed={isArmed}
-          canArm={canArm}
-          canLaunch={canLaunch}
-          guardX={guardX}
+          ready={canArm}
+          holding={isHolding}
+          sending={isSending}
+          error={sendError}
           holdProgress={holdProgress}
-          loading={createInvitation.isPending}
           compact={isNarrow || isShort}
-          panHandlers={guardResponder.panHandlers}
-          onGuardTrackLayout={(event) => setGuardTrackWidth(event.nativeEvent.layout.width)}
-          onGuardPlateLayout={(event) => setGuardPlateWidth(event.nativeEvent.layout.width)}
-          onPressIn={startHold}
-          onPressOut={stopHold}
+          onOpen={() => { if (canArm && safetyGate.open()) { Keyboard.dismiss(); setSendError(null); setIsArmed(true); Vibration.vibrate(42); } }}
+          onClose={resetSafety}
+          onHold={startHold}
+          onRelease={stopHold}
+          onAccessibleSend={() => { if (canLaunch) setAccessibleConfirmOpen(true); }}
         />
       </View>
 
-      <View style={styles.statusLine}>
-        <Bell size={17} color={colors.ink} strokeWidth={3} />
-        <Text style={styles.statusText}>
-          {activeInvitation.data !== null && activeInvitation.data !== undefined
-            ? "Un rendez-vous est déjà en cours"
-            : isArmed
-              ? "Protection retirée"
-              : "Swipe la protection, puis maintien"}
-        </Text>
-      </View>
+      {sendError ? <View><Text accessibilityRole="alert" style={styles.error}>Envoi impossible : {sendError}</Text><Text style={styles.helper}>Le capot est refermé. Vérifie ta sortie puis ouvre-le pour réessayer.</Text></View> : null}
+      <Modal transparent visible={accessibleConfirmOpen} animationType="fade" onRequestClose={() => setAccessibleConfirmOpen(false)}>
+        <View style={styles.modalScrim}><View accessibilityViewIsModal style={styles.modalCard}>
+          <Text accessibilityRole="header" style={styles.placeName}>Confirmer l’invitation</Text>
+          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: spacing.sm }}>
+            <Text style={styles.helper}>{placeQuery} · Aujourd’hui à {hourText}:{minuteText}</Text>
+            {customAddress ? <Text style={styles.helper}>{customAddress}</Text> : null}
+            <Text style={styles.helper}>{selectedFriends.length} invité(s) : {selectedFriends.map((friend) => friend.pseudo).join(", ")}</Text>
+          </ScrollView>
+          <AppButton title="Confirmer et inviter mes amis" disabled={!canLaunch} onPress={() => {
+            if (canLaunch && safetyGate.confirmAccessible()) { setAccessibleConfirmOpen(false); setIsSending(true); void launchInvitation(); }
+          }} />
+          <AppButton title="Annuler" variant="secondary" onPress={() => { setAccessibleConfirmOpen(false); resetSafety(); }} />
+        </View></View>
+      </Modal>
       {timePickerOpen ? <InvitationTimePicker hour={hourText} minute={minuteText} onClose={() => setTimePickerOpen(false)} onConfirm={(hour, minute) => { setHourText(hour); setMinuteText(minute); setTimePickerOpen(false); resetSafety(); }} /> : null}
       {audienceModalOpen ? <AudiencePicker
         groups={friendGroups.data ?? []}
@@ -426,87 +405,6 @@ function HomeSelectionChip({ label, onClear }: { label: string; onClear: () => v
         <X size={14} color={colors.ink} strokeWidth={3} />
       </View>
     </Pressable>
-  );
-}
-
-function LaunchConsole({
-  armed,
-  canArm,
-  canLaunch,
-  guardX,
-  holdProgress,
-  loading,
-  compact,
-  panHandlers,
-  onGuardTrackLayout,
-  onGuardPlateLayout,
-  onPressIn,
-  onPressOut
-}: {
-  armed: boolean;
-  canArm: boolean;
-  canLaunch: boolean;
-  guardX: Animated.Value;
-  holdProgress: Animated.Value;
-  loading: boolean;
-  compact: boolean;
-  panHandlers: GestureResponderHandlers;
-  onGuardTrackLayout: (event: LayoutChangeEvent) => void;
-  onGuardPlateLayout: (event: LayoutChangeEvent) => void;
-  onPressIn: () => void;
-  onPressOut: () => void;
-}) {
-  const pulseScale = holdProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
-  const progressWidth = holdProgress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
-
-  return (
-    <View style={[styles.launchPanel, compact ? styles.launchPanelCompact : null]}>
-      <View style={[styles.guardZone, compact ? styles.guardZoneCompact : null]}>
-        <Text style={styles.guardLabel}>{armed ? "Protection ouverte" : canArm ? "Swipe pour retirer la protection" : "Complète la mission"}</Text>
-        <View
-          onLayout={onGuardTrackLayout}
-          style={[styles.guardTrack, compact ? styles.guardTrackCompact : null, !canArm ? styles.guardTrackDisabled : null]}
-          {...panHandlers}
-        >
-          <Animated.View
-            onLayout={onGuardPlateLayout}
-            style={[styles.guardPlate, compact ? styles.guardPlateCompact : null, armed ? styles.guardPlateArmed : null, { transform: [{ translateX: guardX }] }]}
-          >
-            <View style={[styles.guardGrip, armed ? styles.guardGripArmed : null]} />
-            <Text style={[styles.guardText, armed ? styles.guardTextArmed : null]}>{armed ? "ARMÉ" : "LOCK"}</Text>
-          </Animated.View>
-        </View>
-      </View>
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={!canLaunch || loading}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        style={({ pressed }) => [
-          styles.launchButtonShell,
-          compact ? styles.launchButtonShellCompact : null,
-          pressed && canLaunch ? styles.launchButtonPressed : null,
-          !canLaunch ? styles.launchDisabled : null
-        ]}
-      >
-        <Animated.View style={[styles.outerRing, compact ? styles.outerRingCompact : null, { transform: [{ scale: pulseScale }] }]}>
-          <View style={[styles.warningRing, compact ? styles.warningRingCompact : null]}>
-            <View style={styles.warningStripeA} />
-            <View style={styles.warningStripeB} />
-            <View style={[styles.launchButton, compact ? styles.launchButtonCompact : null]}>
-              <View style={[styles.launchCore, compact ? styles.launchCoreCompact : null]}>
-                {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.launchText}>{armed ? "MAINTENIR" : "VERROUILLÉ"}</Text>}
-                <Text style={styles.launchSubtext}>{armed ? "Pour envoyer" : "Swipe d’abord"}</Text>
-              </View>
-            </View>
-          </View>
-        </Animated.View>
-        <View style={[styles.holdMeter, compact ? styles.holdMeterCompact : null]}>
-          <Animated.View style={[styles.holdMeterFill, { width: progressWidth }]} />
-        </View>
-      </Pressable>
-    </View>
   );
 }
 
@@ -770,231 +668,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900"
   },
-  launchPanel: {
-    alignItems: "center",
-    gap: spacing.sm
-  },
-  launchPanelCompact: {
-    gap: spacing.xs
-  },
-  guardZone: {
-    width: "100%",
-    maxWidth: 360,
-    gap: spacing.xxs
-  },
-  guardZoneCompact: {
-    maxWidth: 328
-  },
-  guardLabel: {
-    color: colors.text,
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: "900",
-    textAlign: "center",
-    textTransform: "uppercase"
-  },
-  guardTrack: {
-    height: 54,
-    borderRadius: radii.pill,
-    borderWidth: borders.heavy,
-    borderColor: colors.border,
-    backgroundColor: colors.ink,
-    padding: 5,
-    overflow: "hidden"
-  },
-  guardTrackCompact: {
-    height: 48
-  },
-  guardTrackDisabled: {
-    opacity: 0.46
-  },
-  guardPlate: {
-    width: 188,
-    height: 38,
-    borderRadius: 21,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.yellow,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm
-  },
-  guardPlateCompact: {
-    width: 166,
-    height: 34
-  },
-  guardPlateArmed: {
-    backgroundColor: colors.primary
-  },
-  guardGrip: {
-    width: 24,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.ink
-  },
-  guardGripArmed: {
-    backgroundColor: colors.white
-  },
-  guardText: {
-    color: colors.ink,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "900"
-  },
-  guardTextArmed: {
-    color: colors.white
-  },
-  launchButtonShell: {
-    width: 250,
-    height: 250,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  launchButtonShellCompact: {
-    width: 214,
-    height: 214
-  },
-  launchButtonPressed: {
-    transform: [{ scale: 0.985 }]
-  },
-  launchDisabled: {
-    opacity: 0.58
-  },
-  outerRing: {
-    width: 232,
-    height: 232,
-    borderRadius: 116,
-    borderWidth: borders.heavy,
-    borderColor: colors.border,
-    backgroundColor: colors.yellow,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  outerRingCompact: {
-    width: 198,
-    height: 198,
-    borderRadius: 99
-  },
-  warningRing: {
-    width: 206,
-    height: 206,
-    borderRadius: 103,
-    borderWidth: borders.heavy,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceStrong,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden"
-  },
-  warningRingCompact: {
-    width: 176,
-    height: 176,
-    borderRadius: 88
-  },
-  warningStripeA: {
-    position: "absolute",
-    width: 260,
-    height: 28,
-    backgroundColor: colors.primary,
-    transform: [{ rotate: "-35deg" }]
-  },
-  warningStripeB: {
-    position: "absolute",
-    width: 260,
-    height: 28,
-    backgroundColor: colors.yellow,
-    transform: [{ rotate: "35deg" }]
-  },
-  launchButton: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    borderWidth: borders.heavy,
-    borderColor: colors.border,
-    backgroundColor: colors.red,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.22,
-    shadowRadius: 0,
-    elevation: 5
-  },
-  launchButtonCompact: {
-    width: 130,
-    height: 130,
-    borderRadius: 65
-  },
-  launchCore: {
-    width: 116,
-    height: 116,
-    borderRadius: 58,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.redPressed,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.sm
-  },
-  launchCoreCompact: {
-    width: 100,
-    height: 100,
-    borderRadius: 50
-  },
-  launchText: {
-    color: colors.white,
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: "900",
-    textAlign: "center"
-  },
-  launchSubtext: {
-    color: colors.white,
-    marginTop: spacing.xxs,
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: "900",
-    opacity: 0.86,
-    textAlign: "center",
-    textTransform: "uppercase"
-  },
-  holdMeter: {
-    position: "absolute",
-    bottom: 12,
-    width: 154,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface
-  },
-  holdMeterCompact: {
-    bottom: 8,
-    width: 132
-  },
-  holdMeterFill: {
-    height: "100%",
-    borderRadius: 4,
-    backgroundColor: colors.primary
-  },
-  statusLine: {
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radii.pill,
-    borderWidth: borders.regular,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  statusText: {
-    color: colors.text,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  }
 });
