@@ -13,8 +13,8 @@ export function buildTodayScheduledAt(timeText: string, now: Date = new Date()):
 }
 
 export function buildTodayScheduledAtFromParts(hourText: string, minuteText: string, now: Date = new Date()): string {
-  const hour = Number.parseInt(hourText.trim(), 10);
-  const minute = Number.parseInt(minuteText.trim(), 10);
+  const hour = /^\d{1,2}$/.test(hourText.trim()) ? Number(hourText.trim()) : NaN;
+  const minute = /^\d{1,2}$/.test(minuteText.trim()) ? Number(minuteText.trim()) : NaN;
 
   if (Number.isNaN(hour) || hour < 0 || hour > 23) {
     throw new Error("Entre une heure entre 0 et 23");
@@ -34,11 +34,22 @@ export function getDefaultInvitationTime(now: Date = new Date()): string {
   const nextHour = new Date(now);
   nextHour.setMinutes(0, 0, 0);
   nextHour.setHours(nextHour.getHours() + 1);
+  if (nextHour.getDate() !== now.getDate()) { nextHour.setTime(now.getTime()); nextHour.setHours(23, 59, 0, 0); }
 
   return `${nextHour.getHours().toString().padStart(2, "0")}:${nextHour
     .getMinutes()
     .toString()
     .padStart(2, "0")}`;
+}
+
+export function getInvitationTimeError(hour: string, minute: string, now: Date = new Date()): string | null {
+  try {
+    if (now.getHours() === 23 && now.getMinutes() === 59) return "Il n’y a plus de créneau disponible aujourd’hui.";
+    const scheduledAt = buildTodayScheduledAtFromParts(hour, minute, now);
+    return Date.parse(scheduledAt) <= now.getTime() ? "Choisis une heure à venir aujourd’hui." : null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Choisis une heure valide.";
+  }
 }
 
 export function getDefaultInvitationTimeParts(now: Date = new Date()): { hour: string; minute: string } {

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GestureResponderHandlers, LayoutChangeEvent } from "react-native";
-import { ActivityIndicator, Alert, Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Easing, Keyboard, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vibration, View } from "react-native";
 import { router } from "expo-router";
 import { Bell, ChevronDown, Users, X } from "lucide-react-native";
 import type { CreateInvitationRequest } from "@mates/shared";
 import type { Place } from "@/domain/place/place";
+import { buildInvitationPlaceInput } from "@/domain/invitation/place-input";
 import { ApiClientError } from "@/infrastructure/api/api-client";
-import { buildTodayScheduledAtFromParts, getDefaultInvitationTimeParts } from "@/domain/invitation/schedule";
+import { buildTodayScheduledAtFromParts, getDefaultInvitationTimeParts, getInvitationTimeError } from "@/domain/invitation/schedule";
+import { InvitationTimePicker } from "@/presentation/components/InvitationTimePicker";
+import { useInvitationClock } from "@/presentation/hooks/useInvitationClock";
 import { AudiencePicker } from "@/presentation/components/AudiencePicker";
 import { AppButton } from "@/presentation/components/AppButton";
 import { PlaceResultRow } from "@/presentation/components/PlaceResultRow";
@@ -41,6 +44,9 @@ export function HomeScreen() {
   const [hourText, setHourText] = useState(defaultTime.hour);
   const [minuteText, setMinuteText] = useState(defaultTime.minute);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [addressEditing, setAddressEditing] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
   const [isArmed, setIsArmed] = useState(false);
@@ -57,10 +63,13 @@ export function HomeScreen() {
   const createInvitation = useCreateInvitation();
   const selectedFriends = useMemo(() => (friends.data ?? []).filter((friend) => selectedFriendIds.includes(friend.id)), [friends.data, selectedFriendIds]);
   const recipientKey = selectedFriends.map((friend) => friend.id).sort().join(",");
+  const now = useInvitationClock();
+  const timeError = getInvitationTimeError(hourText, minuteText, now);
+  const placeError = placeQuery.trim().length === 0 ? "Ajoute un lieu pour ta sortie." : placeQuery.trim().length > 160 ? "Le lieu doit contenir au maximum 160 caractères." : null;
+  const addressError = customAddress.trim().length > 240 ? "L’adresse doit contenir au maximum 240 caractères." : null;
+  const coordinatesMatchAddress = selectedPlace !== null && customAddress.trim() === (selectedPlace.address ?? "").trim();
   const canArm =
-    placeQuery.trim().length > 0 &&
-    hourText.trim().length > 0 &&
-    minuteText.trim().length > 0 &&
+    placeError === null && timeError === null && addressError === null && !timePickerOpen &&
     selectedFriends.length > 0 && selectedFriends.length <= 100 && friends.isSuccess && !friends.isFetching && !audienceModalOpen &&
     !createInvitation.isPending &&
     activeInvitation.data === null &&
@@ -127,13 +136,22 @@ export function HomeScreen() {
   }
 
   function selectPlace(place: Place) {
+    Keyboard.dismiss();
     setSelectedPlace(place);
     setPlaceQuery(place.name);
     setCustomAddress(place.address ?? "");
+    setAddressEditing(false);
+    setMapOpen(false);
     resetSafety();
   }
 
   async function launchInvitation() {
+    const currentTimeError = getInvitationTimeError(hourText, minuteText);
+    if (placeError !== null || addressError !== null || currentTimeError !== null) {
+      Alert.alert("Vérifie ta sortie", placeError ?? addressError ?? currentTimeError ?? "Vérifie les informations.");
+      resetSafety();
+      return;
+    }
     if (selectedFriends.length === 0 || selectedFriends.length > 100 || !friends.isSuccess || friends.isFetching || audienceModalOpen) {
       Alert.alert("Invités manquants", "Choisis entre 1 et 100 amis avant d’envoyer.");
       resetSafety();
@@ -148,13 +166,9 @@ export function HomeScreen() {
 
     try {
       const scheduledAt = buildTodayScheduledAtFromParts(hourText, minuteText);
-      const address = selectedPlace?.address ?? customAddress.trim();
       const request: CreateInvitationRequest = {
-        placeName,
+        ...buildInvitationPlaceInput(selectedPlace, placeQuery, customAddress),
         scheduledAt,
-        ...(address.length > 0 ? { placeAddress: address } : {}),
-        ...(selectedPlace?.latitude !== null && selectedPlace?.latitude !== undefined ? { latitude: selectedPlace.latitude } : {}),
-        ...(selectedPlace?.longitude !== null && selectedPlace?.longitude !== undefined ? { longitude: selectedPlace.longitude } : {}),
         friendUserIds: selectedFriends.map((friend) => friend.id)
       };
 
@@ -218,6 +232,7 @@ export function HomeScreen() {
     onStartShouldSetPanResponder: () => canArm && !isArmed,
     onMoveShouldSetPanResponder: (_, gesture) => canArm && !isArmed && Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
     onPanResponderGrant: () => {
+      Keyboard.dismiss();
       guardX.stopAnimation();
     },
     onPanResponderMove: (_, gesture) => {
@@ -268,20 +283,31 @@ export function HomeScreen() {
       <View style={[styles.cockpit, isWide ? styles.cockpitWide : null]}>
         <View style={[styles.formPanel, isWide ? styles.formPanelWide : null]}>
           <View pointerEvents="none" style={styles.formGlow} />
-          <Text style={styles.sectionLabel}>Rencard</Text>
-          <TextField
+          <Text style={styles.sectionLabel}>Ta sortie</Text>
+          {selectedPlace === null ? <TextField
             compact
             label="Lieu"
             value={placeQuery}
             onChangeText={(value) => {
               setPlaceQuery(value);
               setSelectedPlace(null);
+              setMapOpen(false);
               resetSafety();
             }}
             placeholder="bar, restaurant, adresse..."
-          />
+            accessibilityLabel="Lieu de la sortie"
+            onFocus={resetSafety}
+          /> : <View style={styles.placeSummary}>
+            <View style={styles.placeHeading}><Text style={[styles.placeName, { flex: 1 }]}>{selectedPlace.name}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Modifier le lieu" style={styles.inlineAction} onPress={() => { setSelectedPlace(null); setAddressEditing(false); setMapOpen(false); resetSafety(); }}><Text style={styles.inlineActionText}>Modifier</Text></Pressable>
+            </View>
+            {!addressEditing ? <Text style={styles.helper}>{customAddress || "Adresse non renseignée"}</Text> : null}
+          </View>}
+          {placeError !== null ? <Text style={styles.helper}>{placeError}</Text> : null}
           {activeInvitation.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
-          {placeSearch.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+          {activeInvitation.isError ? <><Text accessibilityRole="alert" style={styles.error}>Impossible de vérifier si une sortie est déjà en cours.</Text><AppButton title="Réessayer pour les sorties" variant="secondary" onPress={() => { void activeInvitation.refetch(); }} /></> : null}
+          {placeSearch.isLoading && selectedPlace === null ? <ActivityIndicator accessibilityLabel="Recherche de lieux" color={colors.primary} /> : null}
+          {placeSearch.isError && selectedPlace === null ? <Text style={styles.helper}>La recherche de lieux est indisponible. Tu peux saisir le nom et l’adresse toi-même.</Text> : null}
           {placeSearch.data !== undefined && placeSearch.data.length > 0 && selectedPlace === null ? (
             <ScrollView
               keyboardShouldPersistTaps="handled"
@@ -294,63 +320,31 @@ export function HomeScreen() {
               ))}
             </ScrollView>
           ) : null}
-          {selectedPlace !== null ? (
+          {addressEditing ? <TextField compact label="Adresse (optionnelle)" accessibilityLabel="Adresse de la sortie" value={customAddress}
+            onFocus={resetSafety} onChangeText={(value) => { setCustomAddress(value); setMapOpen(false); resetSafety(); }} placeholder="Numéro, rue, ville" /> : null}
+          {selectedPlace === null && !addressEditing && customAddress ? <Text style={styles.helper}>{customAddress}</Text> : null}
+          <View style={styles.fieldRow}>
+            <Pressable accessibilityRole="button" accessibilityLabel={addressEditing ? "Terminer la modification de l’adresse" : customAddress ? "Modifier l’adresse" : "Ajouter une adresse"} style={[styles.inlineAction, { flex: 1 }]} onPress={() => { Keyboard.dismiss(); setAddressEditing(!addressEditing); resetSafety(); }}><Text style={styles.inlineActionText}>{addressEditing ? "Terminer" : customAddress ? "Modifier l’adresse" : "Ajouter une adresse"}</Text></Pressable>
+            {coordinatesMatchAddress && selectedPlace?.latitude != null && selectedPlace?.longitude != null ? <Pressable accessibilityRole="button" accessibilityLabel={mapOpen ? "Masquer la carte" : "Voir la carte"} style={[styles.inlineAction, { flex: 1 }]} onPress={() => { Keyboard.dismiss(); setMapOpen(!mapOpen); }}><Text style={styles.inlineActionText}>{mapOpen ? "Masquer la carte" : "Voir la carte"}</Text></Pressable> : null}
+          </View>
+          {addressError !== null ? <Text accessibilityRole="alert" style={styles.error}>{addressError}</Text> : null}
+          {selectedPlace !== null && !coordinatesMatchAddress ? <Text style={styles.helper}>Adresse modifiée : l’ancienne position sur la carte ne sera pas envoyée.</Text> : null}
+          {mapOpen && coordinatesMatchAddress && selectedPlace !== null ? (
             <PlaceVenuePanel
               title={selectedPlace.name}
-              address={selectedPlace.address}
               latitude={selectedPlace.latitude}
               longitude={selectedPlace.longitude}
               showTransportActions={false}
               compact
             />
           ) : null}
-          <View style={styles.fieldRow}>
-            <View style={styles.timeField}>
-              <TextField
-                compact
-                label="Heure"
-                value={hourText}
-                onChangeText={(value) => {
-                  setHourText(sanitizeTimePart(value));
-                  resetSafety();
-                }}
-                keyboardType="number-pad"
-                placeholder="20"
-                maxLength={2}
-              />
-            </View>
-            <View style={styles.timeField}>
-              <TextField
-                compact
-                label="Minute"
-                value={minuteText}
-                onChangeText={(value) => {
-                  setMinuteText(sanitizeTimePart(value));
-                  resetSafety();
-                }}
-                keyboardType="number-pad"
-                placeholder="30"
-                maxLength={2}
-              />
-            </View>
-          </View>
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldFlex}>
-              <TextField
-                compact
-                label="Adresse"
-                value={customAddress}
-                onChangeText={(value) => {
-                  setCustomAddress(value);
-                  resetSafety();
-                }}
-                placeholder={isNarrow ? "Opt." : "Optionnel"}
-              />
-            </View>
-          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Choisir l’heure, aujourd’hui à ${hourText}:${minuteText}`} onPress={() => { Keyboard.dismiss(); resetSafety(); setTimePickerOpen(true); }} style={styles.audienceButton}>
+            <Text style={styles.audienceButtonValue}>Aujourd’hui · {hourText}:{minuteText}</Text><ChevronDown color={colors.ink} size={18} />
+          </Pressable>
+          {timeError !== null ? <Text accessibilityRole="alert" style={styles.error}>{timeError}</Text> : null}
           <View style={styles.audienceBlock}>
             <Text style={styles.limitSectionLabel}>Invités</Text>
-            <Pressable accessibilityRole="button" onPress={() => { resetSafety(); setAudienceModalOpen(true); }} style={styles.audienceButton}>
+            <Pressable accessibilityRole="button" onPress={() => { Keyboard.dismiss(); resetSafety(); setAudienceModalOpen(true); }} style={styles.audienceButton}>
               <View style={styles.audienceButtonIcon}>
                 <Users size={16} color={colors.ink} strokeWidth={3} />
               </View>
@@ -362,7 +356,7 @@ export function HomeScreen() {
               </View>
               <ChevronDown size={18} color={colors.ink} strokeWidth={3} />
             </Pressable>
-            {selectedFriends.map((friend) => <HomeSelectionChip key={friend.id} label={friend.pseudo} onClear={() => { setSelectedFriendIds((ids) => ids.filter((id) => id !== friend.id)); resetSafety(); }} />)}
+            <View style={styles.chipRow}>{selectedFriends.map((friend) => <HomeSelectionChip key={friend.id} label={friend.pseudo} onClear={() => { setSelectedFriendIds((ids) => ids.filter((id) => id !== friend.id)); resetSafety(); }} />)}</View>
             {selectedFriendIds.length > selectedFriends.length ? <Text style={styles.audienceButtonLabel}>Certains amis ne sont plus disponibles et ne seront pas invités.</Text> : null}
             {selectedFriends.length === 0 ? <Text style={styles.audienceButtonLabel}>Choisis au moins un ami pour pouvoir envoyer.</Text> : null}
             {friends.isFetching ? <Text style={styles.audienceButtonLabel}>Vérification des invités…</Text> : null}
@@ -396,6 +390,7 @@ export function HomeScreen() {
               : "Swipe la protection, puis maintien"}
         </Text>
       </View>
+      {timePickerOpen ? <InvitationTimePicker hour={hourText} minute={minuteText} onClose={() => setTimePickerOpen(false)} onConfirm={(hour, minute) => { setHourText(hour); setMinuteText(minute); setTimePickerOpen(false); resetSafety(); }} /> : null}
       {audienceModalOpen ? <AudiencePicker
         groups={friendGroups.data ?? []}
         friends={friends.data ?? []}
@@ -425,12 +420,12 @@ function getInvitationIdFromError(details: unknown): string | undefined {
 
 function HomeSelectionChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <View style={styles.chip}>
-      <Text style={styles.chipText}>{label}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Retirer ${label}`} onPress={onClear} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Retirer ${label}`} onPress={onClear} style={styles.chipTarget}>
+      <View style={styles.chip}>
+        <Text style={styles.chipText}>{label}</Text>
         <X size={14} color={colors.ink} strokeWidth={3} />
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -516,6 +511,13 @@ function LaunchConsole({
 }
 
 const styles = StyleSheet.create({
+  placeHeading: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  inlineAction: { minHeight: 44, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, alignItems: "center", justifyContent: "center", borderWidth: borders.regular, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.surfaceStrong },
+  inlineActionText: { color: colors.ink, fontSize: 12, fontWeight: "800", textAlign: "center" },
+  placeSummary: { gap: spacing.xs },
+  placeName: { color: colors.ink, fontSize: 18, fontWeight: "900" },
+  helper: { color: colors.muted, fontSize: 13, lineHeight: 18 },
+  error: { color: colors.redPressed, fontSize: 13, lineHeight: 18 },
   screen: {
     flex: 1,
     position: "relative",
@@ -568,19 +570,14 @@ const styles = StyleSheet.create({
     textTransform: "uppercase"
   },
   results: {
-    position: "absolute",
-    top: 108,
-    left: spacing.sm,
-    right: spacing.sm,
-    maxHeight: 340,
+    maxHeight: 160,
     zIndex: 10
   },
   resultsContent: {
     gap: spacing.xxs
   },
   resultsWide: {
-    left: spacing.md,
-    right: spacing.md
+    maxHeight: 200
   },
   fieldRow: {
     flexDirection: "row",
@@ -647,23 +644,26 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   chip: {
+    maxWidth: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    borderWidth: borders.regular,
+    borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.pill,
     backgroundColor: colors.surfaceStrong,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    minHeight: 30,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     alignSelf: "flex-start"
   },
   chipText: {
+    flexShrink: 1,
     color: colors.ink,
-    fontWeight: "900",
-    fontSize: 11,
-    textTransform: "uppercase"
+    fontWeight: "700",
+    fontSize: 12
   },
+  chipTarget: { minHeight: 44, minWidth: 44, maxWidth: "100%", justifyContent: "center", alignItems: "flex-start" },
   modalScrim: {
     flex: 1,
     backgroundColor: "rgba(7, 26, 45, 0.22)",
@@ -998,7 +998,3 @@ const styles = StyleSheet.create({
     textTransform: "uppercase"
   }
 });
-
-function sanitizeTimePart(value: string): string {
-  return value.replace(/\D+/g, "").slice(0, 2);
-}

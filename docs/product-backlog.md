@@ -40,7 +40,7 @@ Les tickets commerciaux peuvent avancer pendant le développement. Ne pas lancer
 | --- | --- | --- | --- |
 | UX01 | Rendre la navigation principale visible | P1 | À vérifier |
 | UX02 | Donner la priorité aux sorties sur l’accueil | P1 | À vérifier |
-| UX03 | Alléger le formulaire de création | P1 | À faire |
+| UX03 | Alléger le formulaire de création | P1 | À vérifier |
 | UX04 | Créer le bouton à capot et appui long | P1 | À faire |
 | UX05 | Choisir explicitement les destinataires | P1 | À vérifier |
 | UX06 | Remonter les réponses sur le détail organisateur | P1 | À faire |
@@ -98,15 +98,31 @@ Dépendance : UX01. Les actions de partage deviennent complètes avec PR01 et PR
 
 ### UX03 Création compacte
 
+Implémenté le 9 octobre 2026 ; validations natives restantes.
+
 Réduire les répétitions du lieu et de l’adresse. Remplacer les champs heure et minute par un sélecteur d’heure. Présenter une carte compacte ou dépliable.
 
-- [ ] Le lieu, la date, l’heure et les invités se comprennent sans informations répétées.
+- [x] Le lieu, la date, l’heure et les invités se comprennent sans informations répétées.
 
-- [ ] L’adresse peut être corrigée ; elle n’impose pas un second remplissage après sélection d’un lieu.
+- [x] L’adresse peut être corrigée ; elle n’impose pas un second remplissage après sélection d’un lieu.
 
-- [ ] L’action d’envoi reste atteignable sur petit écran et avec le clavier ouvert.
+- [ ] L’action d’envoi reste atteignable sur petit écran et avec le clavier ouvert. Disposition web vérifiée ; clavier natif à vérifier.
 
-- [ ] Les erreurs de saisie sont affichées avant la tentative d’envoi.
+- [x] Les erreurs de saisie sont affichées avant la tentative d’envoi.
+
+Réalisation : fiche unique après sélection du lieu, actions secondaires compactes et carte repliée. Adresse préremplie et corrigible ; une correction est réellement envoyée et retire les coordonnées d’origine. Un lieu libre et son adresse restent visibles ; Modifier le lieu conserve la saisie. Recherche en liste compacte dans le formulaire, avec possibilité de saisie libre si elle échoue.
+
+Horaire : un contrôle Aujourd’hui · HH:mm ouvre un sélecteur 24 h avec minutes précises, brouillon, Annuler et Valider. À la réouverture, les listes se positionnent sur le choix actuel. Une heure passée ou invalide bloque l’armement ; contrôle actualisé toutes les 30 secondes et au retour dans l’application, puis revérifié avant l’envoi. En fin de journée, le défaut reste à 23:59 aujourd’hui ; à 23:59, un message explique l’absence de créneau. Les dates futures restent dans PR03.
+
+Les noms d’invités UX05 restent visibles en pastilles. Ouvrir les sélecteurs ferme le clavier et la protection ; commencer le glissement ferme également le clavier. Le glissement et le maintien existants sont conservés en attendant UX04.
+
+Ajustement demandé après revue : pastilles d’invités réduites à 30 px de hauteur visuelle, bord fin, texte moins gras et casse originale des noms. La cible tactile de retrait reste de 44 px, avec libellé accessible et adaptation aux noms longs. L’agent UI/UX confirme cette conception. L’aperçu initial ci-dessous précède cet ajustement.
+
+Validation : typecheck mobile et export web réussis ; suite de 46 tests réussis, 3 tests BDD ignorés. Quatre tests de composition couvrent adresse corrigée/coordonnées, lieu libre, heures invalides/passées et fin de journée ; ils ont été relancés après les corrections finales. Essais web avec données fictives : lieu sélectionné sans répétition, adresse préremplie puis corrigée, ancienne carte désactivée, lieu et adresse conservés lors d’une modification ; heure passée bloquée, annulation conservant le choix, validation et réouverture à 23:59. Bouton Valider visible à 320 × 640 ; formulaire compact vérifié à 390 × 844. [Aperçu du formulaire](assets/ux03-creation.jpg).
+
+Récapitulatif final de l’agent UI/UX `ux01_review` : création simplifiée et cohérente ; la capture finale confirme une meilleure visibilité du glissement et du bouton rouge à 390 × 844, avec lieu, adresse, heure et invités lisibles. Correction d’adresse prise en compte, coordonnées cohérentes, sélecteur unique et erreurs avant armement. Retours intégrés : afficher l’adresse d’un lieu libre après édition, préserver les saisies et compacter les actions secondaires. Aucun défaut bloquant supplémentaire relevé. Les essais web sont réalisés par l’agent principal.
+
+Restant avant clôture : clavier et défilement sur petit écran natif, lecteurs d’écran, cartes natives et gestes réels iOS/Android. UX04 modifiera ensuite la protection du bouton.
 
 Dépendances : UX04, UX05 ; PR03 pour les dates futures.
 
