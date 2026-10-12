@@ -193,6 +193,34 @@ Les tests unitaires couvrent la génération du `publicTag`, le flux Google avec
 
 Les tests d’intégration des migrations nécessitent `TEST_DATABASE_URL` vers un serveur PostgreSQL de test autorisant la création de bases. Ils créent et suppriment des bases temporaires pour vérifier la mise à niveau, le redémarrage, les démarrages simultanés et la récupération après erreur. Sans cette variable, ces tests sont ignorés.
 
+### Connexion Apple sur iOS
+
+La connexion native Apple est proposée à côté de Google sur iPhone et iPad, lorsque le service est disponible sur l'appareil. La première connexion demande uniquement un pseudo Mates : aucun scope de nom ou d'e-mail n'est demandé à Apple et aucune adresse réelle ou masquée n'est enregistrée. Les comptes Google et Apple restent distincts ; aucune association automatique par e-mail n'est effectuée.
+
+Configuration avant de livrer le nouveau build :
+
+1. Dans Apple Developer → Certificates, Identifiers & Profiles → Identifiers, sélectionner `com.lagrange.mates`, activer **Sign in with Apple** et le configurer comme **Primary App ID**.
+2. Dans **Keys**, créer une clé **Sign in with Apple** associée à cet App ID, télécharger le fichier `.p8` et relever son **Key ID**, ainsi que le **Team ID** du compte développeur. Le parcours iOS natif n'a pas besoin de Service ID ou d'URL de redirection web.
+3. Configurer les variables suivantes sur le serveur API, puis le redéployer avec le dossier `migrations`. La migration `0009_apple_auth.sql` est appliquée automatiquement au démarrage. Ne placer aucun de ces secrets dans une variable `EXPO_PUBLIC_*` ou dans le dépôt.
+
+```dotenv
+AUTH_APPLE_ENABLED=true
+APPLE_CLIENT_ID=com.lagrange.mates
+APPLE_TEAM_ID=<Team ID Apple>
+APPLE_KEY_ID=<Key ID de la clé Sign in with Apple>
+APPLE_PRIVATE_KEY=<contenu du fichier .p8, avec des sauts de ligne ou des séparateurs littéraux \n>
+APPLE_TOKEN_ENCRYPTION_SECRET=<secret aléatoire stable d'au moins 32 octets>
+```
+
+Conserver `APPLE_TOKEN_ENCRYPTION_SECRET` dans le gestionnaire de secrets et les sauvegardes : changer cette valeur empêche de déchiffrer les jetons Apple déjà enregistrés pour la révocation. La clé `.p8` sert à générer les secrets clients Apple côté serveur. `AUTH_APPLE_ENABLED` est désactivé par défaut pour permettre le démarrage local sans ces identifiants ; il doit être activé en production avant de soumettre le build proposant Apple.
+
+4. Côté mobile, `EXPO_PUBLIC_AUTH_APPLE_ENABLED=true` est le comportement par défaut. `app.json` contient le plugin `expo-apple-authentication` et `ios.usesAppleSignIn=true`. Reconstruire le client natif et le build TestFlight avec EAS ; une mise à jour JavaScript seule ne suffit pas. Utiliser la configuration de `apps/mobile`, dont le bundle ID est `com.lagrange.mates`.
+5. Tester sur un iPhone et un iPad réels : première connexion, choix du pseudo, reconnexion après déconnexion, annulation de la fenêtre Apple, lien partagé conservé après connexion et **Profil → Supprimer mon compte**. Le bouton Apple est réservé à iOS ; Google et la connexion par mot de passe restent disponibles sur les autres plateformes.
+
+Le serveur émet un challenge valable 5 minutes, vérifie la signature RS256 Apple, l'émetteur, l'audience, l'expiration et le nonce, puis échange le code d'autorisation à usage unique. Le jeton de finalisation du profil expire après 15 minutes et utilise une clé et une audience distinctes des sessions Mates. Les refresh tokens Apple sont chiffrés avec AES-GCM avant stockage. La suppression de compte révoque le jeton auprès d'Apple avant d'effacer le compte et ses données liées ; si Apple est indisponible, l'utilisateur peut réessayer. Les sessions d'un compte supprimé sont refusées côté API.
+
+Références : [Expo AppleAuthentication](https://docs.expo.dev/versions/latest/sdk/apple-authentication/), [création de clé Apple](https://developer.apple.com/help/account/capabilities/create-a-sign-in-with-apple-private-key), [suppression et révocation](https://developer.apple.com/documentation/technotes/tn3194-handling-account-deletions-and-revoking-tokens-for-sign-in-with-apple).
+
 ## Architecture
 
 Le backend sépare strictement :

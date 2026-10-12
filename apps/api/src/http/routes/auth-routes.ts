@@ -1,5 +1,7 @@
 import type { Hono } from "hono";
 import {
+  appleAuthRequestSchema,
+  completeAppleProfileRequestSchema,
   completeGoogleProfileRequestSchema,
   googleAuthRequestSchema,
   loginRequestSchema,
@@ -11,6 +13,24 @@ import { parseJsonBody } from "../validators/parse-request.js";
 import type { AppBindings } from "../types.js";
 
 export function registerAuthRoutes(app: Hono<AppBindings>, container: AppContainer): void {
+  app.post("/auth/apple/challenge", async (context) => {
+    if (!container.auth.appleAuthEnabled) throw AppErrors.forbidden("Apple authentication is disabled");
+    context.header("Cache-Control", "no-store");
+    return context.json(await container.useCases.appleAuth.createChallenge());
+  });
+  app.post("/auth/apple", async (context) => {
+    if (!container.auth.appleAuthEnabled) throw AppErrors.forbidden("Apple authentication is disabled");
+    const body = await parseJsonBody(appleAuthRequestSchema, context);
+    context.header("Cache-Control", "no-store");
+    return context.json(await container.useCases.appleAuth.execute(body));
+  });
+  app.post("/auth/apple/complete-profile", async (context) => {
+    if (!container.auth.appleAuthEnabled) throw AppErrors.forbidden("Apple authentication is disabled");
+    const body = await parseJsonBody(completeAppleProfileRequestSchema, context);
+    context.header("Cache-Control", "no-store");
+    return context.json(await container.useCases.appleAuth.completeProfile(body), 201);
+  });
+
   app.post("/auth/google", async (context) => {
     if (!container.auth.googleAuthEnabled) {
       throw AppErrors.forbidden("Google authentication is disabled");

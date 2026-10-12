@@ -3,6 +3,7 @@ export type AppErrorCode =
   | "UNAUTHORIZED"
   | "INVALID_CREDENTIALS"
   | "INVALID_GOOGLE_TOKEN"
+  | "INVALID_APPLE_TOKEN"
   | "NOT_FOUND"
   | "CONFLICT"
   | "FORBIDDEN"
@@ -30,6 +31,7 @@ export const AppErrors = {
   validation: (message: string, details?: unknown) => new AppError("VALIDATION_ERROR", message, 400, details),
   unauthorized: () => new AppError("UNAUTHORIZED", "Authentication required", 401),
   invalidCredentials: () => new AppError("INVALID_CREDENTIALS", "Invalid credentials", 401),
+  invalidAppleToken: () => new AppError("INVALID_APPLE_TOKEN", "Connexion Apple expirée ou invalide. Recommence la connexion.", 401),
   invalidGoogleToken: () => new AppError("INVALID_GOOGLE_TOKEN", "Invalid Google authentication token", 401),
   notFound: (message = "Resource not found") => new AppError("NOT_FOUND", message, 404),
   conflict: (message: string) => new AppError("CONFLICT", message, 409),

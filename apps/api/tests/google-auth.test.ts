@@ -30,6 +30,8 @@ function createUserRepository(overrides: Partial<UserRepository> = {}): UserRepo
       publicTag: input.publicTag,
       passwordHash: input.passwordHash ?? null,
       googleSub: input.googleSub ?? null,
+      appleSub: null,
+      appleRefreshToken: null,
       onboardingCompletedAt: null,
       createdAt: new Date("2026-05-22T08:00:00.000Z")
     }),
@@ -37,6 +39,9 @@ function createUserRepository(overrides: Partial<UserRepository> = {}): UserRepo
     completeOnboarding: async (): Promise<UserRecord | null> => null,
     findByPublicTag: async (): Promise<UserRecord | null> => null,
     findByGoogleSub: async (): Promise<UserRecord | null> => null,
+    findByAppleSub: async (): Promise<UserRecord | null> => null,
+    updateAppleRefreshToken: async () => {},
+    deleteById: async () => {},
     existsByPublicTag: async (): Promise<boolean> => false,
     listByIds: async (): Promise<PublicUserRecord[]> => [],
     ...overrides
@@ -59,6 +64,8 @@ describe("Google auth flow", () => {
       publicTag: "nicolas#0047",
       passwordHash: null,
       googleSub: GOOGLE_SUB,
+      appleSub: null,
+      appleRefreshToken: null,
       onboardingCompletedAt: null,
       createdAt: new Date("2026-05-22T08:00:00.000Z")
     };
@@ -91,6 +98,8 @@ describe("Google auth flow", () => {
             publicTag: input.publicTag,
             passwordHash: input.passwordHash ?? null,
             googleSub: input.googleSub ?? null,
+            appleSub: null,
+            appleRefreshToken: null,
             onboardingCompletedAt: null,
             createdAt: new Date("2026-05-22T08:00:00.000Z")
           };

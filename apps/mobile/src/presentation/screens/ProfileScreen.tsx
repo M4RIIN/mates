@@ -9,6 +9,8 @@ import { LogOut } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
 import { PageHeader } from "@/presentation/components/PageHeader";
 import { Screen } from "@/presentation/components/Screen";
+import { useApiClient } from "@/presentation/hooks/useApiClient";
+import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCurrentUser, useLogout } from "@/presentation/hooks/useAuth";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
 import { borders, colors, radii, spacing } from "@/shared/theme";
@@ -16,6 +18,8 @@ import { borders, colors, radii, spacing } from "@/shared/theme";
 export function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
+  const api = useApiClient();
+  const [deleting, setDeleting] = useState(false);
   useCurrentUser();
   const [message, setMessage] = useState<string | null>(null);
   let link: string | null = null;
@@ -36,6 +40,18 @@ export function ProfileScreen() {
   async function submitLogout() {
     await logout();
     router.replace("/auth/login");
+  }
+
+  async function submitDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await api.deleteAccount();
+      await logout();
+      router.replace("/auth/login");
+    } catch (error: unknown) {
+      Alert.alert("Suppression impossible", getErrorMessage(error));
+    } finally { setDeleting(false); }
   }
 
   return (
@@ -79,6 +95,11 @@ export function ProfileScreen() {
         variant="secondary"
         icon={<LogOut size={18} color={colors.ink} strokeWidth={3} />}
       />
+      <AppButton title="Supprimer mon compte" variant="danger" loading={deleting}
+        onPress={() => Alert.alert("Supprimer mon compte", "Ton profil, tes relations et tes sorties seront supprimés définitivement.", [
+          { text: "Annuler", style: "cancel" },
+          { text: "Supprimer", style: "destructive", onPress: () => { void submitDelete(); } }
+        ])} />
     </Screen>
   );
 }

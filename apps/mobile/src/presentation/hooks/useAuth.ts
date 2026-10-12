@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Platform } from "react-native";
-import type { CompleteGoogleProfileRequest, GoogleAuthRequest, LoginRequest, RegisterRequest } from "@mates/shared";
+import type { AppleAuthRequest, CompleteAppleProfileRequest, CompleteGoogleProfileRequest, GoogleAuthRequest, LoginRequest, RegisterRequest } from "@mates/shared";
 import { useApiClient } from "./useApiClient";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
 
@@ -66,6 +66,34 @@ export function useAuthenticateWithGoogle() {
         setSession(response.token, response.user);
         await queryClient.invalidateQueries();
       }
+    }
+  });
+}
+
+export function useAuthenticateWithApple() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+  const setSession = useAuthStore((state) => state.setSession);
+  return useMutation({
+    mutationFn: (input: AppleAuthRequest) => api.authenticateWithApple(input),
+    onSuccess: async (response) => {
+      if (response.status === "authenticated") {
+        setSession(response.token, response.user);
+        await queryClient.invalidateQueries();
+      }
+    }
+  });
+}
+
+export function useCompleteAppleProfile() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+  const setSession = useAuthStore((state) => state.setSession);
+  return useMutation({
+    mutationFn: (input: CompleteAppleProfileRequest) => api.completeAppleProfile(input),
+    onSuccess: async (response) => {
+      setSession(response.token, response.user);
+      await queryClient.invalidateQueries();
     }
   });
 }

@@ -9,9 +9,6 @@
     "paths": {
       "@/*": [
         "src/*"
-      ],
-      "@mates/shared": [
-        "../../packages/shared/src/index.ts"
       ]
     }
   },

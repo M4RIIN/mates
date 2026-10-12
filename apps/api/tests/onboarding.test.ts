@@ -9,7 +9,7 @@ import { toAuthResponse } from "../src/application/use-cases/serializers.js";
 
 const user: UserRecord = {
   id: "11111111-1111-4111-8111-111111111111", pseudo: "nicolas", publicTag: "nicolas#0047",
-  passwordHash: null, googleSub: "google-account", onboardingCompletedAt: null,
+  passwordHash: null, googleSub: "google-account", appleSub: null, appleRefreshToken: null, onboardingCompletedAt: null,
   createdAt: new Date("2026-10-02T08:00:00Z")
 };
 

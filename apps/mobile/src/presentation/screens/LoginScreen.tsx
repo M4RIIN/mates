@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import { router, type Href } from "expo-router";
+import * as AppleAuthentication from "expo-apple-authentication";
+import { useApiClient } from "@/presentation/hooks/useApiClient";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { ArrowRight, Sparkles, Users, UtensilsCrossed } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
 import { Screen } from "@/presentation/components/Screen";
 import { TextField } from "@/presentation/components/TextField";
-import { useAuthenticateWithGoogle, useCompleteGoogleProfile, useLogin, useRegister } from "@/presentation/hooks/useAuth";
+import { useAuthenticateWithApple, useCompleteAppleProfile, useAuthenticateWithGoogle, useCompleteGoogleProfile, useLogin, useRegister } from "@/presentation/hooks/useAuth";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { appConfig } from "@/shared/config";
 import { borders, colors, radii, spacing } from "@/shared/theme";
@@ -44,8 +46,8 @@ const onboardingSlides = [
   {
     image: require("../../../../landing/src/assets/708087840_1339654864721943_1593232045811572547_n.jpg"),
     eyebrow: "Prêt",
-    title: "Entre et commence avec Google",
-    body: "Un seul bouton pour rejoindre l'app, puis ton profil public est créé si besoin.",
+    title: "Connecte-toi et retrouve ton crew",
+    body: "Choisis ta connexion pour rejoindre l'app, puis ton profil public est créé si besoin.",
     accent: colors.green,
     icon: ArrowRight
   }
@@ -76,7 +78,7 @@ function getGoogleRedirectUriForPlatform(): string | undefined {
 }
 
 export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve le profil partagé pour envoyer ta demande." }: { returnTo?: Href; returnHint?: string } = {}) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const carouselRef = useRef<ScrollView | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(0);
@@ -86,6 +88,22 @@ export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve
   const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [passwordAuthMode, setPasswordAuthMode] = useState<"login" | "register">("login");
   const [pendingGoogleIdToken, setPendingGoogleIdToken] = useState<string | null>(null);
+  const [pendingAppleProfileToken, setPendingAppleProfileToken] = useState<string | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+  const [appleBusy, setAppleBusy] = useState(false);
+  const appleBusyRef = useRef(false);
+  const api = useApiClient();
+  const authenticateWithApple = useAuthenticateWithApple();
+  const completeAppleProfile = useCompleteAppleProfile();
+  useEffect(() => {
+    let mounted = true;
+    if (Platform.OS === "ios" && appConfig.appleAuthEnabled) {
+      void AppleAuthentication.isAvailableAsync().then((available) => {
+        if (mounted) setAppleAvailable(available);
+      }).catch(() => { if (mounted) setAppleAvailable(false); });
+    }
+    return () => { mounted = false; };
+  }, []);
   const handledGoogleResponseRef = useRef<string | null>(null);
   const login = useLogin();
   const register = useRegister();
@@ -165,6 +183,31 @@ export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve
     }
   }, [response]);
 
+  async function startAppleSignIn() {
+    if (appleBusyRef.current || authenticateWithGoogle.isPending) return;
+    appleBusyRef.current = true;
+    setAppleBusy(true);
+    try {
+      const challenge = await api.appleChallenge();
+      const credential = await AppleAuthentication.signInAsync({ nonce: challenge.nonce });
+      if (!credential.identityToken || !credential.authorizationCode) {
+        throw new Error("Apple n’a pas renvoyé les informations de connexion. Réessaie.");
+      }
+      const result = await authenticateWithApple.mutateAsync({
+        identityToken: credential.identityToken, authorizationCode: credential.authorizationCode,
+        challengeToken: challenge.challengeToken
+      });
+      if (result.status === "authenticated") router.replace(returnTo ?? "/sorties");
+      else setPendingAppleProfileToken(result.profileToken);
+    } catch (error: unknown) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "ERR_REQUEST_CANCELED") return;
+      Alert.alert("Connexion Apple impossible", getErrorMessage(error));
+    } finally {
+      appleBusyRef.current = false;
+      setAppleBusy(false);
+    }
+  }
+
   async function startGoogleSignIn() {
     if (!googleAuthConfigured) {
       Alert.alert("Google non configuré", "Ajoute l’identifiant client OAuth Google dans le fichier .env mobile.");
@@ -199,22 +242,23 @@ export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve
   }
 
   async function submitProfile() {
-    if (pendingGoogleIdToken === null) {
+    if (pendingGoogleIdToken === null && pendingAppleProfileToken === null) {
       return;
     }
 
     try {
-      await completeGoogleProfile.mutateAsync({
-        idToken: pendingGoogleIdToken,
-        pseudo: pseudo.trim()
-      });
+      if (pendingAppleProfileToken !== null) {
+        await completeAppleProfile.mutateAsync({ profileToken: pendingAppleProfileToken, pseudo: pseudo.trim() });
+      } else if (pendingGoogleIdToken !== null) {
+        await completeGoogleProfile.mutateAsync({ idToken: pendingGoogleIdToken, pseudo: pseudo.trim() });
+      }
       router.replace(returnTo ?? "/sorties");
     } catch (error: unknown) {
       Alert.alert("Création impossible", getErrorMessage(error));
     }
   }
 
-  if (pendingGoogleIdToken !== null) {
+  if (pendingGoogleIdToken !== null || pendingAppleProfileToken !== null) {
     return (
       <Screen scroll={false} contentStyle={styles.profileContent}>
         <View style={styles.profileCard}>
@@ -229,10 +273,14 @@ export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve
           <AppButton
             title="Créer mon profil"
             onPress={submitProfile}
-            loading={completeGoogleProfile.isPending}
-            disabled={pseudo.trim().length < 2}
+            loading={completeGoogleProfile.isPending || completeAppleProfile.isPending}
+            disabled={!/^[A-Za-z0-9_.-]{2,32}$/.test(pseudo.trim())}
             icon={<ArrowRight size={18} color={colors.white} strokeWidth={3} />}
           />
+          <Pressable accessibilityRole="button" disabled={completeGoogleProfile.isPending || completeAppleProfile.isPending}
+            onPress={() => { setPendingAppleProfileToken(null); setPendingGoogleIdToken(null); setPseudo(""); }}>
+            <Text style={styles.passwordLink}>Revenir à la connexion</Text>
+          </Pressable>
         </View>
       </Screen>
     );
@@ -261,7 +309,7 @@ export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve
 
             return (
               <View key={slide.title} style={[styles.slide, { width: slideWidth }]}>
-                <View pointerEvents="none" style={styles.imageFrame}>
+                <View pointerEvents="none" style={[styles.imageFrame, { minHeight: height < 800 ? 120 : 320 }]}>
                   <Image source={slide.image} style={styles.image} resizeMode="cover" />
                   <View pointerEvents="none" style={styles.imageOverlay} />
                   <View pointerEvents="none" style={[styles.imageChip, { backgroundColor: slide.accent }]}>
@@ -342,7 +390,7 @@ export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve
               icon={<ArrowRight size={18} color={colors.white} strokeWidth={3} />}
             />
             <Pressable accessibilityRole="button" onPress={() => setShowPasswordLogin(false)}>
-              <Text style={styles.passwordLink}>Revenir à la connexion Google</Text>
+              <Text style={styles.passwordLink}>Revenir aux options de connexion</Text>
             </Pressable>
           </View>
         ) : (
@@ -351,10 +399,23 @@ export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve
               title="Se connecter avec Google"
               onPress={startGoogleSignIn}
               loading={authenticateWithGoogle.isPending}
-              disabled={request === null}
+              disabled={request === null || appleBusy}
               icon={<ArrowRight size={18} color={colors.white} strokeWidth={3} />}
             />
-            <Pressable accessibilityRole="button" onPress={() => setShowPasswordLogin(true)}>
+            {appleAvailable ? (
+              <View pointerEvents={appleBusy || authenticateWithGoogle.isPending ? "none" : "auto"}
+                accessibilityState={{ busy: appleBusy, disabled: appleBusy || authenticateWithGoogle.isPending }}>
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  cornerRadius={radii.md}
+                  style={{ width: "100%", height: 56, opacity: appleBusy ? 0.6 : 1 }}
+                  onPress={startAppleSignIn}
+                />
+                {appleBusy ? <Text accessibilityLiveRegion="polite" style={styles.hint}>Connexion en cours…</Text> : null}
+              </View>
+            ) : null}
+            <Pressable accessibilityRole="button" disabled={appleBusy} onPress={() => setShowPasswordLogin(true)}>
               <Text style={styles.passwordLink}>Préférer une connexion pseudo / mot de passe</Text>
             </Pressable>
           </View>

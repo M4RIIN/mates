@@ -40,6 +40,7 @@ export const appConfig = {
     configuredApiUrl: process.env.EXPO_PUBLIC_API_URL,
     configuredProfileShareBaseUrl: process.env.EXPO_PUBLIC_PROFILE_SHARE_BASE_URL
   }),
+  appleAuthEnabled: resolveBooleanEnv(process.env.EXPO_PUBLIC_AUTH_APPLE_ENABLED, true),
   passwordAuthEnabled: resolveBooleanEnv(process.env.EXPO_PUBLIC_AUTH_PASSWORD_ENABLED, true),
   placesProvider: resolvePlacesProvider(process.env.EXPO_PUBLIC_PLACES_PROVIDER),
   mapboxAccessToken: resolveOptionalEnv(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN),

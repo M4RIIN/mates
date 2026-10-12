@@ -1,3 +1,7 @@
+import { AppleAuthUseCase } from "../application/use-cases/apple-auth.use-case.js";
+import { DeleteAccountUseCase } from "../application/use-cases/delete-account.use-case.js";
+import type { AppleIdentityService } from "../application/ports/apple-identity-service.js";
+import { NativeAppleIdentityService } from "./security/apple-identity-service.js";
 import { InvitationSharingUseCase } from "../application/use-cases/invitation-sharing.use-case.js";
 import { PostgresInvitationSharingRepository } from "./repositories/postgres-invitation-sharing.repository.js";
 import type { AddFriendUseCase } from "../application/use-cases/add-friend.use-case.js";
@@ -73,6 +77,8 @@ import { GoogleIdentityTokenVerifier } from "./security/google-identity-token-ve
 import { JoseTokenService } from "./security/jose-token-service.js";
 
 export type AppUseCases = {
+  appleAuth: AppleAuthUseCase;
+  deleteAccount: DeleteAccountUseCase;
   invitationSharing: InvitationSharingUseCase;
   registerUser: RegisterUserUseCase;
   loginUser: LoginUserUseCase;
@@ -105,6 +111,7 @@ export type AppUseCases = {
 export type AuthConfig = {
   passwordAuthEnabled: boolean;
   googleAuthEnabled: boolean;
+  appleAuthEnabled: boolean;
 };
 
 export type AppContainer = {
@@ -184,6 +191,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
   const db = createDb(requireEnv(env, "DATABASE_URL"));
   const auth = {
     passwordAuthEnabled: booleanEnv(env, "AUTH_PASSWORD_ENABLED", true),
+    appleAuthEnabled: booleanEnv(env, "AUTH_APPLE_ENABLED", false),
     googleAuthEnabled: booleanEnv(env, "AUTH_GOOGLE_ENABLED", true)
   } satisfies AuthConfig;
 
@@ -205,6 +213,15 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
           throw AppErrors.forbidden("Google authentication is disabled");
         }
       };
+  const disabledApple = async (): Promise<never> => { throw AppErrors.forbidden("Apple authentication is disabled"); };
+  const appleIdentity: AppleIdentityService = auth.appleAuthEnabled
+    ? new NativeAppleIdentityService({
+        clientId: requireEnv(env, "APPLE_CLIENT_ID"), teamId: requireEnv(env, "APPLE_TEAM_ID"),
+        keyId: requireEnv(env, "APPLE_KEY_ID"), privateKey: requireEnv(env, "APPLE_PRIVATE_KEY"),
+        encryptionSecret: requireEnv(env, "APPLE_TOKEN_ENCRYPTION_SECRET")
+      })
+    : { createChallenge: disabledApple, authenticate: disabledApple, createProfileToken: disabledApple,
+        verifyProfileToken: disabledApple, revoke: disabledApple };
   const notifications =
     env.NOTIFICATION_PROVIDER === "expo"
       ? new ExpoPushNotificationGateway()
@@ -215,10 +232,19 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
 
   return {
     auth,
-    tokenService,
+    tokenService: {
+      sign: (payload) => tokenService.sign(payload),
+      verify: async (token) => {
+        const payload = await tokenService.verify(token);
+        if (await users.findById(payload.userId) === null) throw AppErrors.unauthorized();
+        return payload;
+      }
+    },
     realtime,
     useCases: {
       invitationSharing: new InvitationSharingUseCase(invitations, new PostgresInvitationSharingRepository(db), realtime),
+      appleAuth: new AppleAuthUseCase(users, appleIdentity, tokenService),
+      deleteAccount: new DeleteAccountUseCase(users, appleIdentity),
       registerUser: new RegisterUser(users, passwordHasher, tokenService),
       loginUser: new LoginUser(users, passwordHasher, tokenService),
       authenticateGoogle: new AuthenticateGoogle(users, googleIdentity, tokenService),

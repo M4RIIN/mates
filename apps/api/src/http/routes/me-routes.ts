@@ -8,6 +8,11 @@ import type { AppBindings } from "../types.js";
 export function registerMeRoutes(app: Hono<AppBindings>, container: AppContainer): void {
   const auth = createAuthMiddleware(container.tokenService);
 
+  app.post("/me/delete", auth, async (context) => {
+    await container.useCases.deleteAccount.execute(context.get("currentUserId"));
+    return context.json({ ok: true });
+  });
+
   app.get("/me", auth, async (context) => {
     const user = await container.useCases.getCurrentUser.execute(context.get("currentUserId"));
     return context.json(user);

@@ -10,6 +10,8 @@ function toUserRecord(row: typeof users.$inferSelect): UserRecord {
     publicTag: row.publicTag,
     passwordHash: row.passwordHash,
     googleSub: row.googleSub,
+    appleSub: row.appleSub,
+    appleRefreshToken: row.appleRefreshToken,
     onboardingCompletedAt: row.onboardingCompletedAt,
     createdAt: row.createdAt
   };
@@ -27,15 +29,19 @@ export class PostgresUserRepository implements UserRepository {
   constructor(private readonly db: AppDb) {}
 
   async create(input: CreateUserInput): Promise<UserRecord> {
-    const [created] = await this.db
+    const insert = this.db
       .insert(users)
       .values({
         pseudo: input.pseudo,
         publicTag: input.publicTag,
         passwordHash: input.passwordHash ?? null,
+        appleSub: input.appleSub ?? null,
+        appleRefreshToken: input.appleRefreshToken ?? null,
         googleSub: input.googleSub ?? null
-      })
-      .returning();
+      });
+    const [created] = await (input.appleSub
+      ? insert.onConflictDoUpdate({ target: users.appleSub, set: { appleSub: input.appleSub } })
+      : insert).returning();
 
     if (created === undefined) {
       throw new Error("User creation failed");
@@ -64,6 +70,19 @@ export class PostgresUserRepository implements UserRepository {
   async findByGoogleSub(googleSub: string): Promise<UserRecord | null> {
     const [user] = await this.db.select().from(users).where(eq(users.googleSub, googleSub)).limit(1);
     return user === undefined ? null : toUserRecord(user);
+  }
+
+  async findByAppleSub(appleSub: string): Promise<UserRecord | null> {
+    const [user] = await this.db.select().from(users).where(eq(users.appleSub, appleSub)).limit(1);
+    return user === undefined ? null : toUserRecord(user);
+  }
+
+  async updateAppleRefreshToken(id: string, encryptedToken: string): Promise<void> {
+    await this.db.update(users).set({ appleRefreshToken: encryptedToken }).where(eq(users.id, id));
+  }
+
+  async deleteById(id: string): Promise<void> {
+    await this.db.delete(users).where(eq(users.id, id));
   }
 
   async existsByPublicTag(publicTag: string): Promise<boolean> {

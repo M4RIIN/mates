@@ -18,6 +18,7 @@ function createContainer(overrides?: Partial<AppContainer>): AppContainer {
   return {
     auth: {
       passwordAuthEnabled: true,
+      appleAuthEnabled: false,
       googleAuthEnabled: true
     },
     tokenService: {
@@ -58,6 +59,7 @@ describe("auth routes", () => {
       createContainer({
         auth: {
           passwordAuthEnabled: false,
+          appleAuthEnabled: false,
           googleAuthEnabled: true
         }
       })

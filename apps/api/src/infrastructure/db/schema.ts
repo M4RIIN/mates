@@ -31,11 +31,14 @@ export const users = pgTable(
     publicTag: text("public_tag").notNull(),
     passwordHash: text("password_hash"),
     googleSub: text("google_sub"),
+    appleSub: text("apple_sub"),
+    appleRefreshToken: text("apple_refresh_token"),
     onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
     publicTagUniqueIdx: uniqueIndex("users_public_tag_unique_idx").on(table.publicTag),
+    appleSubUniqueIdx: uniqueIndex("users_apple_sub_unique_idx").on(table.appleSub),
     googleSubUniqueIdx: uniqueIndex("users_google_sub_unique_idx").on(table.googleSub)
   })
 );

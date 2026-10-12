@@ -83,6 +83,22 @@ export const googleAuthResponseSchema = z.discriminatedUnion("status", [
 ]);
 export type GoogleAuthResponse = z.infer<typeof googleAuthResponseSchema>;
 
+export const appleChallengeResponseSchema = z.object({ nonce: z.string().min(1), challengeToken: z.string().min(1) });
+export type AppleChallengeResponse = z.infer<typeof appleChallengeResponseSchema>;
+export const appleAuthRequestSchema = z.object({
+  identityToken: z.string().min(1).max(8192),
+  authorizationCode: z.string().min(1).max(4096),
+  challengeToken: z.string().min(1).max(4096)
+});
+export type AppleAuthRequest = z.infer<typeof appleAuthRequestSchema>;
+export const completeAppleProfileRequestSchema = z.object({ profileToken: z.string().min(1).max(16384), pseudo: pseudoSchema });
+export type CompleteAppleProfileRequest = z.infer<typeof completeAppleProfileRequestSchema>;
+export const appleAuthResponseSchema = z.discriminatedUnion("status", [
+  authResponseSchema.extend({ status: z.literal("authenticated") }),
+  z.object({ status: z.literal("profile_required"), profileToken: z.string().min(1) })
+]);
+export type AppleAuthResponse = z.infer<typeof appleAuthResponseSchema>;
+
 export const registerPushTokenRequestSchema = z.object({
   token: z.string().min(8).max(4096),
   platform: platformSchema

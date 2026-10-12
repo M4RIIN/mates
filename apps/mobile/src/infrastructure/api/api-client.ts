@@ -1,5 +1,7 @@
 import { guestResponseSchema, sharedInvitationSchema, invitationShareLinkSchema, type GuestRespondRequest } from "@mates/shared";
 import {
+  appleChallengeResponseSchema, appleAuthResponseSchema,
+  type AppleAuthRequest, type AppleAuthResponse, type CompleteAppleProfileRequest,
   authResponseSchema,
   googleAuthResponseSchema,
   currentUserSchema,
@@ -88,6 +90,18 @@ export class ApiClient {
   completeGoogleProfile(input: CompleteGoogleProfileRequest): Promise<AuthResponse> {
     return this.request("POST", "/auth/google/complete-profile", authResponseSchema, input);
   }
+
+  appleChallenge() { return this.request("POST", "/auth/apple/challenge", appleChallengeResponseSchema); }
+
+  authenticateWithApple(input: AppleAuthRequest): Promise<AppleAuthResponse> {
+    return this.request("POST", "/auth/apple", appleAuthResponseSchema, input);
+  }
+
+  completeAppleProfile(input: CompleteAppleProfileRequest): Promise<AuthResponse> {
+    return this.request("POST", "/auth/apple/complete-profile", authResponseSchema, input);
+  }
+
+  deleteAccount() { return this.request("POST", "/me/delete", okResponseSchema); }
 
   me(): Promise<CurrentUserDto> {
     return this.request("GET", "/me", currentUserSchema);
