@@ -58,11 +58,19 @@ const invitation = {
 };
 
 describe("Live Activity lifecycle", () => {
+  it("includes web guests in the organizer confirmation count", async () => {
+    const activities = await import("../../mobile/src/infrastructure/live-activities/invitation-live-activity");
+    await activities.syncCreatedInvitationLiveActivity({ ...invitation, guestResponses: [
+      { id: "guest-a", name: "Camille", responseStatus: "yes", respondedAt: "2026-10-02T10:00:00Z" },
+      { id: "guest-b", name: "Jo", responseStatus: "no", respondedAt: "2026-10-02T10:00:00Z" }
+    ] });
+    expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({ statusText: "2 oui · 0 attente" }), "mates://invitations/created/invitation-a", new Date("2026-10-02T13:00:00Z"));
+  });
   it("serializes concurrent syncs into one activity and updates its contents", async () => {
     const activities = await import("../../mobile/src/infrastructure/live-activities/invitation-live-activity");
     await Promise.all([activities.syncCreatedInvitationLiveActivity(invitation), activities.syncCreatedInvitationLiveActivity(invitation)]);
     expect(mocks.start).toHaveBeenCalledTimes(1);
-    expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({ statusText: "1 oui · 0 attente" }), "mates://invitations/created/invitation-a");
+    expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({ statusText: "1 oui · 0 attente" }), "mates://invitations/created/invitation-a", new Date("2026-10-02T13:00:00Z"));
     expect(mocks.update).toHaveBeenCalledTimes(1);
   });
 
@@ -72,13 +80,15 @@ describe("Live Activity lifecycle", () => {
     await activities.endInvitationLiveActivity("invitation-b");
     expect(mocks.end).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    expect(mocks.end).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000);
     expect(mocks.end).toHaveBeenCalledTimes(1);
   });
 
   it("starts accepted invitations and ends them on refusal", async () => {
     const activities = await import("../../mobile/src/infrastructure/live-activities/invitation-live-activity");
     await activities.syncInvitationLiveActivity(invitation, { responseStatus: "yes", delayMinutes: 10 });
-    expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({ statusText: "Retard 10 min" }), "mates://invitations/received/invitation-a");
+    expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({ statusText: expect.stringContaining("Arrivée estimée") }), "mates://invitations/received/invitation-a", new Date("2026-10-02T13:00:00Z"));
     await activities.syncInvitationLiveActivity(invitation, { responseStatus: "no", delayMinutes: null });
     expect(mocks.end).toHaveBeenCalledTimes(1);
     expect(mocks.storage.size).toBe(0);
@@ -90,6 +100,17 @@ describe("Live Activity lifecycle", () => {
     await activities.syncCreatedInvitationLiveActivity(invitation);
     expect(mocks.start).not.toHaveBeenCalled();
     expect(mocks.storage.size).toBe(0);
+  });
+
+  it("restores an ongoing activity at H+5 and closes it at H+2 hours", async () => {
+    vi.setSystemTime(new Date("2026-10-02T11:05:00Z"));
+    const activities = await import("../../mobile/src/infrastructure/live-activities/invitation-live-activity");
+    await activities.syncInvitationLiveActivity(invitation, { responseStatus: "yes", delayMinutes: 15 });
+    expect(mocks.start).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(115 * 60_000);
+    expect(mocks.end).toHaveBeenCalledOnce();
+    await activities.syncInvitationLiveActivity(invitation, { responseStatus: "yes", delayMinutes: 15 });
+    expect(mocks.start).toHaveBeenCalledOnce();
   });
 });
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getInvitationState, getInvitationEstimatedArrivalAt, isInvitationOpen } from "@mates/shared";
 import { ActivityIndicator, Keyboard, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Check, Clock3, X } from "lucide-react-native";
@@ -14,7 +15,7 @@ import { useInvitationClock } from "@/presentation/hooks/useInvitationClock";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
 import { openDirectionsChooser } from "@/presentation/utils/place-links";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
-import { formatDateTime } from "@/shared/date-format";
+import { formatDateTime, formatTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
 type SavedResponse = { responseStatus: "yes" | "no"; delayMinutes: number | null };
@@ -41,7 +42,8 @@ export function RespondInvitationScreen() {
   routeId.current = id;
   const directionsOpenedFor = useRef<string | undefined>(undefined);
   const cancelled = invitation.data?.canceledAt !== null && invitation.data?.canceledAt !== undefined;
-  const expired = invitation.data !== undefined && new Date(invitation.data.scheduledAt).getTime() <= now.getTime();
+  const state = invitation.data === undefined ? undefined : getInvitationState(invitation.data, now);
+  const expired = state === "ended";
   const canRespond = myResponse !== undefined && !cancelled && !expired;
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export function RespondInvitationScreen() {
     if (invitation.data === undefined || myResponse === undefined) return;
     void syncInvitationLiveActivity(invitation.data, { responseStatus: myResponse.responseStatus, delayMinutes: myResponse.delayMinutes })
       .catch((error: unknown) => console.warn("Failed to sync invitation live activity", error));
-  }, [invitation.data, myResponse?.delayMinutes, myResponse?.responseStatus]);
+  }, [invitation.data, myResponse?.delayMinutes, myResponse?.responseStatus, state]);
   useEffect(() => {
     const requested = openDirections === "1" || (Array.isArray(openDirections) && openDirections.includes("1"));
     if (!requested || id === undefined || directionsOpenedFor.current === id || invitation.data === undefined || cancelled || expired) return;
@@ -64,7 +66,7 @@ export function RespondInvitationScreen() {
   }, [id, invitation.data, openDirections, cancelled, expired]);
 
   async function answer(status: "yes" | "no", delayMinutes = 0) {
-    if (id === undefined || !canRespond || requestInFlight.current || invitation.data === undefined || new Date(invitation.data.scheduledAt).getTime() <= Date.now()) return;
+    if (id === undefined || !canRespond || requestInFlight.current || invitation.data === undefined || !isInvitationOpen(invitation.data)) return;
     const responseId = id;
     const details = invitation.data;
     requestInFlight.current = true;
@@ -99,8 +101,10 @@ export function RespondInvitationScreen() {
     {invitation.isError ? <View style={styles.section}><Text accessibilityRole="alert" style={styles.error}>Impossible de charger la sortie : {getErrorMessage(invitation.error)}</Text><AppButton title="Réessayer" variant="secondary" loading={invitation.isFetching} onPress={() => { void invitation.refetch(); }} /></View> : null}
     {invitation.data !== undefined ? <>
       <PageHeader eyebrow={`De ${invitation.data.creator.pseudo}`} title={invitation.data.placeName} subtitle={formatDateTime(invitation.data.scheduledAt)} tone="blue" compact />
-      {cancelled || expired ? <View style={styles.closed} accessibilityLiveRegion="polite"><Text style={styles.sectionTitle}>{cancelled ? "Sortie annulée" : "Sortie passée"}</Text><Text style={styles.copy}>{cancelled ? "L’organisateur a annulé cette sortie." : "L’heure de rendez-vous est passée."} Tu ne peux plus modifier ta réponse.</Text></View> : null}
+      {state === "ongoing" ? <Text accessibilityLiveRegion="polite" style={styles.sectionTitle}>Sortie en cours · Tu peux encore modifier ta réponse et ton retard.</Text> : null}
+      {cancelled || expired ? <View style={styles.closed} accessibilityLiveRegion="polite"><Text style={styles.sectionTitle}>{cancelled ? "Sortie annulée" : "Sortie terminée"}</Text><Text style={styles.copy}>{cancelled ? "L’organisateur a annulé cette sortie." : "La coordination est fermée, deux heures après le rendez-vous."} Tu ne peux plus modifier ta réponse.</Text></View> : null}
       {hasAnswered ? <View style={styles.current} accessibilityLiveRegion="polite"><Text style={styles.label}>{cancelled || expired ? "Ta dernière réponse" : didSaveResponse ? "Réponse enregistrée" : "Ta réponse"}</Text><Text style={styles.currentValue}>{formatCurrentResponse(currentResponse?.responseStatus, currentResponse?.delayMinutes)}</Text></View> : null}
+      {currentResponse?.responseStatus === "yes" ? <Text style={styles.copy}>Arrivée estimée à {formatTime(getInvitationEstimatedArrivalAt(invitation.data.scheduledAt, currentResponse.delayMinutes).toISOString())}</Text> : null}
       {canRespond && (!hasAnswered || isEditingDecision) ? <View style={styles.section}>
         <Text accessibilityRole="header" style={styles.sectionTitle}>{hasAnswered ? "Modifier ta réponse" : "Tu viens ?"}</Text>
         <AppButton title="Je viens" onPress={() => { void answer("yes", currentResponse?.responseStatus === "yes" ? currentResponse.delayMinutes ?? 0 : 0); }} loading={isSending} variant="success" icon={<Check size={18} color={colors.ink} strokeWidth={3} />} />

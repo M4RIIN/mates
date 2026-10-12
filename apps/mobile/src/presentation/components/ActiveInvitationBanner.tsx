@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ChevronRight, MapPin } from "lucide-react-native";
-import type { InvitationDetailsDto } from "@mates/shared";
+import { getInvitationState, type InvitationDetailsDto } from "@mates/shared";
+import { useInvitationClock } from "@/presentation/hooks/useInvitationClock";
 import { formatTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
@@ -8,23 +9,27 @@ export function ActiveInvitationBanner({ invitation, onPress }: {
   invitation: InvitationDetailsDto;
   onPress: () => void;
 }) {
-  const confirmedCount = invitation.recipients.filter((recipient) => recipient.responseStatus === "yes").length;
+  const now = useInvitationClock();
+  const state = getInvitationState(invitation, now);
+  if (state === "ended" || state === "cancelled") return null;
+  const stateLabel = state === "ongoing" ? "Sortie en cours" : "Sortie à venir";
+  const confirmedCount = invitation.recipients.filter((recipient) => recipient.responseStatus === "yes").length + (invitation.guestResponses ?? []).filter(g => g.responseStatus === "yes").length;
   const time = formatTime(invitation.scheduledAt);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Sortie en cours : ${invitation.placeName}, ${time}`}
+      accessibilityLabel={`${stateLabel} : ${invitation.placeName}, ${time}`}
       accessibilityHint="Ouvrir le détail de la sortie"
       onPress={onPress}
       style={({ pressed }) => [styles.banner, pressed ? styles.pressed : null]}
     >
       <View style={styles.icon}><MapPin size={22} color={colors.ink} strokeWidth={2.5} /></View>
       <View style={styles.copy}>
-        <Text style={styles.label}>SORTIE EN COURS</Text>
+        <Text style={styles.label}>{stateLabel.toUpperCase()}</Text>
         <Text style={styles.place}>{invitation.placeName}</Text>
         <Text style={styles.details}>
-          {time} · {confirmedCount}/{invitation.recipients.length} confirmations
+          {time} · {confirmedCount}/{invitation.recipients.length + (invitation.guestResponses?.length ?? 0)} confirmations
         </Text>
       </View>
       <ChevronRight size={23} color={colors.white} strokeWidth={2.5} />

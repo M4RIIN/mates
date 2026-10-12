@@ -5,6 +5,7 @@ import { shouldOpenInvitationCover } from "@/domain/invitation/safety-gate";
 import { colors, radii, spacing } from "@/shared/theme";
 
 type Props = {
+  actionLabel?: string;
   revision: number;
   armed: boolean; ready: boolean; holding: boolean; sending: boolean; compact: boolean;
   error: string | null;
@@ -12,7 +13,7 @@ type Props = {
   onOpen: () => void; onClose: () => void; onHold: () => void; onRelease: () => void; onAccessibleSend: () => void;
 };
 
-export function ProtectedInvitationButton({ revision, armed, ready, holding, sending, error, compact, holdProgress, onOpen, onClose, onHold, onRelease, onAccessibleSend }: Props) {
+export function ProtectedInvitationButton({ actionLabel = "inviter mes amis", revision, armed, ready, holding, sending, error, compact, holdProgress, onOpen, onClose, onHold, onRelease, onAccessibleSend }: Props) {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [screenReader, setScreenReader] = useState(false);
   const [keyboardAccess, setKeyboardAccess] = useState(false);
@@ -72,7 +73,7 @@ export function ProtectedInvitationButton({ revision, armed, ready, holding, sen
         {[styles.screwTL, styles.screwTR, styles.screwBL, styles.screwBR].map((position, index) => <View key={index} style={[styles.screw, position]}><View style={styles.slot} /></View>)}
         <View style={styles.ring} />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={screenReader ? "Envoyer la sortie avec confirmation" : "Maintenir 1,15 seconde pour inviter mes amis"}
+      <Pressable accessibilityRole="button" accessibilityLabel={screenReader ? "Envoyer la sortie avec confirmation" : `Maintenir 1,15 seconde pour ${actionLabel}`}
         accessibilityState={{ disabled: !armed || !ready || sending, busy: sending }} disabled={!armed || !ready || sending}
         onPressIn={screenReader ? undefined : onHold} onPressOut={screenReader ? undefined : onRelease} onTouchCancel={onRelease} onPress={(event) => {
           const nativeEvent = event.nativeEvent;

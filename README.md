@@ -6,6 +6,10 @@ Monorepo pnpm pour une app mobile iOS/Android React Native Expo SDK 57 et une AP
 
 La [fiche de suivi des fonctionnalités et améliorations produit](docs/product-backlog.md) regroupe les tickets UX, produit, rétention, acquisition et mesure, avec leurs priorités et critères de validation.
 
+## Fenêtre de coordination
+
+Une sortie est « À venir » avant l’heure prévue, « En cours » pendant les deux heures suivantes, puis « Terminée ». Pendant cette fenêtre, les réponses, retards et itinéraires restent accessibles ; une annulation ferme immédiatement la coordination. La règle partagée s’applique au mobile, au web et à l’API, sans migration de données. Une sortie à 23 h 30 reste active jusqu’à 1 h 30 et ne bloque plus la création après cette fermeture. Les arrivées estimées correspondent à l’heure du rendez-vous plus le retard déclaré ; les invités web conservent leurs réponses oui/non sans compte.
+
 ## Structure
 
 ```txt
@@ -136,6 +140,8 @@ Redéployer Railway après ces changements et reconstruire les apps natives pour
 ## Déploiement iOS TestFlight
 
 L'app mobile utilise EAS depuis `apps/mobile`. Les commandes EAS doivent être lancées depuis ce dossier :
+
+Pour un build déclenché depuis l’intégration GitHub dans Expo, configurer **Base directory = `apps/mobile`**. La racine du workspace ne constitue pas une seconde application Expo : sa configuration refuse désormais explicitement un lancement depuis le mauvais dossier. Le point d’entrée mobile est `expo-router/entry` dans `apps/mobile/package.json`. Les fichiers `app.json` et `eas.json` de l’application sont ceux d’`apps/mobile`.
 
 ```bash
 cd apps/mobile

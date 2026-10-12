@@ -1,8 +1,9 @@
 import { profileLink } from "@/domain/profile-links";
+import { getInvitationState, isInvitationOpen } from "@mates/shared";
 import { appConfig } from "@/shared/config";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, Text, View } from "react-native";
-import { isPendingUpcomingInvitation } from "@/domain/invitation/status";
+import { isPendingOpenInvitation } from "@/domain/invitation/status";
 import { AppButton } from "@/presentation/components/AppButton";
 import { EmptyState } from "@/presentation/components/EmptyState";
 import { ListRow } from "@/presentation/components/ListRow";
@@ -12,7 +13,7 @@ import { OnboardingGuide } from "@/presentation/components/OnboardingGuide";
 import { useCurrentUser } from "@/presentation/hooks/useAuth";
 import { useFriends } from "@/presentation/hooks/useFriends";
 import { useInvitationClock } from "@/presentation/hooks/useInvitationClock";
-import { isUpcomingInvitation, useCreatedInvitations, useReceivedInvitations } from "@/presentation/hooks/useInvitations";
+import { useCreatedInvitations, useReceivedInvitations } from "@/presentation/hooks/useInvitations";
 import { formatDateTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
@@ -28,23 +29,26 @@ export function OutingsScreen() {
   const currentUser = useCurrentUser();
   const now = useInvitationClock();
   const receivedRows = (received.data ?? [])
-    .filter((invitation) => filter !== "created" && (filter !== "pending" || isPendingUpcomingInvitation(invitation, now)))
+    .filter((invitation) => filter !== "created" && (filter !== "pending" || isPendingOpenInvitation(invitation, now)))
     .map((invitation) => ({ invitation, organized: false as const, subtitle:
-      `De ${invitation.creator.pseudo} · ${invitation.canceledAt !== null ? "Annulée" : invitation.myResponse.responseStatus === "pending" ? (isPendingUpcomingInvitation(invitation, now) ? "À répondre" : "Sans réponse") : invitation.myResponse.responseStatus === "yes" ? "Tu viens" : "Tu ne viens pas"}` }));
+      `De ${invitation.creator.pseudo} · ${invitation.canceledAt !== null ? "Annulée" : invitation.myResponse.responseStatus === "pending" ? (isPendingOpenInvitation(invitation, now) ? "À répondre" : "Sans réponse") : invitation.myResponse.responseStatus === "yes" ? "Tu viens" : "Tu ne viens pas"}` }));
   const createdRows = filter === "all" || filter === "created" ? (created.data ?? []).map((invitation) => ({
-    invitation, organized: true as const, subtitle: `Organisée par toi · ${invitation.recipients.length} invité(s)`
+    invitation, organized: true as const, subtitle: `Organisée par toi · ${invitation.recipients.length + (invitation.guestResponses?.length ?? 0)} invité(s)`
   })) : [];
   const rows = [...createdRows, ...receivedRows.filter((row) => !createdRows.some((entry) => entry.invitation.id === row.invitation.id))];
-  const upcoming = rows.filter((row) => isUpcomingInvitation(row.invitation, now))
+  const upcoming = rows.filter((row) => getInvitationState(row.invitation, now) === "upcoming")
     .sort((a, b) => Date.parse(a.invitation.scheduledAt) - Date.parse(b.invitation.scheduledAt));
-  const past = rows.filter((row) => !isUpcomingInvitation(row.invitation, now))
+  const ongoing = rows.filter((row) => getInvitationState(row.invitation, now) === "ongoing")
+    .sort((a, b) => Date.parse(a.invitation.scheduledAt) - Date.parse(b.invitation.scheduledAt));
+  const past = rows.filter((row) => !isInvitationOpen(row.invitation, now))
     .sort((a, b) => Date.parse(b.invitation.scheduledAt) - Date.parse(a.invitation.scheduledAt));
   const needsReceived = filter !== "created";
   const needsCreated = filter === "all" || filter === "created";
   const loading = (needsReceived && received.isLoading) || (needsCreated && created.isLoading);
   const failed = (needsReceived && received.isError) || (needsCreated && created.isError);
   const dashboard = filter === "all";
-  const pending = upcoming.filter((row) => !row.organized && isPendingUpcomingInvitation(row.invitation, now));
+  const pending = upcoming.filter((row) => !row.organized && isPendingOpenInvitation(row.invitation, now));
+  const pendingOngoing = ongoing.some((row) => !row.organized && isPendingOpenInvitation(row.invitation, now));
   const confirmed = upcoming.filter((row) => row.organized || (!row.organized && row.invitation.myResponse.responseStatus === "yes"));
   const other = upcoming.filter((row) => !pending.includes(row) && !confirmed.includes(row));
   const noFriends = friends.isSuccess && friends.data.length === 0;
@@ -94,12 +98,13 @@ export function OutingsScreen() {
         title={filter === "pending" ? "Tu n’as aucune invitation à répondre" : filter === "created" ? "Tu n’as pas encore organisé de sortie" : "Aucune sortie pour le moment"}
         subtitle={filter === "pending" ? "Tes autres invitations sont dans Toutes." : "Propose une sortie à tes amis depuis Proposer."} /> : null}
       {dashboard ? <>
+        {renderSection("En cours", ongoing)}
         {renderSection("À répondre", pending)}
-        {!loading && !failed && pending.length === 0 ? <Text style={styles.body}>Tu n’as aucune invitation à répondre.</Text> : null}
+        {!loading && !failed && pending.length === 0 && !pendingOngoing ? <Text style={styles.body}>Tu n’as aucune invitation à répondre.</Text> : null}
         <AppButton title="Proposer une sortie" onPress={() => router.navigate("/home")} />
         {friends.isError ? <View style={styles.section}><Text style={styles.body}>Ton réseau d’amis n’a pas pu être chargé.</Text><AppButton title="Réessayer pour les amis" variant="secondary" onPress={() => { void friends.refetch(); }} /></View> : null}
         {renderSection("Prochaines sorties", confirmed)}
-        {!loading && !failed && confirmed.length === 0 ? <EmptyState title="Aucune sortie prévue" subtitle={pending.length > 0 ? "Réponds à une invitation pour retrouver la sortie ici." : "Un café, un verre ou une balade ? Propose un moment à tes amis."} /> : null}
+        {!loading && !failed && confirmed.length === 0 && ongoing.length === 0 ? <EmptyState title="Aucune sortie prévue" subtitle={pending.length > 0 ? "Réponds à une invitation pour retrouver la sortie ici." : "Un café, un verre ou une balade ? Propose un moment à tes amis."} /> : null}
         {noFriends ? <View style={styles.welcome}>
           <Text accessibilityRole="header" style={styles.sectionTitle}>Retrouve tes amis sur Mates</Text>
           <Text style={styles.body}>Partage ton identifiant pour qu’ils puissent t’ajouter, ou ajoute-les avec le leur.</Text>
@@ -107,8 +112,8 @@ export function OutingsScreen() {
           <AppButton title="Ajouter un ami" variant="secondary" onPress={() => router.push("/friends/add")} />
         </View> : null}
         {renderSection("Autres invitations", other)}
-      </> : renderSection("À venir", upcoming)}
-      {renderSection("Passées ou annulées", past)}
+      </> : <>{renderSection("En cours", ongoing)}{renderSection("À venir", upcoming)}</>}
+      {renderSection("Terminées ou annulées", past)}
     </Screen>
   );
 }

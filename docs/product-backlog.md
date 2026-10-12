@@ -297,12 +297,12 @@ Restant avant clôture : clavier, marges de sécurité, caractères agrandis et 
 | ID | Ticket | Priorité | Statut |
 | --- | --- | --- | --- |
 | PR01 | Partager son profil par lien et QR code | P1 | À vérifier |
-| PR02 | Inviter par lien avec réponse web | P1 | À faire |
+| PR02 | Inviter par lien avec réponse web | P1 | À vérifier |
 | PR03 | Autoriser demain et les dates futures | P1 | À faire |
 | PR04 | Modifier le lieu et l’heure après envoi | P1 | À faire |
 | PR05 | Relancer une sortie passée | P1 | À faire |
 | PR06 | Réexaminer la limite à une sortie active | P1 | À faire |
-| PR07 | Empêcher les invitations sans destinataire | P1 | À faire |
+| PR07 | Empêcher les invitations sans destinataire | P1 | À vérifier |
 | PR08 | Ajouter lieux récents et favoris | P2 | À faire |
 | PR09 | Signaler un retard en un geste | P2 | À faire |
 | PR10 | Ajouter au calendrier | P2 | À faire |
@@ -339,21 +339,32 @@ Restant avant clôture : redéployer Railway avec le dossier web exporté et les
 
 Un organisateur peut partager une sortie dans ses canaux habituels. Un invité peut consulter le plan et répondre depuis son navigateur sans installation.
 
-- [ ] Le lien présente le lieu, la date, l’heure et l’organisateur.
+- [x] Le lien présente le lieu, la date, l’heure et l’organisateur.
 
-- [ ] L’invité peut répondre sans installer l’application et retrouver ou modifier sa réponse.
+- [x] L’invité peut répondre sans installer l’application et retrouver ou modifier sa réponse.
 
-- [ ] Une méthode d’identification des invités est définie pour éviter les réponses en double et l’usurpation.
+- [x] Choix utilisateur : prénom seul, non vérifié. Une clé aléatoire persistée sur le navigateur permet de retrouver et modifier une réponse ; unicité en base par sortie et clé. Les doublons sur un autre appareil et l’usurpation de prénom restent possibles et sont expliqués.
 
-- [ ] Les réponses web apparaissent dans le suivi de l’organisateur.
+- [x] Les réponses web apparaissent dans le suivi de l’organisateur.
 
-- [ ] L’organisateur peut révoquer le lien et définir les conditions d’accès ; les adresses privées sont traitées explicitement.
+- [x] L’organisateur peut révoquer le lien et définir les conditions d’accès ; les adresses privées sont traitées explicitement.
 
-- [ ] Après une réponse réussie, une proposition facultative présente Mates pour organiser la prochaine sortie.
+- [x] Après une réponse réussie, une proposition facultative présente Mates pour organiser la prochaine sortie.
 
-- [ ] Une arrivée depuis un lien conserve sa destination après installation ou connexion, selon les supports retenus.
+- [x] Le lien ouvre directement la sortie sur le web sans connexion ni installation ; après réponse, l’accès volontaire à la création passe par une connexion/inscription intégrée.
+- [ ] Reprise automatique après installation native différée : hors de cette première version, à valider lors de la configuration des liens universels.
 
 Dépendances : PR07, UX06, UX07 et ME01. Concevoir ensemble le partage, les réponses et la conversion.
+
+Implémenté le 9 octobre 2026. L’API héberge le parcours `/s/:token` → `/app/s/:token`. Le mode **Inviter uniquement par lien** crée une sortie sans envoi automatique, en conservant le capot et le maintien. L’adresse exacte reste masquée jusqu’à un choix explicite de l’organisateur ; les coordonnées GPS et listes de participants ne sont jamais exposées au visiteur. Le nom du lieu reste visible, ce qui peut déjà permettre de le reconnaître. Un lien réactivé après révocation reçoit un nouveau jeton ; les réponses existantes sont conservées. Les réponses sont fermées après annulation ou à l’heure de la sortie.
+
+Les invités web apparaissent dans une section **Invités par lien · prénom non vérifié** ; les compteurs de suivi et la Live Activity organisateur les prennent en compte. Actualisation de l’organisateur via événement temps réel, rechargement de la page publique toutes les 30 secondes. La clé de navigateur est transmise dans le corps des requêtes et stockée uniquement sous forme de hash en base. Les jetons des liens sont masqués dans les journaux HTTP ; pages et données partagées utilisent no-store et no-referrer.
+
+Récap de l’agent UI/UX : réponse en une étape, confirmation visible, modification et conversion facultative après succès. Corrections appliquées : copie/partage bloqués pendant une modification non enregistrée de la visibilité de l’adresse, annulation honnête sur les notifications, dialogue de révocation défilable, prénom trop court expliqué, lien désactivé distingué d’une panne réseau.
+
+Mesure : événements serveur invitation.share.enabled, invitation.share.revoked et invitation.guest_response.saved sans prénom, jeton ni clé de navigateur. Les cohortes et la mesure de conversion restent dans ME01. Pas de notification push aux invités sans compte. Les prénoms ne sont pas associés automatiquement aux comptes Mates.
+
+Validation : tests PostgreSQL de réponses concurrentes, modification, confidentialité, contrôle organisateur, révocation/régénération, annulation et expiration ; migration sur base neuve, montée de version et redémarrage. Vérification web sur écran de 320 pixels : réponse, rechargement, modification. Validation native sur appareil à effectuer après reconstruction. Aperçu : [réponse web](assets/pr02-web-response-320.png).
 
 ### PR03 Dates futures
 
@@ -415,11 +426,13 @@ Définir puis implémenter une règle permettant de préparer plusieurs rendez-v
 
 L’envoi actuel peut produire une invitation sans destinataire.
 
-- [ ] Sans invité sélectionné, l’envoi est bloqué et propose d’ajouter un ami ou de partager une sortie.
+- [x] Sans invité sélectionné, l’envoi est bloqué et propose d’ajouter un ami ou de partager une sortie.
 
-- [ ] Avec PR02, une sortie par lien peut être créée sans ami existant, avec un état Partager pour inviter explicite.
+- [x] Avec PR02, une sortie par lien peut être créée sans ami existant, avec un état Partager pour inviter explicite.
 
-- [ ] La création d’un lien n’annonce jamais qu’une invitation a été envoyée à des personnes.
+- [x] La création d’un lien n’annonce jamais qu’une invitation a été envoyée à des personnes.
+
+Implémenté avec PR02 : aucune création à zéro destinataire sans le choix explicite shareOnly ; mode par lien accessible sans amis. Validation API et parcours de création, geste de protection conservé.
 
 ### PR08 Lieux récents et favoris
 

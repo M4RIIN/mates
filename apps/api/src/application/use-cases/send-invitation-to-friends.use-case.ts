@@ -48,11 +48,13 @@ export class SendInvitationToFriendsUseCase {
     const friends = await this.friendships.listActiveFriends(input.creatorId);
     const activeFriendIds = new Set(friends.map((friend) => friend.id));
     const recipientIds =
-      input.friendUserIds !== undefined
+      input.shareOnly === true ? [] : input.friendUserIds !== undefined
         ? this.resolveDirectRecipients(input.friendUserIds, activeFriendIds)
         : input.friendGroupId !== undefined
           ? await this.resolveGroupRecipients(input.creatorId, input.friendGroupId, activeFriendIds)
           : friends.map((friend) => friend.id);
+
+    if (recipientIds.length === 0 && input.shareOnly !== true) throw AppErrors.validation("Choisis des amis ou active le partage par lien.");
 
     logger.info("invitation.create.requested", {
       creatorId: input.creatorId,

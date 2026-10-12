@@ -26,7 +26,7 @@ export function CreatedInvitationsScreen() {
         <ListRow
           key={invitation.id}
           title={invitation.placeName}
-          subtitle={`${formatDateTime(invitation.scheduledAt)} · ${invitation.recipients.length} ami(s)`}
+          subtitle={`${formatDateTime(invitation.scheduledAt)} · ${invitation.recipients.length + (invitation.guestResponses?.length ?? 0)} invité(s)`}
           onPress={() => router.push({ pathname: "/invitations/created/[id]", params: { id: invitation.id } })}
         />
       ))}

@@ -19,7 +19,7 @@ export function registerWebAppRoutes(app: Hono<AppBindings>): void {
     if (!data) return asset ? context.notFound() : context.text("Le parcours web est indisponible. Ouvre Mates ou réessaie plus tard.", 503);
     context.header("Content-Type", types[path.extname(file)] ?? "application/octet-stream");
     context.header("X-Content-Type-Options", "nosniff");
-    context.header("Cache-Control", "no-cache");
+    context.header("Cache-Control", relative.startsWith("s/") ? "no-store" : "no-cache");
     return context.body(new Uint8Array(data));
   });
 }

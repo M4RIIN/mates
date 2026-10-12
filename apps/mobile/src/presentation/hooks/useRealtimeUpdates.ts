@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { AppState } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { realtimeEventSchema, type RealtimeEvent } from "@mates/shared";
 import { appConfig } from "@/shared/config";
@@ -20,6 +21,12 @@ export function useRealtimeUpdates() {
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
+    function refreshInvitations() {
+      if (!disposed) void queryClient.invalidateQueries({ queryKey: ["invitations"] });
+    }
+    const appState = AppState.addEventListener("change", state => {
+      if (state === "active") refreshInvitations();
+    });
 
     function clearReconnectTimer() {
       if (reconnectTimer !== null) {
@@ -59,7 +66,7 @@ export function useRealtimeUpdates() {
         return;
       }
 
-      if (event.type === "invitation.response.updated") {
+      if (event.type === "invitation.response.updated" || event.type === "invitation.guests.updated") {
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: ["invitations", event.invitationId] }),
           queryClient.invalidateQueries({ queryKey: ["invitations", "created"] }),
@@ -75,6 +82,7 @@ export function useRealtimeUpdates() {
 
       clearReconnectTimer();
       socket = new WebSocket(buildRealtimeUrl(appConfig.apiUrl, authToken));
+      socket.onopen = refreshInvitations;
 
       socket.onmessage = (message) => {
         if (typeof message.data !== "string") {
@@ -106,6 +114,7 @@ export function useRealtimeUpdates() {
 
     return () => {
       disposed = true;
+      appState.remove();
       clearReconnectTimer();
       socket?.close();
     };

@@ -1,3 +1,5 @@
+import { InvitationSharePanel } from "@/presentation/components/InvitationSharePanel";
+import { getInvitationState, getInvitationEstimatedArrivalAt, isInvitationOpen } from "@mates/shared";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
@@ -13,7 +15,7 @@ import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useCancelInvitation, useInvitationDetails } from "@/presentation/hooks/useInvitations";
 import { useRouteId } from "@/presentation/hooks/useRouteId";
 import { useInvitationClock } from "@/presentation/hooks/useInvitationClock";
-import { formatDateTime } from "@/shared/date-format";
+import { formatDateTime, formatTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
 export function CreatedInvitationDetailScreen() {
@@ -24,10 +26,12 @@ export function CreatedInvitationDetailScreen() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const now = useInvitationClock();
   const recipients = invitation.data?.recipients ?? [];
-  const yesCount = recipients.filter((recipient) => recipient.responseStatus === "yes").length;
-  const noCount = recipients.filter((recipient) => recipient.responseStatus === "no").length;
+  const guests = invitation.data?.guestResponses ?? [];
+  const yesCount = recipients.filter((recipient) => recipient.responseStatus === "yes").length + guests.filter(g => g.responseStatus === "yes").length;
+  const noCount = recipients.filter((recipient) => recipient.responseStatus === "no").length + guests.filter(g => g.responseStatus === "no").length;
   const pendingCount = recipients.filter((recipient) => recipient.responseStatus === "pending").length;
-  const awaitingResponse = invitation.data !== undefined && invitation.data.canceledAt === null && new Date(invitation.data.scheduledAt).getTime() > now.getTime();
+  const state = invitation.data === undefined ? undefined : getInvitationState(invitation.data, now);
+  const awaitingResponse = invitation.data !== undefined && isInvitationOpen(invitation.data, now);
 
   useEffect(() => {
     if (invitation.data === undefined) {
@@ -37,7 +41,7 @@ export function CreatedInvitationDetailScreen() {
     syncCreatedInvitationLiveActivity(invitation.data).catch((error: unknown) => {
       console.warn("Failed to sync created invitation live activity", error);
     });
-  }, [invitation.data]);
+  }, [invitation.data, state]);
 
   function confirmCancel() {
     if (id === undefined) {
@@ -92,6 +96,7 @@ export function CreatedInvitationDetailScreen() {
               <Text style={styles.closedValue}>Annulée le {formatDateTime(invitation.data.canceledAt)}</Text>
             </View>
           ) : null}
+          {state === "ongoing" || state === "ended" ? <Text accessibilityLiveRegion="polite" style={styles.sectionTitle}>{state === "ongoing" ? "Sortie en cours" : "Sortie terminée"}</Text> : null}
           <Text accessibilityRole="header" style={styles.sectionTitle}>{invitation.data.canceledAt !== null ? "Réponses avant annulation" : "Les réponses"}</Text>
           <View accessibilityLiveRegion="polite" style={styles.stats}>
             <View style={[styles.stat, styles.statYes]}>
@@ -107,24 +112,27 @@ export function CreatedInvitationDetailScreen() {
               <Text style={styles.statLabel}>Ne viennent pas</Text>
             </View>
           </View>
-          {recipients.length === 0 ? (
-            <EmptyState title="Aucun invité" subtitle="Choisis des amis lors de ta prochaine sortie." />
+          {recipients.length === 0 && guests.length === 0 ? (
+            <EmptyState title="Aucun invité" subtitle="Partage le lien ci-dessous pour inviter tes proches." />
           ) : null}
           {recipients.map((recipient) => (
             <ListRow
               key={recipient.id}
               title={recipient.user.pseudo}
-              subtitle={formatRecipientStatus(recipient.responseStatus, recipient.delayMinutes, awaitingResponse)}
+              subtitle={formatRecipientStatus(recipient.responseStatus, recipient.delayMinutes, awaitingResponse, invitation.data.scheduledAt)}
             />
           ))}
+          {guests.length > 0 ? <Text accessibilityRole="header" style={styles.sectionTitle}>Invités par lien</Text> : null}
+          {guests.map(guest => <ListRow key={guest.id} title={guest.name} subtitle={`Invité web · prénom non vérifié · ${guest.responseStatus === "yes" ? "Vient" : "Ne vient pas"}`} />)}
+          <InvitationSharePanel id={invitation.data.id} closed={!awaitingResponse} />
           <PlaceVenuePanel
             invitationId={invitation.data.id}
             title={invitation.data.placeName}
             address={invitation.data.placeAddress}
             latitude={invitation.data.latitude}
             longitude={invitation.data.longitude}
-            showReserveButton={invitation.data.canceledAt === null}
-            showTransportActions={invitation.data.canceledAt === null}
+            showReserveButton={awaitingResponse}
+            showTransportActions={awaitingResponse}
           />
           {invitation.data.canceledAt === null ? (
             <Pressable accessibilityRole="button" accessibilityLabel="Annuler la sortie" accessibilityState={{ disabled: cancelInvitation.isPending }} disabled={cancelInvitation.isPending} onPress={confirmCancel} style={styles.cancelRow}>
@@ -158,7 +166,7 @@ function CancelInvitationDialog({
         <View accessibilityViewIsModal style={styles.dialogCard}>
           <Text accessibilityRole="header" style={styles.dialogTitle}>Annuler la sortie ?</Text>
           <ScrollView style={styles.dialogBody} contentContainerStyle={styles.dialogBodyContent}>
-            <Text style={styles.dialogText}>Les invités seront informés de l’annulation. Ils ne pourront plus répondre à cette sortie.</Text>
+            <Text style={styles.dialogText}>Les amis invités dans Mates seront informés. Les invités par lien verront l’annulation en rouvrant le lien. Personne ne pourra plus répondre à cette sortie.</Text>
             {error !== null ? <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={styles.dialogError}>Annulation impossible : {error}</Text> : null}
           </ScrollView>
           <View style={styles.dialogActions}>
@@ -175,7 +183,7 @@ function CancelInvitationDialog({
   );
 }
 
-function formatRecipientStatus(status: "pending" | "yes" | "no", delayMinutes: number | null, awaitingResponse: boolean): string {
+function formatRecipientStatus(status: "pending" | "yes" | "no", delayMinutes: number | null, awaitingResponse: boolean, scheduledAt: string): string {
   if (status === "pending") {
     return awaitingResponse ? "À répondre" : "Sans réponse";
   }
@@ -184,7 +192,8 @@ function formatRecipientStatus(status: "pending" | "yes" | "no", delayMinutes: n
     return "Ne vient pas";
   }
 
-  return delayMinutes === null || delayMinutes === 0 ? "Vient" : `Vient · retard de ${delayMinutes} min`;
+  const arrival = formatTime(getInvitationEstimatedArrivalAt(scheduledAt, delayMinutes).toISOString());
+  return `Vient · arrivée estimée à ${arrival}${delayMinutes ? ` · retard de ${delayMinutes} min` : ""}`;
 }
 
 const styles = StyleSheet.create({

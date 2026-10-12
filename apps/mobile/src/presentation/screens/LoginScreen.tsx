@@ -75,7 +75,7 @@ function getGoogleRedirectUriForPlatform(): string | undefined {
   return undefined;
 }
 
-export function LoginScreen({ returnTo }: { returnTo?: Href } = {}) {
+export function LoginScreen({ returnTo, returnHint = "Après connexion, retrouve le profil partagé pour envoyer ta demande." }: { returnTo?: Href; returnHint?: string } = {}) {
   const { width } = useWindowDimensions();
   const carouselRef = useRef<ScrollView | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -282,7 +282,7 @@ export function LoginScreen({ returnTo }: { returnTo?: Href } = {}) {
         </ScrollView>
       </View>
       <View style={styles.bottomDock}>
-        {returnTo ? <Text style={styles.hint}>Après connexion, retrouve le profil partagé pour envoyer ta demande.</Text> : null}
+        {returnTo ? <Text style={styles.hint}>{returnHint}</Text> : null}
         <View style={styles.pagination}>
           {onboardingSlides.map((slide, index) => (
             <View

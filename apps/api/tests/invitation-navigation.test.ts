@@ -6,7 +6,7 @@ describe("invitations awaiting a response badge", () => {
   const invitation = { scheduledAt: "2026-10-09T13:00:00Z", canceledAt: null,
     myResponse: { responseStatus: "pending" as const } };
 
-  it("counts only future, uncanceled invitations without a response", () => {
+  it("counts future and ongoing uncanceled invitations without a response", () => {
     expect(countPendingInvitations([
       invitation,
       { ...invitation, myResponse: { responseStatus: "yes" } },
@@ -14,12 +14,13 @@ describe("invitations awaiting a response badge", () => {
       { ...invitation, canceledAt: "2026-10-09T11:00:00Z" },
       { ...invitation, scheduledAt: "2026-10-09T11:00:00Z" },
       { ...invitation, scheduledAt: now.toISOString() }
-    ], now)).toBe(1);
+    ], now)).toBe(3);
   });
 
   it("clears the badge when time passes without another API response", () => {
     expect(countPendingInvitations([invitation], now)).toBe(1);
-    expect(countPendingInvitations([invitation], new Date("2026-10-09T14:00:00Z"))).toBe(0);
+    expect(countPendingInvitations([invitation], new Date("2026-10-09T14:00:00Z"))).toBe(1);
+    expect(countPendingInvitations([invitation], new Date("2026-10-09T15:00:00Z"))).toBe(0);
   });
 
   it("has no badge while loading or for an empty list", () => {

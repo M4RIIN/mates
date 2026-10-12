@@ -1,3 +1,4 @@
+import type { GuestResponseRecord } from "./invitation-sharing-repository.js";
 import type { ResponseStatus } from "@mates/shared";
 import type { PublicUserRecord } from "./user-repository.js";
 
@@ -58,6 +59,7 @@ export type InvitationDetailsRecord = InvitationRecord & {
   creator: PublicUserRecord;
   friendGroup: InvitationFriendGroupRecord | null;
   recipients: InvitationParticipantRecord[];
+  guestResponses?: GuestResponseRecord[];
 };
 
 export type ReceivedInvitationRecord = InvitationDetailsRecord & {

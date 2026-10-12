@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   CreateInvitationAuditEventInput,
   CreateInvitationRecordInput,
@@ -145,6 +145,11 @@ describe("invitation scheduling rules", () => {
 });
 
 describe("invitation responses", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-16T20:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
   it("accepts a yes response with an estimated delay", () => {
     const response = normalizeInvitationResponse("yes", 15, new Date("2026-05-16T09:00:00.000Z"));
 
@@ -216,6 +221,30 @@ describe("invitation responses", () => {
       responseStatus: "yes",
       delayMinutes: 20
     });
+  });
+
+  it.each([
+    ["2026-05-16T20:29:59Z", true],
+    ["2026-05-16T20:30:00Z", true],
+    ["2026-05-16T20:35:00Z", true],
+    ["2026-05-16T22:29:59Z", true],
+    ["2026-05-16T22:30:00Z", false]
+  ])("enforces the coordination window at %s", async (time, allowed) => {
+    vi.setSystemTime(new Date(time));
+    const update = vi.fn(createInvitationRepository().updateRecipientResponse);
+    const useCase = new RespondToInvitationUseCase(createInvitationRepository({
+      getDetails: async () => buildInvitationDetails(),
+      findRecipient: async () => ({ id: RECIPIENT_ID, invitationId: INVITATION_ID, userId: USER_ID, responseStatus: "yes", delayMinutes: 0, respondedAt: null }),
+      updateRecipientResponse: update
+    }), { publishToUser: async () => undefined, publishToUsers: async () => undefined });
+    const action = useCase.execute({ invitationId: INVITATION_ID, userId: USER_ID, status: "yes", delayMinutes: 15 });
+    if (allowed) {
+      await expect(action).resolves.toMatchObject({ responseStatus: "yes", delayMinutes: 15 });
+      expect(update).toHaveBeenCalledOnce();
+    } else {
+      await expect(action).rejects.toMatchObject({ httpStatus: 409 });
+      expect(update).not.toHaveBeenCalled();
+    }
   });
 
   it("creates an accepted audit event for yes responses", async () => {

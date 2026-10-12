@@ -1,4 +1,5 @@
 import { z } from "zod";
+export * from "./invitation-lifecycle.js";
 
 export const publicTagSchema = z
   .string()
@@ -173,13 +174,34 @@ export const createInvitationRequestSchema = placeInputSchema
   .extend({
     scheduledAt: isoDateTimeSchema,
     friendGroupId: z.string().uuid().optional(),
-    friendUserIds: z.array(z.string().uuid()).min(1).max(100).optional()
+    friendUserIds: z.array(z.string().uuid()).min(1).max(100).optional(),
+    shareOnly: z.boolean().optional()
   })
   .refine((value) => !(value.friendGroupId !== undefined && value.friendUserIds !== undefined), {
     message: "friendGroupId and friendUserIds are mutually exclusive",
     path: ["friendUserIds"]
+  })
+  .refine((value) => !value.shareOnly || (value.friendGroupId === undefined && value.friendUserIds === undefined), {
+    message: "Une sortie par lien ne peut pas être envoyée à des amis en même temps.", path: ["shareOnly"]
   });
 export type CreateInvitationRequest = z.infer<typeof createInvitationRequestSchema>;
+
+export const guestResponseSchema = z.object({
+  id: z.string().uuid(), name: z.string(), responseStatus: z.enum(["yes", "no"]), respondedAt: isoDateTimeSchema
+});
+export type GuestResponseDto = z.infer<typeof guestResponseSchema>;
+export const sharedInvitationSchema = z.object({
+  id: z.string().uuid(), placeName: z.string(), placeAddress: z.string().nullable(),
+  scheduledAt: isoDateTimeSchema, canceledAt: isoDateTimeSchema.nullable(), creatorPseudo: z.string(),
+  showAddress: z.boolean(), closed: z.boolean()
+});
+export type SharedInvitationDto = z.infer<typeof sharedInvitationSchema>;
+export const invitationShareLinkSchema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/), showAddress: z.boolean() });
+export const guestKeySchema = z.string().regex(/^[a-f0-9]{64}$/);
+export const guestRespondRequestSchema = z.object({
+  guestKey: guestKeySchema, name: z.string().trim().min(2).max(40), status: z.enum(["yes", "no"])
+});
+export type GuestRespondRequest = z.infer<typeof guestRespondRequestSchema>;
 
 export const respondToInvitationRequestSchema = z.discriminatedUnion("status", [
   z.object({
@@ -221,7 +243,8 @@ export const invitationDetailsSchema = z.object({
   scheduledAt: isoDateTimeSchema,
   createdAt: isoDateTimeSchema,
   canceledAt: isoDateTimeSchema.nullable(),
-  recipients: z.array(invitationRecipientSchema)
+  recipients: z.array(invitationRecipientSchema),
+  guestResponses: z.array(guestResponseSchema).optional()
 });
 export type InvitationDetailsDto = z.infer<typeof invitationDetailsSchema>;
 
@@ -248,6 +271,7 @@ export const apiErrorSchema = z.object({
 export type ApiErrorDto = z.infer<typeof apiErrorSchema>;
 
 export const realtimeEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("invitation.guests.updated"), invitationId: z.string().uuid() }),
   z.object({
     type: z.literal("friend.request.created"),
     friendshipId: z.string().uuid()

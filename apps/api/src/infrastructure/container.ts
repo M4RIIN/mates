@@ -1,3 +1,5 @@
+import { InvitationSharingUseCase } from "../application/use-cases/invitation-sharing.use-case.js";
+import { PostgresInvitationSharingRepository } from "./repositories/postgres-invitation-sharing.repository.js";
 import type { AddFriendUseCase } from "../application/use-cases/add-friend.use-case.js";
 import { AddFriendUseCase as AddFriend } from "../application/use-cases/add-friend.use-case.js";
 import type { AcceptFriendRequestUseCase } from "../application/use-cases/accept-friend-request.use-case.js";
@@ -71,6 +73,7 @@ import { GoogleIdentityTokenVerifier } from "./security/google-identity-token-ve
 import { JoseTokenService } from "./security/jose-token-service.js";
 
 export type AppUseCases = {
+  invitationSharing: InvitationSharingUseCase;
   registerUser: RegisterUserUseCase;
   loginUser: LoginUserUseCase;
   authenticateGoogle: AuthenticateGoogleUseCase;
@@ -215,6 +218,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
     tokenService,
     realtime,
     useCases: {
+      invitationSharing: new InvitationSharingUseCase(invitations, new PostgresInvitationSharingRepository(db), realtime),
       registerUser: new RegisterUser(users, passwordHasher, tokenService),
       loginUser: new LoginUser(users, passwordHasher, tokenService),
       authenticateGoogle: new AuthenticateGoogle(users, googleIdentity, tokenService),

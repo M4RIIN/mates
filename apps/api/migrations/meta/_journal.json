@@ -57,6 +57,13 @@
       "when": 1790934639389,
       "tag": "0007_user_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791566720472,
+      "tag": "0008_invitation_sharing",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import type { RespondToInvitationRequest } from "@mates/shared";
+import { isInvitationOpen, type RespondToInvitationRequest } from "@mates/shared";
 import { normalizeInvitationResponse } from "../../domain/invitation/invitation-rules.js";
 import { AppErrors } from "../../domain/shared/app-error.js";
 import type { InvitationRecipientRecord, InvitationRepository } from "../ports/invitation-repository.js";
@@ -29,6 +29,10 @@ export class RespondToInvitationUseCase {
     const recipient = await this.invitations.findRecipient(input.invitationId, input.userId);
     if (recipient === null) {
       throw AppErrors.forbidden("You can only respond to invitations you received");
+    }
+
+    if (!isInvitationOpen(invitation)) {
+      throw AppErrors.conflict("Cette sortie est terminée et ne reçoit plus de réponses.");
     }
 
     const normalized = normalizeInvitationResponse(input.status, input.delayMinutes);

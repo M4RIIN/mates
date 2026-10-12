@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { InvitationDetailsDto, InvitationRecipientDto } from "@mates/shared";
+import { getInvitationCoordinationEndsAt, getInvitationEstimatedArrivalAt, isInvitationOpen, type InvitationDetailsDto, type InvitationRecipientDto } from "@mates/shared";
 import { ProgressView, Spacer, Text, VStack, HStack } from "@expo/ui/swift-ui";
 import { background, cornerRadius, font, foregroundStyle, frame, padding } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity, type LiveActivityEnvironment } from "expo-widgets";
@@ -10,6 +10,7 @@ type InvitationLiveActivityProps = {
   placeName: string;
   placeAddress: string;
   scheduledAt: number;
+  coordinationEndsAt: number;
   statusText: string;
 };
 
@@ -23,13 +24,14 @@ const InvitationActivityLayout = (props: InvitationLiveActivityProps, environmen
   const scheduledAt = new Date(props.scheduledAt);
   const countdownLower = now.getTime() < scheduledAt.getTime() ? now : scheduledAt;
   const hasStarted = scheduledAt.getTime() <= now.getTime();
+  const hasEnded = environment.isStale || props.coordinationEndsAt <= now.getTime();
   const scheduledTimeLabel = scheduledAt.toLocaleTimeString("fr-FR", {
     hour: "2-digit",
     minute: "2-digit"
   });
 
   const timer = hasStarted ? (
-    <Text modifiers={[font({ size: 20, weight: "bold" }), foregroundStyle("#0F172A")]}>En cours</Text>
+    <Text modifiers={[font({ size: 20, weight: "bold" }), foregroundStyle("#0F172A")]}>{hasEnded ? "Terminée" : "En cours"}</Text>
   ) : (
     <Text
       timerInterval={{ lower: countdownLower, upper: scheduledAt }}
@@ -62,7 +64,7 @@ const InvitationActivityLayout = (props: InvitationLiveActivityProps, environmen
             </Text>
           </VStack>
         </HStack>
-        <ProgressView timerInterval={{ lower: countdownLower, upper: scheduledAt }} countsDown />
+        {!hasStarted ? <ProgressView timerInterval={{ lower: countdownLower, upper: scheduledAt }} countsDown /> : null}
         <HStack>
           {timer}
           <Spacer />
@@ -116,9 +118,9 @@ export async function syncInvitationLiveActivity(
     return;
   }
 
-  const scheduledAtMs = new Date(invitation.scheduledAt).getTime();
+  const endsAtMs = getInvitationCoordinationEndsAt(invitation.scheduledAt).getTime();
 
-  if (response.responseStatus !== "yes" || invitation.canceledAt !== null || scheduledAtMs <= Date.now()) {
+  if (response.responseStatus !== "yes" || !isInvitationOpen(invitation)) {
     await endInvitationLiveActivity(invitation.id);
     return;
   }
@@ -132,15 +134,15 @@ export async function syncInvitationLiveActivity(
   }
 
   if (currentInvitationId === invitation.id && instances.length > 0) {
-    await Promise.all(instances.map((instance, index) => (index === 0 ? instance.update(props) : instance.end("immediate"))));
+    await Promise.all(instances.map((instance, index) => (index === 0 ? instance.update(props, new Date(endsAtMs)) : instance.end("immediate"))));
     await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
-    scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
+    scheduleInvitationLiveActivityEnd(invitation.id, endsAtMs);
     return;
   }
 
-  InvitationActivity.start(props, buildInvitationUrl(invitation.id));
+  InvitationActivity.start(props, buildInvitationUrl(invitation.id), new Date(endsAtMs));
   await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
-  scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
+  scheduleInvitationLiveActivityEnd(invitation.id, endsAtMs);
 }
 
 export async function syncCreatedInvitationLiveActivity(invitation: InvitationDetailsDto) {
@@ -148,9 +150,9 @@ export async function syncCreatedInvitationLiveActivity(invitation: InvitationDe
     return;
   }
 
-  const scheduledAtMs = new Date(invitation.scheduledAt).getTime();
+  const endsAtMs = getInvitationCoordinationEndsAt(invitation.scheduledAt).getTime();
 
-  if (invitation.canceledAt !== null || scheduledAtMs <= Date.now()) {
+  if (!isInvitationOpen(invitation)) {
     await endInvitationLiveActivity(invitation.id);
     return;
   }
@@ -164,15 +166,15 @@ export async function syncCreatedInvitationLiveActivity(invitation: InvitationDe
   }
 
   if (currentInvitationId === invitation.id && instances.length > 0) {
-    await Promise.all(instances.map((instance, index) => (index === 0 ? instance.update(props) : instance.end("immediate"))));
+    await Promise.all(instances.map((instance, index) => (index === 0 ? instance.update(props, new Date(endsAtMs)) : instance.end("immediate"))));
     await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
-    scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
+    scheduleInvitationLiveActivityEnd(invitation.id, endsAtMs);
     return;
   }
 
-  InvitationActivity.start(props, buildCreatedInvitationUrl(invitation.id));
+  InvitationActivity.start(props, buildCreatedInvitationUrl(invitation.id), new Date(endsAtMs));
   await AsyncStorage.setItem(LIVE_ACTIVITY_STORAGE_KEY, invitation.id);
-  scheduleInvitationLiveActivityEnd(invitation.id, scheduledAtMs);
+  scheduleInvitationLiveActivityEnd(invitation.id, endsAtMs);
 }
 
 export async function endInvitationLiveActivity(invitationId?: string) {
@@ -201,12 +203,13 @@ function buildLiveActivityProps(
     placeName: invitation.placeName,
     placeAddress: invitation.placeAddress ?? "Adresse indisponible",
     scheduledAt: new Date(invitation.scheduledAt).getTime(),
-    statusText: delayMinutes === null ? "Tu y vas" : `Retard ${delayMinutes} min`
+    coordinationEndsAt: getInvitationCoordinationEndsAt(invitation.scheduledAt).getTime(),
+    statusText: `Arrivée estimée ${getInvitationEstimatedArrivalAt(invitation.scheduledAt, delayMinutes).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
   };
 }
 
 function buildCreatedInvitationLiveActivityProps(invitation: InvitationDetailsDto): InvitationLiveActivityProps {
-  const yesCount = invitation.recipients.filter((recipient) => recipient.responseStatus === "yes").length;
+  const yesCount = invitation.recipients.filter((recipient) => recipient.responseStatus === "yes").length + (invitation.guestResponses ?? []).filter(g => g.responseStatus === "yes").length;
   const pendingCount = invitation.recipients.filter((recipient) => recipient.responseStatus === "pending").length;
 
   return {
@@ -214,6 +217,7 @@ function buildCreatedInvitationLiveActivityProps(invitation: InvitationDetailsDt
     placeName: invitation.placeName,
     placeAddress: invitation.placeAddress ?? "Adresse indisponible",
     scheduledAt: new Date(invitation.scheduledAt).getTime(),
+    coordinationEndsAt: getInvitationCoordinationEndsAt(invitation.scheduledAt).getTime(),
     statusText: `${yesCount} oui · ${pendingCount} attente`
   };
 }
@@ -226,10 +230,10 @@ function buildCreatedInvitationUrl(invitationId: string) {
   return `mates://invitations/created/${invitationId}`;
 }
 
-function scheduleInvitationLiveActivityEnd(invitationId: string, scheduledAtMs: number) {
+function scheduleInvitationLiveActivityEnd(invitationId: string, endsAtMs: number) {
   clearInvitationLiveActivityEndTimer();
 
-  const delayMs = scheduledAtMs - Date.now();
+  const delayMs = endsAtMs - Date.now();
   if (delayMs <= 0) {
     endInvitationLiveActivity(invitationId).catch((error: unknown) => {
       console.warn("Failed to end invitation live activity", error);

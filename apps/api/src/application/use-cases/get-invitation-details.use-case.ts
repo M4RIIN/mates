@@ -24,6 +24,6 @@ export class GetInvitationDetailsUseCase {
       throw AppErrors.notFound("Invitation not found");
     }
 
-    return toInvitationDetailsDto(details);
+    return toInvitationDetailsDto(isCreator ? details : { ...details, guestResponses: [] });
   }
 }

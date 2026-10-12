@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateInvitationRequest, RespondToInvitationRequest } from "@mates/shared";
+import { getInvitationState, type CreateInvitationRequest, type RespondToInvitationRequest } from "@mates/shared";
 import { Platform } from "react-native";
 import { useApiClient } from "./useApiClient";
 
@@ -115,11 +115,7 @@ export function useCancelInvitation(id: string) {
 }
 
 export function isUpcomingInvitation(invitation: ScheduledInvitation, now: Date = new Date()): boolean {
-  if (invitation.canceledAt !== undefined && invitation.canceledAt !== null) {
-    return false;
-  }
-
-  return new Date(invitation.scheduledAt).getTime() > now.getTime();
+  return getInvitationState(invitation, now) === "upcoming";
 }
 
 export function countUpcomingInvitations<T extends ScheduledInvitation>(invitations: T[] | undefined, now: Date = new Date()): number {

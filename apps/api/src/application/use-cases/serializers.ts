@@ -1,3 +1,4 @@
+import { toGuestResponseDto } from "./invitation-sharing.use-case.js";
 import type {
   AuthResponse,
   CurrentUserDto,
@@ -51,13 +52,14 @@ export function toInvitationDetailsDto(invitation: InvitationDetailsRecord): Inv
     scheduledAt: invitation.scheduledAt.toISOString(),
     createdAt: invitation.createdAt.toISOString(),
     canceledAt: invitation.canceledAt?.toISOString() ?? null,
+    guestResponses: (invitation.guestResponses ?? []).map(toGuestResponseDto),
     recipients: invitation.recipients.map(toInvitationRecipientDto)
   };
 }
 
 export function toReceivedInvitationDto(invitation: ReceivedInvitationRecord): ReceivedInvitationDto {
   return {
-    ...toInvitationDetailsDto(invitation),
+    ...toInvitationDetailsDto({ ...invitation, guestResponses: [] }),
     myResponse: toInvitationRecipientDto(invitation.myResponse)
   };
 }

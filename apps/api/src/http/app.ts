@@ -1,3 +1,4 @@
+import { registerSharedInvitationRoutes } from "./routes/shared-invitation-routes.js";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { cors } from "hono/cors";
@@ -17,7 +18,7 @@ import type { AppBindings } from "./types.js";
 function getHttpLogContext(context: Context<AppBindings>, status: number): Record<string, unknown> {
   return {
     method: context.req.method,
-    path: context.req.path,
+    path: context.req.path.replace(/(\/(?:app\/s|s|shared-invitations)\/)[^/]+/g, "$1[redacted]"),
     status,
     requestId: context.req.header("x-request-id"),
     userId: context.get("currentUserId") ?? null
@@ -55,6 +56,7 @@ export function createHttpApp(container: AppContainer): Hono<AppBindings> {
   registerMeRoutes(app, container);
   registerUserRoutes(app, container);
   registerProfilePageRoutes(app, container);
+  registerSharedInvitationRoutes(app, container);
   registerWebAppRoutes(app);
   registerFriendRoutes(app, container);
   registerPlaceRoutes(app, container);

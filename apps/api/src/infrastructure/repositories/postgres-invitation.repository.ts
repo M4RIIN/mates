@@ -1,4 +1,6 @@
-import { and, desc, eq, gte, inArray, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import { invitationCoordinationDurationMs, isInvitationOpen } from "@mates/shared";
+import { AppErrors } from "../../domain/shared/app-error.js";
 import type {
   CreateInvitationAuditEventInput,
   CreateInvitationRecordInput,
@@ -12,10 +14,9 @@ import type {
   ReceivedInvitationRecord,
   UpdateInvitationResponseInput
 } from "../../application/ports/invitation-repository.js";
-import { endOfLocalDay, startOfLocalDay } from "../../domain/shared/date.js";
 import type { PublicUserRecord } from "../../application/ports/user-repository.js";
 import type { AppDb } from "../db/client.js";
-import { friendGroups, invitationAuditEvents, invitationRecipients, invitations, users } from "../db/schema.js";
+import { invitationGuestResponses, friendGroups, invitationAuditEvents, invitationRecipients, invitations, users } from "../db/schema.js";
 
 function toInvitationRecord(row: typeof invitations.$inferSelect): InvitationRecord {
   return {
@@ -160,21 +161,29 @@ export class PostgresInvitationRepository implements InvitationRepository {
   }
 
   async updateRecipientResponse(input: UpdateInvitationResponseInput): Promise<InvitationRecipientRecord> {
-    const [updated] = await this.db
-      .update(invitationRecipients)
-      .set({
-        responseStatus: input.responseStatus,
-        delayMinutes: input.delayMinutes,
-        respondedAt: input.respondedAt
-      })
-      .where(eq(invitationRecipients.id, input.recipientId))
-      .returning();
+    return this.db.transaction(async (transaction) => {
+      const [found] = await transaction.select({ invitation: invitations }).from(invitationRecipients)
+        .innerJoin(invitations, eq(invitationRecipients.invitationId, invitations.id))
+        .where(eq(invitationRecipients.id, input.recipientId)).for("update");
+      if (!found) throw AppErrors.notFound("Invitation response not found");
+      if (found.invitation.canceledAt !== null) throw AppErrors.invitationCancelled();
+      if (!isInvitationOpen(found.invitation)) throw AppErrors.conflict("Cette sortie est terminée et ne reçoit plus de réponses.");
+      const [updated] = await transaction
+        .update(invitationRecipients)
+        .set({
+          responseStatus: input.responseStatus,
+          delayMinutes: input.delayMinutes,
+          respondedAt: input.respondedAt
+        })
+        .where(eq(invitationRecipients.id, input.recipientId))
+        .returning();
 
-    if (updated === undefined) {
-      throw new Error("Invitation response update failed");
-    }
+      if (updated === undefined) {
+        throw new Error("Invitation response update failed");
+      }
 
-    return toRecipientRecord(updated);
+      return toRecipientRecord(updated);
+    });
   }
 
   async cancel(invitationId: string, canceledAt: Date): Promise<InvitationRecord> {
@@ -239,7 +248,8 @@ export class PostgresInvitationRepository implements InvitationRepository {
       ...toInvitationRecord(invitationRow),
       creator: toPublicUserRecord(creatorRow),
       friendGroup: friendGroupRow === undefined ? null : toInvitationFriendGroupRecord(friendGroupRow),
-      recipients
+      recipients,
+      guestResponses: (await this.db.select().from(invitationGuestResponses).where(eq(invitationGuestResponses.invitationId, invitationId))).map(row => ({ id: row.id, invitationId: row.invitationId, name: row.name, responseStatus: row.responseStatus as "yes" | "no", respondedAt: row.respondedAt }))
     };
   }
 
@@ -251,8 +261,7 @@ export class PostgresInvitationRepository implements InvitationRepository {
         and(
           eq(invitations.creatorId, userId),
           isNull(invitations.canceledAt),
-          gte(invitations.scheduledAt, startOfLocalDay(now)),
-          lt(invitations.scheduledAt, endOfLocalDay(now))
+          gt(invitations.scheduledAt, new Date(now.getTime() - invitationCoordinationDurationMs))
         )
       )
       .orderBy(desc(invitations.createdAt))

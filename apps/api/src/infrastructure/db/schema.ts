@@ -1,5 +1,6 @@
 import {
   check,
+  boolean,
   doublePrecision,
   index,
   integer,
@@ -192,3 +193,23 @@ export const invitationAuditEvents = pgTable(
     invitedCountCheck: check("invitation_audit_events_invited_count_positive", sql`${table.invitedCount} >= 0`)
   })
 );
+
+export const invitationShareLinks = pgTable("invitation_share_links", {
+  invitationId: uuid("invitation_id").primaryKey().references(() => invitations.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  showAddress: boolean("show_address").notNull().default(false),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const invitationGuestResponses = pgTable("invitation_guest_responses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  invitationId: uuid("invitation_id").notNull().references(() => invitations.id, { onDelete: "cascade" }),
+  guestKeyHash: text("guest_key_hash").notNull(),
+  name: text("name").notNull(),
+  responseStatus: responseStatusEnum("response_status").notNull(),
+  respondedAt: timestamp("responded_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => ({
+  guestUnique: uniqueIndex("invitation_guest_responses_identity_idx").on(table.invitationId, table.guestKeyHash),
+  validStatus: check("invitation_guest_responses_status", sql`${table.responseStatus} IN ('yes', 'no')`)
+}));
