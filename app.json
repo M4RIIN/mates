@@ -7,6 +7,12 @@
     },
     "android": {
       "package": "com.nclmarin.mates"
+    },
+    "ios": {
+      "bundleIdentifier": "com.lagrange.mates",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     }
   }
 }

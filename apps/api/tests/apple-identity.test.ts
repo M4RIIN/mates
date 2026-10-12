@@ -26,6 +26,24 @@ function setup() {
 }
 
 describe("Apple identity verification", () => {
+  it("logs the exchange failure without logging tokens, secrets or Apple's description", async () => {
+    const { service, fetcher } = setup();
+    const challenge = await service.createChallenge();
+    const identityToken = await token(challenge.nonce);
+    fetcher.mockResolvedValueOnce(Response.json({ error: "invalid_client", error_description: "private-response-detail" }, { status: 400 }));
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await expect(service.authenticate({ ...challenge, identityToken, authorizationCode: "private-code" }))
+        .rejects.toMatchObject({ code: "INVALID_APPLE_TOKEN" });
+      const log = warning.mock.calls.map((call) => call.join(" ")).join("\n");
+      expect(log).toContain('"stage":"authorization_code_exchange"');
+      expect(log).toContain('"appleError":"invalid_client"');
+      for (const secret of [identityToken, challenge.challengeToken, config.privateKey, "private-code", "private-response-detail"]) {
+        expect(log).not.toContain(secret);
+      }
+    } finally { warning.mockRestore(); }
+  });
+
   it("exchanges the code, encrypts the refresh token and revokes it server-side", async () => {
     const { service, fetcher } = setup();
     const challenge = await service.createChallenge();

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AppleAuthRequest } from "@mates/shared";
 import type { AppleIdentity, AppleIdentityService } from "../../application/ports/apple-identity-service.js";
 import { AppErrors } from "../../domain/shared/app-error.js";
+import { logger } from "../logger.js";
 
 const ISSUER = "https://appleid.apple.com";
 const appleKeys = createRemoteJWKSet(new URL(`${ISSUER}/auth/keys`));
@@ -35,32 +36,56 @@ export class NativeAppleIdentityService implements AppleIdentityService {
   }
 
   async authenticate(input: AppleAuthRequest): Promise<AppleIdentity> {
+    let stage = "challenge";
+    let appleError: string | undefined;
     try {
       const { payload: challenge } = await jwtVerify(input.challengeToken, this.signingKey, {
         algorithms: ["HS256"], issuer: "mates", audience: "apple-challenge", requiredClaims: ["exp", "iat"]
       });
       if (typeof challenge.nonce !== "string") throw new Error("Missing nonce");
+      stage = "identity_token";
       const options = { algorithms: ["RS256"], issuer: ISSUER, audience: this.config.clientId, requiredClaims: ["exp", "iat", "sub"] };
       const { payload } = await jwtVerify(input.identityToken, this.keys, options);
+      stage = "nonce";
       if (payload.nonce !== challenge.nonce) throw new Error("Invalid nonce");
 
       // Apple authorization codes are single-use: replaying the same login cannot create a session.
+      stage = "client_secret";
+      const clientSecret = await this.clientSecret();
+      stage = "authorization_code_exchange";
       const response = await this.fetcher(`${ISSUER}/auth/token`, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ client_id: this.config.clientId, client_secret: await this.clientSecret(),
+        body: new URLSearchParams({ client_id: this.config.clientId, client_secret: clientSecret,
           grant_type: "authorization_code", code: input.authorizationCode }),
         signal: AbortSignal.timeout(10_000)
       });
-      if (!response.ok) throw new Error("Apple rejected the authorization code");
+      if (!response.ok) {
+        // Log only a known OAuth error identifier, never the response body or credentials.
+        const failure = z.object({ error: z.enum(["invalid_client", "invalid_grant", "invalid_request",
+          "unauthorized_client", "unsupported_grant_type"]) }).safeParse(await response.json().catch(() => null));
+        if (failure.success) appleError = failure.data.error;
+        throw new Error("Apple rejected the authorization code");
+      }
+      stage = "token_response";
       const tokens = tokensSchema.parse(await response.json());
+      stage = "exchanged_identity_token";
       const { payload: exchanged } = await jwtVerify(tokens.id_token, this.keys, options);
+      stage = "identity_binding";
       if (exchanged.sub !== payload.sub || exchanged.nonce !== challenge.nonce) throw new Error("Apple identity mismatch");
 
+      stage = "refresh_token_encryption";
       const encryptedRefreshToken = await new CompactEncrypt(new TextEncoder().encode(tokens.refresh_token))
         .setProtectedHeader({ alg: "dir", enc: "A256GCM" }).encrypt(this.encryptionKey);
       return { subject: payload.sub!, encryptedRefreshToken };
-    } catch {
+    } catch (error: unknown) {
+      const claimError = z.object({ claim: z.enum(["aud", "iss", "exp", "iat", "sub"]) }).safeParse(error);
+      logger.warn("auth.apple.failed", {
+        stage,
+        appleError,
+        failedClaim: claimError.success ? claimError.data.claim : undefined,
+        errorType: error instanceof Error ? error.name : "UnknownError"
+      });
       throw AppErrors.invalidAppleToken();
     }
   }
