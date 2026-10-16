@@ -30,17 +30,18 @@ export function toCurrentUserDto(user: UserRecord): CurrentUserDto {
   };
 }
 
-function toInvitationRecipientDto(recipient: InvitationParticipantRecord): InvitationRecipientDto {
+function toInvitationRecipientDto(recipient: InvitationParticipantRecord, includeAdvanceRequest = true): InvitationRecipientDto {
   return {
     id: recipient.id,
     user: recipient.user,
     responseStatus: recipient.responseStatus,
     delayMinutes: recipient.delayMinutes,
+    advanceRequest: includeAdvanceRequest ? recipient.advanceRequest ?? null : null,
     respondedAt: recipient.respondedAt?.toISOString() ?? null
   };
 }
 
-export function toInvitationDetailsDto(invitation: InvitationDetailsRecord): InvitationDetailsDto {
+export function toInvitationDetailsDto(invitation: InvitationDetailsRecord, viewerId = invitation.creator.id): InvitationDetailsDto {
   return {
     id: invitation.id,
     creator: invitation.creator,
@@ -53,13 +54,13 @@ export function toInvitationDetailsDto(invitation: InvitationDetailsRecord): Inv
     createdAt: invitation.createdAt.toISOString(),
     canceledAt: invitation.canceledAt?.toISOString() ?? null,
     guestResponses: (invitation.guestResponses ?? []).map(toGuestResponseDto),
-    recipients: invitation.recipients.map(toInvitationRecipientDto)
+    recipients: invitation.recipients.map(recipient => toInvitationRecipientDto(recipient, viewerId === invitation.creator.id || viewerId === recipient.user.id))
   };
 }
 
 export function toReceivedInvitationDto(invitation: ReceivedInvitationRecord): ReceivedInvitationDto {
   return {
-    ...toInvitationDetailsDto({ ...invitation, guestResponses: [] }),
+    ...toInvitationDetailsDto({ ...invitation, guestResponses: [] }, invitation.myResponse.user.id),
     myResponse: toInvitationRecipientDto(invitation.myResponse)
   };
 }

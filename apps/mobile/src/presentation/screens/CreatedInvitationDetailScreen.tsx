@@ -119,7 +119,7 @@ export function CreatedInvitationDetailScreen() {
             <ListRow
               key={recipient.id}
               title={recipient.user.pseudo}
-              subtitle={formatRecipientStatus(recipient.responseStatus, recipient.delayMinutes, awaitingResponse, invitation.data.scheduledAt)}
+              subtitle={`${formatRecipientStatus(recipient.responseStatus, recipient.delayMinutes, awaitingResponse, invitation.data.scheduledAt)}${recipient.advanceRequest ? `\nDemande : ${recipient.advanceRequest}` : ""}`}
             />
           ))}
           {guests.length > 0 ? <Text accessibilityRole="header" style={styles.sectionTitle}>Invités par lien</Text> : null}

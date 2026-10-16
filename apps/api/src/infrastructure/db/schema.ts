@@ -152,9 +152,14 @@ export const invitationRecipients = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     responseStatus: responseStatusEnum("response_status").notNull().default("pending"),
     delayMinutes: integer("delay_minutes"),
+    advanceRequest: text("advance_request"),
     respondedAt: timestamp("responded_at", { withTimezone: true })
   },
   (table) => ({
+    advanceRequestForDelayCheck: check(
+      "invitation_recipients_advance_request_for_delay",
+      sql`${table.advanceRequest} IS NULL OR (${table.responseStatus} = 'yes' AND coalesce(${table.delayMinutes}, 0) > 0 AND char_length(btrim(${table.advanceRequest})) BETWEEN 1 AND 300)`
+    ),
     delayForYesOnlyCheck: check(
       "invitation_recipients_delay_for_yes_only",
       sql`(${table.responseStatus} = 'yes' AND (${table.delayMinutes} IS NULL OR ${table.delayMinutes} >= 0)) OR (${table.responseStatus} IN ('pending', 'no') AND ${table.delayMinutes} IS NULL)`

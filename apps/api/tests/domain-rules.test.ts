@@ -58,6 +58,7 @@ function createInvitationRepository(overrides: Partial<InvitationRepository> = {
     }),
     findRecipient: async () => null,
     updateRecipientResponse: async (input: UpdateInvitationResponseInput) => ({
+      advanceRequestChanged: false,
       id: input.recipientId,
       invitationId: INVITATION_ID,
       userId: USER_ID,

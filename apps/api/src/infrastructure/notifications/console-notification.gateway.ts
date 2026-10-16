@@ -1,4 +1,5 @@
 import type {
+  InvitationAdvanceRequestNotification,
   FriendRequestCreatedNotification,
   InvitationCancelledNotification,
   InvitationCreatedNotification,
@@ -8,6 +9,11 @@ import type { PushTokenRecord } from "../../application/ports/push-token-reposit
 import { formatFrenchTime } from "../../domain/shared/date.js";
 
 export class ConsoleNotificationGateway implements NotificationGateway {
+  async sendInvitationAdvanceRequest(tokens: PushTokenRecord[], notification: InvitationAdvanceRequestNotification): Promise<void> {
+    if (tokens.length === 0) return;
+    console.info("Mock notification: invitation.advance_requested", { tokenCount: tokens.length, invitationId: notification.invitationId });
+  }
+
   async sendInvitationCreated(tokens: PushTokenRecord[], notification: InvitationCreatedNotification): Promise<void> {
     if (tokens.length === 0) {
       return;

@@ -7,6 +7,6 @@ export class ListCreatedInvitationsUseCase {
 
   async execute(userId: string): Promise<InvitationDetailsDto[]> {
     const invitations = await this.invitations.listCreatedByUser(userId);
-    return invitations.map(toInvitationDetailsDto);
+    return invitations.map(invitation => toInvitationDetailsDto(invitation));
   }
 }

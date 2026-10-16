@@ -219,16 +219,21 @@ export const guestRespondRequestSchema = z.object({
 });
 export type GuestRespondRequest = z.infer<typeof guestRespondRequestSchema>;
 
+export const advanceRequestMaxLength = 300;
 export const respondToInvitationRequestSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("yes"),
-    delayMinutes: z.number().int().min(0).max(24 * 60).optional()
+    delayMinutes: z.number().int().min(0).max(24 * 60).optional(),
+    advanceRequest: z.string().trim().max(advanceRequestMaxLength).nullable().optional()
   }),
   z.object({
     status: z.literal("no"),
-    delayMinutes: z.undefined().optional()
+    delayMinutes: z.undefined().optional(),
+    advanceRequest: z.undefined().optional()
   })
-]);
+]).refine(value => !value.advanceRequest || (value.status === "yes" && (value.delayMinutes ?? 0) > 0), {
+  message: "Une demande à l’avance nécessite un retard supérieur à zéro.", path: ["advanceRequest"]
+});
 export type RespondToInvitationRequest = z.infer<typeof respondToInvitationRequestSchema>;
 
 export const invitationAuditActionSchema = z.enum(["uber_requested", "reservation_requested"]);
@@ -244,6 +249,7 @@ export const invitationRecipientSchema = z.object({
   user: publicUserSchema,
   responseStatus: responseStatusSchema,
   delayMinutes: z.number().int().min(0).nullable(),
+  advanceRequest: z.string().nullable().optional(),
   respondedAt: isoDateTimeSchema.nullable()
 });
 export type InvitationRecipientDto = z.infer<typeof invitationRecipientSchema>;

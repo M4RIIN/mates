@@ -65,6 +65,7 @@ export function registerInvitationRoutes(app: Hono<AppBindings>, container: AppC
       userId: response.userId,
       responseStatus: response.responseStatus,
       delayMinutes: response.delayMinutes,
+      advanceRequest: response.advanceRequest ?? null,
       respondedAt: response.respondedAt?.toISOString() ?? null
     });
   });

@@ -1,0 +1,2 @@
+ALTER TABLE "invitation_recipients" ADD COLUMN "advance_request" text;--> statement-breakpoint
+ALTER TABLE "invitation_recipients" ADD CONSTRAINT "invitation_recipients_advance_request_for_delay" CHECK ("invitation_recipients"."advance_request" IS NULL OR ("invitation_recipients"."response_status" = 'yes' AND coalesce("invitation_recipients"."delay_minutes", 0) > 0 AND char_length(btrim("invitation_recipients"."advance_request")) BETWEEN 1 AND 300));

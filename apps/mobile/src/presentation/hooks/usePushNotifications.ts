@@ -5,6 +5,7 @@ import { AppState, Platform } from "react-native";
 import { useApiClient } from "./useApiClient";
 import { getDevicePushToken, loadExpoNotifications } from "@/infrastructure/notifications/expo-notifications";
 import { useAuthStore } from "@/infrastructure/storage/auth-store";
+import { invitationNotificationRoute } from "@/domain/invitation/notification-route";
 
 export function useRegisterPushNotifications() {
   const api = useApiClient();
@@ -70,22 +71,20 @@ export function useNotificationNavigation() {
       }
 
       handledNotificationRef.current = notificationId;
-      if (type === "invitation.created" || type === "invitation.cancelled") {
+      if (type === "invitation.created" || type === "invitation.cancelled" || type === "invitation.advance_requested") {
         const invitationId = response?.notification.request.content.data?.invitationId;
-        if (typeof invitationId !== "string" || invitationId.trim().length === 0) {
+        const target = invitationNotificationRoute(type, invitationId);
+        if (target === null) {
           return;
         }
 
         if (type === "invitation.cancelled") {
-          endInvitationLiveActivity(invitationId).catch((error: unknown) => {
+          endInvitationLiveActivity(target.params.id).catch((error: unknown) => {
             console.warn("Failed to end invitation live activity", error);
           });
         }
 
-        router.push({
-          pathname: "/invitations/received/[id]",
-          params: { id: invitationId }
-        });
+        router.push(target);
       }
 
       if (type === "friend.requested") {

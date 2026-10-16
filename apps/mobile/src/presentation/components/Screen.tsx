@@ -78,7 +78,7 @@ export function Screen({ children, scroll = true, contentStyle, dismissKeyboardO
           automaticallyAdjustKeyboardInsets
           contentContainerStyle={styles.scrollArea}
           decelerationRate="fast"
-          keyboardDismissMode="on-drag"
+          keyboardDismissMode={Platform.OS === "web" ? "none" : "on-drag"}
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}

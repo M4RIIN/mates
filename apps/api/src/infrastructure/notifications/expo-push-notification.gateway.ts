@@ -1,4 +1,5 @@
 import type {
+  InvitationAdvanceRequestNotification,
   FriendRequestCreatedNotification,
   InvitationCancelledNotification,
   InvitationCreatedNotification,
@@ -32,6 +33,18 @@ type ExpoPushTicket =
     };
 
 export class ExpoPushNotificationGateway implements NotificationGateway {
+  async sendInvitationAdvanceRequest(tokens: PushTokenRecord[], notification: InvitationAdvanceRequestNotification): Promise<void> {
+    const messages = tokens.map(token => token.token).filter(isExpoPushToken).map<ExpoPushMessage>(to => ({
+      to, sound: "default",
+      title: `${notification.participantPseudo} a une demande`,
+      body: `Retard de ${notification.delayMinutes} min · ${notification.message}`,
+      data: { type: "invitation.advance_requested", invitationId: notification.invitationId }
+    }));
+    for (let index = 0; index < messages.length; index += EXPO_BATCH_SIZE) {
+      await this.sendBatch(messages.slice(index, index + EXPO_BATCH_SIZE));
+    }
+  }
+
   async sendInvitationCreated(tokens: PushTokenRecord[], notification: InvitationCreatedNotification): Promise<void> {
     const expoTokens = tokens.map((token) => token.token).filter(isExpoPushToken);
     if (expoTokens.length === 0) {

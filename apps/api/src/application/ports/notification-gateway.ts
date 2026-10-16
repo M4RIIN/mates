@@ -20,8 +20,16 @@ export type FriendRequestCreatedNotification = {
   requesterTag: string;
 };
 
+export type InvitationAdvanceRequestNotification = {
+  invitationId: string;
+  participantPseudo: string;
+  delayMinutes: number;
+  message: string;
+};
+
 export interface NotificationGateway {
   sendInvitationCreated(tokens: PushTokenRecord[], notification: InvitationCreatedNotification): Promise<void>;
   sendInvitationCancelled(tokens: PushTokenRecord[], notification: InvitationCancelledNotification): Promise<void>;
   sendFriendRequestCreated(tokens: PushTokenRecord[], notification: FriendRequestCreatedNotification): Promise<void>;
+  sendInvitationAdvanceRequest(tokens: PushTokenRecord[], notification: InvitationAdvanceRequestNotification): Promise<void>;
 }

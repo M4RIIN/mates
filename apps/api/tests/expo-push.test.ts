@@ -7,6 +7,16 @@ const invitation = { invitationId: "invitation-check", creatorPseudo: "nicolas",
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("Expo push delivery requests", () => {
+  it("sends the advance request and opens the organizer detail without putting free text in routing data", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [] })));
+    vi.stubGlobal("fetch", fetch);
+    await new ExpoPushNotificationGateway().sendInvitationAdvanceRequest([token("ExpoPushToken[device-check]"), token("firebase-token")], {
+      invitationId: invitation.invitationId, participantPseudo: "Camille", delayMinutes: 15, message: "Une bière, merci !"
+    });
+    const [message] = JSON.parse(fetch.mock.calls[0]?.[1].body);
+    expect(message).toMatchObject({ title: "Camille a une demande", body: "Retard de 15 min · Une bière, merci !", data: { type: "invitation.advance_requested", invitationId: invitation.invitationId } });
+    expect(message.data).not.toHaveProperty("message");
+  });
   it("sends a notification with the destination invitation and excludes non-Expo tokens", async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [{ status: "ok", id: "ticket-check" }] })));
     vi.stubGlobal("fetch", fetch);

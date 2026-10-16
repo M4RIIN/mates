@@ -47,6 +47,7 @@ function toRecipientRecord(row: typeof invitationRecipients.$inferSelect): Invit
     userId: row.userId,
     responseStatus: row.responseStatus,
     delayMinutes: row.delayMinutes,
+    advanceRequest: row.advanceRequest,
     respondedAt: row.respondedAt
   };
 }
@@ -160,19 +161,23 @@ export class PostgresInvitationRepository implements InvitationRepository {
     return recipient === undefined ? null : toRecipientRecord(recipient);
   }
 
-  async updateRecipientResponse(input: UpdateInvitationResponseInput): Promise<InvitationRecipientRecord> {
+  async updateRecipientResponse(input: UpdateInvitationResponseInput): Promise<InvitationRecipientRecord & { advanceRequestChanged: boolean }> {
     return this.db.transaction(async (transaction) => {
-      const [found] = await transaction.select({ invitation: invitations }).from(invitationRecipients)
+      const [found] = await transaction.select({ invitation: invitations, recipient: invitationRecipients }).from(invitationRecipients)
         .innerJoin(invitations, eq(invitationRecipients.invitationId, invitations.id))
         .where(eq(invitationRecipients.id, input.recipientId)).for("update");
       if (!found) throw AppErrors.notFound("Invitation response not found");
       if (found.invitation.canceledAt !== null) throw AppErrors.invitationCancelled();
       if (!isInvitationOpen(found.invitation)) throw AppErrors.conflict("Cette sortie est terminée et ne reçoit plus de réponses.");
+      const advanceRequest = input.responseStatus === "yes" && (input.delayMinutes ?? 0) > 0
+        ? input.advanceRequest === undefined ? found.recipient.advanceRequest : input.advanceRequest
+        : null;
       const [updated] = await transaction
         .update(invitationRecipients)
         .set({
           responseStatus: input.responseStatus,
           delayMinutes: input.delayMinutes,
+          advanceRequest,
           respondedAt: input.respondedAt
         })
         .where(eq(invitationRecipients.id, input.recipientId))
@@ -182,7 +187,7 @@ export class PostgresInvitationRepository implements InvitationRepository {
         throw new Error("Invitation response update failed");
       }
 
-      return toRecipientRecord(updated);
+      return { ...toRecipientRecord(updated), advanceRequestChanged: advanceRequest !== null && advanceRequest !== found.recipient.advanceRequest };
     });
   }
 
@@ -240,6 +245,7 @@ export class PostgresInvitationRepository implements InvitationRepository {
         user: toPublicUserRecord(user),
         responseStatus: recipient.responseStatus,
         delayMinutes: recipient.delayMinutes,
+        advanceRequest: recipient.advanceRequest,
         respondedAt: recipient.respondedAt
       };
     });

@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import type {
+  InvitationAdvanceRequestNotification,
   FriendRequestCreatedNotification,
   InvitationCancelledNotification,
   InvitationCreatedNotification,
@@ -9,6 +10,15 @@ import type { PushTokenRecord } from "../../application/ports/push-token-reposit
 import { formatFrenchTime } from "../../domain/shared/date.js";
 
 export class FirebaseCloudMessagingGateway implements NotificationGateway {
+  async sendInvitationAdvanceRequest(tokens: PushTokenRecord[], notification: InvitationAdvanceRequestNotification): Promise<void> {
+    if (tokens.length === 0) return;
+    await admin.messaging().sendEachForMulticast({
+      tokens: tokens.map(token => token.token),
+      notification: { title: `${notification.participantPseudo} a une demande`, body: `Retard de ${notification.delayMinutes} min · ${notification.message}` },
+      data: { type: "invitation.advance_requested", invitationId: notification.invitationId }
+    });
+  }
+
   constructor(serviceAccountJson: string | undefined) {
     if (admin.apps.length > 0) {
       return;

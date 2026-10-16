@@ -148,7 +148,10 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("invitation sharing on PostgreSQ
     await sql`UPDATE invitations SET scheduled_at = now() - interval '1 minute' WHERE id = ${past.id}`;
     expect((await sharing.getPublic(pastLink.token)).closed).toBe(false);
     await expect(sharing.respond(pastLink.token, answer)).resolves.toMatchObject({ responseStatus: "yes" });
-    await sql`UPDATE invitations SET scheduled_at = now() - interval '2 hours' WHERE id = ${past.id}`;
+    // Exact boundaries are covered by lifecycle tests. Use the app clock here;
+    // the Docker database clock can differ slightly from the host clock.
+    const endedAt = new Date(Date.now() - 121 * 60_000);
+    await sql`UPDATE invitations SET scheduled_at = ${endedAt.toISOString()} WHERE id = ${past.id}`;
     expect((await sharing.getPublic(pastLink.token)).closed).toBe(true);
     await expect(sharing.respond(pastLink.token, answer)).rejects.toMatchObject({ httpStatus: 409 });
   });

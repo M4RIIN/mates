@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getInvitationState, getInvitationEstimatedArrivalAt, isInvitationOpen } from "@mates/shared";
+import { advanceRequestMaxLength, getInvitationState, getInvitationEstimatedArrivalAt, isInvitationOpen } from "@mates/shared";
 import { ActivityIndicator, Keyboard, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Check, Clock3, X } from "lucide-react-native";
@@ -18,7 +18,7 @@ import { useAuthStore } from "@/infrastructure/storage/auth-store";
 import { formatDateTime, formatTime } from "@/shared/date-format";
 import { borders, colors, radii, spacing } from "@/shared/theme";
 
-type SavedResponse = { responseStatus: "yes" | "no"; delayMinutes: number | null };
+type SavedResponse = { responseStatus: "yes" | "no"; delayMinutes: number | null; advanceRequest: string | null };
 
 export function RespondInvitationScreen() {
   const id = useRouteId();
@@ -35,6 +35,7 @@ export function RespondInvitationScreen() {
   const [isEditingDecision, setIsEditingDecision] = useState(false);
   const [delayOpen, setDelayOpen] = useState(false);
   const [delayText, setDelayText] = useState("0");
+  const [advanceRequestText, setAdvanceRequestText] = useState("");
   const [responseError, setResponseError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const requestInFlight = useRef(false);
@@ -47,12 +48,13 @@ export function RespondInvitationScreen() {
   const canRespond = myResponse !== undefined && !cancelled && !expired;
 
   useEffect(() => {
-    setSavedResponse(null); setDidSaveResponse(false); setIsEditingDecision(false); setDelayOpen(false); setResponseError(null); setDelayText("0");
+    setSavedResponse(null); setDidSaveResponse(false); setIsEditingDecision(false); setDelayOpen(false); setResponseError(null); setDelayText("0"); setAdvanceRequestText("");
   }, [id]);
   useEffect(() => {
-    if (savedResponse !== null && myResponse?.responseStatus === savedResponse.responseStatus && (myResponse.delayMinutes ?? 0) === (savedResponse.delayMinutes ?? 0)) setSavedResponse(null);
+    if (savedResponse !== null && myResponse?.responseStatus === savedResponse.responseStatus && (myResponse.delayMinutes ?? 0) === (savedResponse.delayMinutes ?? 0) && (myResponse.advanceRequest ?? null) === savedResponse.advanceRequest) setSavedResponse(null);
   }, [myResponse, savedResponse]);
   useEffect(() => { setDelayText(String(currentResponse?.delayMinutes ?? 0)); }, [currentResponse?.delayMinutes]);
+  useEffect(() => { setAdvanceRequestText(currentResponse?.advanceRequest ?? ""); }, [currentResponse?.advanceRequest]);
   useEffect(() => {
     if (invitation.data === undefined || myResponse === undefined) return;
     void syncInvitationLiveActivity(invitation.data, { responseStatus: myResponse.responseStatus, delayMinutes: myResponse.delayMinutes })
@@ -65,16 +67,17 @@ export function RespondInvitationScreen() {
     openDirectionsChooser({ name: invitation.data.placeName, address: invitation.data.placeAddress, latitude: invitation.data.latitude, longitude: invitation.data.longitude });
   }, [id, invitation.data, openDirections, cancelled, expired]);
 
-  async function answer(status: "yes" | "no", delayMinutes = 0) {
+  async function answer(status: "yes" | "no", delayMinutes = 0, advanceRequest?: string | null) {
     if (id === undefined || !canRespond || requestInFlight.current || invitation.data === undefined || !isInvitationOpen(invitation.data)) return;
     const responseId = id;
     const details = invitation.data;
     requestInFlight.current = true;
     setIsSending(true); setResponseError(null); Keyboard.dismiss();
     try {
-      await respond.mutateAsync(status === "yes" ? { status, delayMinutes } : { status });
+      await respond.mutateAsync(status === "yes" ? { status, delayMinutes, ...(advanceRequest !== undefined ? { advanceRequest } : {}) } : { status });
       if (routeId.current === responseId) {
-        setSavedResponse({ responseStatus: status, delayMinutes: status === "yes" ? delayMinutes : null });
+        setSavedResponse({ responseStatus: status, delayMinutes: status === "yes" ? delayMinutes : null,
+          advanceRequest: status === "yes" && delayMinutes > 0 ? advanceRequest === undefined ? currentResponse?.advanceRequest ?? null : advanceRequest?.trim() || null : null });
         setDidSaveResponse(true);
         setIsEditingDecision(false); setDelayOpen(false);
       }
@@ -93,7 +96,10 @@ export function RespondInvitationScreen() {
     if (!/^\d+$/.test(value) || !Number.isInteger(minutes) || minutes < 0 || minutes > 1440) {
       setResponseError("Entre un nombre entier de minutes entre 0 et 1 440."); return;
     }
-    void answer("yes", minutes);
+    if (advanceRequestText.trim().length > advanceRequestMaxLength) {
+      setResponseError(`Ta demande doit contenir au maximum ${advanceRequestMaxLength} caractères.`); return;
+    }
+    void answer("yes", minutes, minutes > 0 ? advanceRequestText.trim() || null : null);
   }
 
   return <Screen dismissKeyboardOnPress={false}>
@@ -105,6 +111,9 @@ export function RespondInvitationScreen() {
       {cancelled || expired ? <View style={styles.closed} accessibilityLiveRegion="polite"><Text style={styles.sectionTitle}>{cancelled ? "Sortie annulée" : "Sortie terminée"}</Text><Text style={styles.copy}>{cancelled ? "L’organisateur a annulé cette sortie." : "La coordination est fermée, deux heures après le rendez-vous."} Tu ne peux plus modifier ta réponse.</Text></View> : null}
       {hasAnswered ? <View style={styles.current} accessibilityLiveRegion="polite"><Text style={styles.label}>{cancelled || expired ? "Ta dernière réponse" : didSaveResponse ? "Réponse enregistrée" : "Ta réponse"}</Text><Text style={styles.currentValue}>{formatCurrentResponse(currentResponse?.responseStatus, currentResponse?.delayMinutes)}</Text></View> : null}
       {currentResponse?.responseStatus === "yes" ? <Text style={styles.copy}>Arrivée estimée à {formatTime(getInvitationEstimatedArrivalAt(invitation.data.scheduledAt, currentResponse.delayMinutes).toISOString())}</Text> : null}
+      {currentResponse?.advanceRequest ? <View style={styles.section}>
+        <Text style={styles.label}>Ta demande à l’organisateur</Text><Text style={styles.copy}>{currentResponse.advanceRequest}</Text>
+      </View> : null}
       {canRespond && (!hasAnswered || isEditingDecision) ? <View style={styles.section}>
         <Text accessibilityRole="header" style={styles.sectionTitle}>{hasAnswered ? "Modifier ta réponse" : "Tu viens ?"}</Text>
         <AppButton title="Je viens" onPress={() => { void answer("yes", currentResponse?.responseStatus === "yes" ? currentResponse.delayMinutes ?? 0 : 0); }} loading={isSending} variant="success" icon={<Check size={18} color={colors.ink} strokeWidth={3} />} />
@@ -114,10 +123,16 @@ export function RespondInvitationScreen() {
       {canRespond && hasAnswered && !isEditingDecision ? <AppButton title="Modifier ma réponse" onPress={() => { setIsEditingDecision(true); setDelayOpen(false); setResponseError(null); }} disabled={isSending} variant="secondary" /> : null}
       {responseError !== null && canRespond ? <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={styles.error}>Réponse impossible : {responseError}</Text> : null}
       {canRespond && currentResponse?.responseStatus === "yes" && !isEditingDecision ? <View style={styles.section}>
-        <AppButton title={delayOpen ? "Fermer le retard" : (currentResponse.delayMinutes ?? 0) > 0 ? "Modifier mon retard" : "Signaler un retard"} variant="secondary" disabled={isSending} onPress={() => { setDelayText(String(currentResponse.delayMinutes ?? 0)); setDelayOpen(!delayOpen); setResponseError(null); }} icon={<Clock3 size={18} color={colors.ink} />} />
+        <AppButton title={delayOpen ? "Fermer le retard" : (currentResponse.delayMinutes ?? 0) > 0 ? "Modifier mon retard" : "Signaler un retard"} variant="secondary" disabled={isSending} onPress={() => { setDelayText(String(currentResponse.delayMinutes ?? 0)); setAdvanceRequestText(currentResponse.advanceRequest ?? ""); setDelayOpen(!delayOpen); setResponseError(null); }} icon={<Clock3 size={18} color={colors.ink} />} />
         {delayOpen ? <>
           <TextField label="Retard en minutes" accessibilityLabel="Retard en minutes" value={delayText} onChangeText={setDelayText} keyboardType="number-pad" editable={!isSending} />
-          <Text style={styles.copy}>0 minute pour retirer le retard. L’organisateur verra ta nouvelle estimation.</Text>
+          <Text style={styles.copy}>0 minute pour retirer le retard et la demande associée.</Text>
+          {Number(delayText) > 0 ? <>
+            <TextField label="Quelque chose à te prendre ? (facultatif)" accessibilityLabel="Demande à l’organisateur" value={advanceRequestText}
+              onChangeText={setAdvanceRequestText} editable={!isSending} multiline maxLength={advanceRequestMaxLength}
+              autoCapitalize="sentences" style={styles.requestInput} placeholder="Ex. Prends-moi une bière et un plateau de charcuterie." />
+            <Text style={styles.copy}>L’organisateur recevra une notification pour ta nouvelle demande. {advanceRequestText.length}/{advanceRequestMaxLength}</Text>
+          </> : null}
           <AppButton title="Enregistrer mon retard" onPress={saveDelay} loading={isSending} />
         </> : null}
       </View> : null}
@@ -135,6 +150,7 @@ function formatCurrentResponse(status: "pending" | "yes" | "no" | undefined, del
 
 const styles = StyleSheet.create({
   section: { gap: spacing.sm },
+  requestInput: { minHeight: 96, paddingVertical: spacing.sm, textAlignVertical: "top" },
   sectionTitle: { color: colors.text, fontSize: 17, lineHeight: 22, fontWeight: "800" },
   copy: { color: colors.muted, fontSize: 14, lineHeight: 20, fontWeight: "600" },
   error: { color: colors.red, fontSize: 14, lineHeight: 20, fontWeight: "700" },

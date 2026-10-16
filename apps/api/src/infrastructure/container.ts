@@ -271,7 +271,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
         realtime
       ),
       cancelInvitation: new CancelInvitation(invitations, pushTokens, notifications, realtime),
-      respondToInvitation: new RespondToInvitation(invitations, realtime),
+      respondToInvitation: new RespondToInvitation(invitations, realtime, { pushTokens, notifications }),
       trackInvitationAuditEvent: new TrackInvitationAuditEvent(invitations),
       getInvitationDetails: new GetInvitationDetails(invitations),
       getActiveCreatedInvitation: new GetActiveCreatedInvitation(invitations),

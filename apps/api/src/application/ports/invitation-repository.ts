@@ -31,6 +31,7 @@ export type InvitationRecipientRecord = {
   userId: string;
   responseStatus: ResponseStatus;
   delayMinutes: number | null;
+  advanceRequest?: string | null;
   respondedAt: Date | null;
 };
 
@@ -52,6 +53,7 @@ export type InvitationParticipantRecord = {
   user: PublicUserRecord;
   responseStatus: ResponseStatus;
   delayMinutes: number | null;
+  advanceRequest?: string | null;
   respondedAt: Date | null;
 };
 
@@ -70,6 +72,7 @@ export type UpdateInvitationResponseInput = {
   recipientId: string;
   responseStatus: "yes" | "no";
   delayMinutes: number | null;
+  advanceRequest?: string | null;
   respondedAt: Date;
 };
 
@@ -90,7 +93,7 @@ export interface InvitationRepository {
   createAuditEvent(input: CreateInvitationAuditEventInput): Promise<InvitationAuditEventRecord>;
   findCreatedAuditEvent(invitationId: string): Promise<InvitationAuditEventRecord | null>;
   findRecipient(invitationId: string, userId: string): Promise<InvitationRecipientRecord | null>;
-  updateRecipientResponse(input: UpdateInvitationResponseInput): Promise<InvitationRecipientRecord>;
+  updateRecipientResponse(input: UpdateInvitationResponseInput): Promise<InvitationRecipientRecord & { advanceRequestChanged: boolean }>;
   cancel(invitationId: string, canceledAt: Date): Promise<InvitationRecord>;
   getDetails(invitationId: string): Promise<InvitationDetailsRecord | null>;
   findActiveByCreator(userId: string, now: Date): Promise<InvitationDetailsRecord | null>;
