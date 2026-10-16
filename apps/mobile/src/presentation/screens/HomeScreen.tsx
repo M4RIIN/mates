@@ -22,6 +22,7 @@ import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useFriendGroups, useFriends } from "@/presentation/hooks/useFriends";
 import { useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
+import { useCurrentPosition } from "@/presentation/hooks/useCurrentPosition";
 import { syncCreatedInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
 import { borders, colors, layout, radii, spacing } from "@/shared/theme";
 
@@ -39,7 +40,6 @@ export function HomeScreen() {
   const [minuteText, setMinuteText] = useState(defaultTime.minute);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [addressEditing, setAddressEditing] = useState(false);
-  const [mapOpen, setMapOpen] = useState(false);
   const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
@@ -59,7 +59,8 @@ export function HomeScreen() {
   const currentInvitation = activeInvitation.data != null && !isInvitationOpen(activeInvitation.data, now) ? null : activeInvitation.data;
   const friendGroups = useFriendGroups();
   const friends = useFriends();
-  const placeSearch = usePlaceSearch(placeQuery);
+  const currentPosition = useCurrentPosition();
+  const placeSearch = usePlaceSearch(placeQuery, currentPosition.data ?? null);
   const createInvitation = useCreateInvitation();
   const selectedFriends = useMemo(() => (friends.data ?? []).filter((friend) => selectedFriendIds.includes(friend.id)), [friends.data, selectedFriendIds]);
   const recipientKey = selectedFriends.map((friend) => friend.id).sort().join(",");
@@ -144,7 +145,6 @@ export function HomeScreen() {
     setPlaceQuery(place.name);
     setCustomAddress(place.address ?? "");
     setAddressEditing(false);
-    setMapOpen(false);
     resetSafety();
   }
 
@@ -263,7 +263,6 @@ export function HomeScreen() {
             onChangeText={(value) => {
               setPlaceQuery(value);
               setSelectedPlace(null);
-              setMapOpen(false);
               resetSafety();
             }}
             placeholder="bar, restaurant, adresse..."
@@ -271,7 +270,7 @@ export function HomeScreen() {
             onFocus={resetSafety}
           /> : <View style={styles.placeSummary}>
             <View style={styles.placeHeading}><Text style={[styles.placeName, { flex: 1 }]}>{selectedPlace.name}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Modifier le lieu" style={styles.inlineAction} onPress={() => { setSelectedPlace(null); setAddressEditing(false); setMapOpen(false); resetSafety(); }}><Text style={styles.inlineActionText}>Modifier</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Modifier le lieu" style={styles.inlineAction} onPress={() => { setSelectedPlace(null); setAddressEditing(false); resetSafety(); }}><Text style={styles.inlineActionText}>Modifier</Text></Pressable>
             </View>
             {!addressEditing ? <Text style={styles.helper}>{customAddress || "Adresse non renseignée"}</Text> : null}
           </View>}
@@ -293,23 +292,28 @@ export function HomeScreen() {
             </ScrollView>
           ) : null}
           {addressEditing ? <TextField compact label="Adresse (optionnelle)" accessibilityLabel="Adresse de la sortie" value={customAddress}
-            onFocus={resetSafety} onChangeText={(value) => { setCustomAddress(value); setMapOpen(false); resetSafety(); }} placeholder="Numéro, rue, ville" /> : null}
+            onFocus={resetSafety} onChangeText={(value) => { setCustomAddress(value); resetSafety(); }} placeholder="Numéro, rue, ville" /> : null}
           {selectedPlace === null && !addressEditing && customAddress ? <Text style={styles.helper}>{customAddress}</Text> : null}
           <View style={styles.fieldRow}>
             <Pressable accessibilityRole="button" accessibilityLabel={addressEditing ? "Terminer la modification de l’adresse" : customAddress ? "Modifier l’adresse" : "Ajouter une adresse"} style={[styles.inlineAction, { flex: 1 }]} onPress={() => { Keyboard.dismiss(); setAddressEditing(!addressEditing); resetSafety(); }}><Text style={styles.inlineActionText}>{addressEditing ? "Terminer" : customAddress ? "Modifier l’adresse" : "Ajouter une adresse"}</Text></Pressable>
-            {coordinatesMatchAddress && selectedPlace?.latitude != null && selectedPlace?.longitude != null ? <Pressable accessibilityRole="button" accessibilityLabel={mapOpen ? "Masquer la carte" : "Voir la carte"} style={[styles.inlineAction, { flex: 1 }]} onPress={() => { Keyboard.dismiss(); setMapOpen(!mapOpen); }}><Text style={styles.inlineActionText}>{mapOpen ? "Masquer la carte" : "Voir la carte"}</Text></Pressable> : null}
           </View>
           {addressError !== null ? <Text accessibilityRole="alert" style={styles.error}>{addressError}</Text> : null}
           {selectedPlace !== null && !coordinatesMatchAddress ? <Text style={styles.helper}>Adresse modifiée : l’ancienne position sur la carte ne sera pas envoyée.</Text> : null}
-          {mapOpen && coordinatesMatchAddress && selectedPlace !== null ? (
-            <PlaceVenuePanel
-              title={selectedPlace.name}
-              latitude={selectedPlace.latitude}
-              longitude={selectedPlace.longitude}
-              showTransportActions={false}
-              compact
-            />
-          ) : null}
+          <PlaceVenuePanel
+            title={selectedPlace?.name ?? "Lieu choisi"}
+            latitude={coordinatesMatchAddress ? selectedPlace?.latitude ?? null : null}
+            longitude={coordinatesMatchAddress ? selectedPlace?.longitude ?? null : null}
+            currentPosition={currentPosition.data ?? null}
+            alwaysShowMap
+            showTransportActions={false}
+            compact
+          />
+          {currentPosition.isFetching ? <Text accessibilityLiveRegion="polite" style={styles.helper}>Recherche de ta position…</Text> : null}
+          {currentPosition.isError ? <View>
+            <Text accessibilityLiveRegion="polite" style={styles.helper}>Ta position est indisponible. Vérifie l’autorisation de localisation ; tu peux toujours choisir un lieu.</Text>
+            <AppButton title="Réessayer ma position" variant="secondary" onPress={() => { void currentPosition.refetch(); }} />
+          </View> : null}
+          {selectedPlace === null ? <Text style={styles.helper}>Choisis un lieu dans les résultats pour le situer sur la carte.</Text> : null}
           <Pressable accessibilityRole="button" accessibilityLabel={`Choisir l’heure, aujourd’hui à ${hourText}:${minuteText}`} onPress={() => { Keyboard.dismiss(); resetSafety(); setTimePickerOpen(true); }} style={styles.audienceButton}>
             <Text style={styles.audienceButtonValue}>Aujourd’hui · {hourText}:{minuteText}</Text><ChevronDown color={colors.ink} size={18} />
           </Pressable>

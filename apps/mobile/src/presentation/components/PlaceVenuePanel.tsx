@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { CarFront, MapPinned, UtensilsCrossed } from "lucide-react-native";
 import { AppButton } from "@/presentation/components/AppButton";
 import { useApiClient } from "@/presentation/hooks/useApiClient";
 import { openDirectionsChooser, openTheFork, openUber } from "@/presentation/utils/place-links";
 import { borders, colors, radii, spacing } from "@/shared/theme";
+import { validCoordinates, type Coordinates } from "@/domain/place/coordinates";
+import { PlaceMap } from "./PlaceMap";
 
 type PlaceVenuePanelProps = {
   title: string;
@@ -15,6 +17,8 @@ type PlaceVenuePanelProps = {
   showTransportActions?: boolean;
   showReserveButton?: boolean;
   compact?: boolean;
+  currentPosition?: Coordinates | null;
+  alwaysShowMap?: boolean;
 };
 
 export function PlaceVenuePanel({
@@ -25,7 +29,9 @@ export function PlaceVenuePanel({
   invitationId,
   showTransportActions = true,
   showReserveButton = false,
-  compact = false
+  compact = false,
+  currentPosition = null,
+  alwaysShowMap = false
 }: PlaceVenuePanelProps) {
   const api = useApiClient();
   const { width } = useWindowDimensions();
@@ -37,9 +43,10 @@ export function PlaceVenuePanel({
     ...(latitude !== undefined ? { latitude } : {}),
     ...(longitude !== undefined ? { longitude } : {})
   };
-  const hasCoordinates = latitude !== null && latitude !== undefined && longitude !== null && longitude !== undefined;
-  const canRenderInteractiveMap = hasCoordinates && Platform.OS !== "web";
-  const NativeWebView = canRenderInteractiveMap ? require("react-native-webview").WebView : null;
+  const destination = latitude != null && longitude != null ? validCoordinates({ latitude, longitude }) : null;
+  const position = validCoordinates(currentPosition);
+  const hasCoordinates = destination !== null;
+  const canRenderInteractiveMap = hasCoordinates || position !== null || alwaysShowMap;
 
   async function handleUberPress() {
     try {
@@ -80,21 +87,7 @@ export function PlaceVenuePanel({
 
       {canRenderInteractiveMap ? (
         <View style={[styles.mapFrame, compact ? styles.mapFrameCompact : null]}>
-          {NativeWebView !== null ? (
-            <NativeWebView
-              originWhitelist={["*"]}
-              scrollEnabled={false}
-              source={{
-                html: buildLeafletHtml({
-                  latitude: latitude as number,
-                  longitude: longitude as number,
-                  title
-                })
-              }}
-              style={styles.webview}
-            />
-          ) : null}
-
+          <PlaceMap destination={destination} currentPosition={position} title={title} />
         </View>
       ) : (
         <View style={[styles.mapFallback, compact ? styles.mapFallbackCompact : null]}>
@@ -106,6 +99,11 @@ export function PlaceVenuePanel({
           </Text>
         </View>
       )}
+
+      {position !== null || destination !== null ? <View style={styles.legend}>
+        {position !== null ? <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.primary }]} /><Text style={styles.legendText}>Ta position</Text></View> : null}
+        {destination !== null ? <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.red }]} /><Text style={styles.legendText}>Lieu choisi</Text></View> : null}
+      </View> : null}
 
       {address !== null && address !== undefined ? <Text style={styles.address}>{address}</Text> : null}
 
@@ -192,15 +190,15 @@ const styles = StyleSheet.create({
     borderWidth: borders.regular,
     borderColor: colors.border,
     backgroundColor: colors.blueSoft,
-    minHeight: 220
+    height: 260
   },
   mapFrameCompact: {
-    minHeight: 186
+    height: 230
   },
-  webview: {
-    flex: 1,
-    backgroundColor: colors.blueSoft
-  },
+  legend: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { color: colors.muted, fontSize: 12, fontWeight: "700" },
   mapFallback: {
     minHeight: 148,
     borderRadius: radii.md,
@@ -250,46 +248,3 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxs
   }
 });
-
-function buildLeafletHtml({ latitude, longitude, title }: { latitude: number; longitude: number; title: string }): string {
-  const escapedTitle = escapeHtml(title);
-
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
-    />
-    <style>
-      html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #dce7ff; }
-      .leaflet-container { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-    </style>
-  </head>
-  <body>
-    <div id="map"></div>
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-    ></script>
-    <script>
-      const map = L.map('map', { zoomControl: false }).setView([${latitude}, ${longitude}], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(map);
-      L.control.zoom({ position: 'topright' }).addTo(map);
-      L.marker([${latitude}, ${longitude}]).addTo(map).bindPopup('${escapedTitle}').openPopup();
-    </script>
-  </body>
-</html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;");
-}

@@ -3,16 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 import * as Location from "expo-location";
 import { Platform } from "react-native";
 import type { Place } from "@/domain/place/place";
+import type { Coordinates } from "@/domain/place/coordinates";
 import { createPlaceSearchProvider } from "@/infrastructure/places/create-place-search-provider";
 import { useApiClient } from "./useApiClient";
 
 const placeSearchLimit = 8;
 
-export function usePlaceSearch(query: string) {
+export function usePlaceSearch(query: string, position: Coordinates | null) {
   const api = useApiClient();
   const provider = useMemo(() => createPlaceSearchProvider(api), [api]);
   const normalizedQuery = useDebouncedValue(query.trim(), 350);
-  const countryCode = useCurrentCountryCode(normalizedQuery.length >= 3);
+  const countryCode = useCurrentCountryCode(normalizedQuery.length >= 3, position);
 
   return useQuery({
     queryKey: ["places", normalizedQuery, countryCode],
@@ -25,12 +26,12 @@ export function usePlaceSearch(query: string) {
   });
 }
 
-function useCurrentCountryCode(enabled: boolean): string | null {
+function useCurrentCountryCode(enabled: boolean, position: Coordinates | null): string | null {
   const localeCountryCode = useMemo(() => resolveLocaleCountryCode(), []);
   const [countryCode, setCountryCode] = useState<string | null>(localeCountryCode);
 
   useEffect(() => {
-    if (!enabled || Platform.OS === "web") {
+    if (!enabled || Platform.OS === "web" || position === null) {
       return;
     }
 
@@ -38,16 +39,7 @@ function useCurrentCountryCode(enabled: boolean): string | null {
 
     async function resolveLocationCountryCode() {
       try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status !== "granted") {
-          return;
-        }
-
-        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Lowest });
-        const [address] = await Location.reverseGeocodeAsync({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
+        const [address] = await Location.reverseGeocodeAsync(position!);
         const resolvedCountryCode = normalizeCountryCode(address?.isoCountryCode ?? undefined);
 
         if (isMounted && resolvedCountryCode !== undefined) {
@@ -65,7 +57,7 @@ function useCurrentCountryCode(enabled: boolean): string | null {
     return () => {
       isMounted = false;
     };
-  }, [enabled, localeCountryCode]);
+  }, [enabled, localeCountryCode, position?.latitude, position?.longitude]);
 
   return countryCode;
 }
