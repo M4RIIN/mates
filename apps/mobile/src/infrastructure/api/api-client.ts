@@ -69,7 +69,7 @@ export class ApiClient {
   ) {}
 
   getInvitationShareLink(id: string) { return this.request("GET", `/invitations/${id}/share-link`, invitationShareLinkSchema.nullable()); }
-  enableInvitationShareLink(id: string, showAddress: boolean) { return this.request("POST", `/invitations/${id}/share-link`, invitationShareLinkSchema, { showAddress }); }
+  enableInvitationShareLink(id: string) { return this.request("POST", `/invitations/${id}/share-link`, invitationShareLinkSchema, {}); }
   revokeInvitationShareLink(id: string) { return this.request("POST", `/invitations/${id}/share-link/revoke`, okResponseSchema); }
   getSharedInvitation(token: string) { return this.request("GET", `/shared-invitations/${token}`, sharedInvitationSchema); }
   getGuestResponse(token: string, guestKey: string) { return this.request("POST", `/shared-invitations/${token}/me`, guestResponseSchema.nullable(), { guestKey }); }

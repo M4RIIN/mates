@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClient } from "@/presentation/hooks/useApiClient";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { AppButton } from "./AppButton";
@@ -10,57 +10,71 @@ import { colors, spacing, borders, radii } from "@/shared/theme";
 
 export function InvitationSharePanel({ id, closed }: { id: string; closed: boolean }) {
   const api = useApiClient();
+  const queryClient = useQueryClient();
   const link = useQuery({ queryKey: ["invitation-share-link", id], queryFn: () => api.getInvitationShareLink(id), retry: false });
-  const [showAddress, setShowAddress] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [action, setAction] = useState<"share" | "copy" | "revoke" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [revokeOpen, setRevokeOpen] = useState(false);
   const lock = useRef(false);
-  useEffect(() => { setShowAddress(link.data?.showAddress ?? false); }, [link.data]);
-  const dirty = link.data != null && showAddress !== link.data.showAddress;
-  const url = link.data ? `${appConfig.profileShareBaseUrl.replace(/\/$/, "")}/s/${link.data.token}` : null;
+  const busy = action !== null;
 
-  async function change(revoke: boolean) {
+  async function share(mode: "share" | "copy") {
     if (lock.current) return;
-    lock.current = true; setBusy(true); setError(null); setFeedback(null);
+    lock.current = true; setAction(mode); setError(null); setFeedback(null);
     try {
-      if (revoke) await api.revokeInvitationShareLink(id);
-      else await api.enableInvitationShareLink(id, showAddress);
-      await link.refetch(); setRevokeOpen(false);
+      let currentLink = link.data;
+      // Re-sharing an older hidden-address link explicitly applies the new default.
+      // Merely viewing the detail never changes an existing link's visibility.
+      if (currentLink == null || (!closed && !currentLink.showAddress)) {
+        currentLink = await api.enableInvitationShareLink(id);
+        queryClient.setQueryData(["invitation-share-link", id], currentLink);
+      }
+      const url = `${appConfig.profileShareBaseUrl.replace(/\/$/, "")}/s/${currentLink.token}`;
+      if (mode === "copy") {
+        await Clipboard.setStringAsync(url);
+        setFeedback("Lien copié !");
+      } else {
+        await Share.share({ message: `Tu viens ? Réponds à ma sortie Mates : ${url}` });
+      }
     } catch (e) { setError(getErrorMessage(e)); }
-    finally { lock.current = false; setBusy(false); }
+    finally { lock.current = false; setAction(null); }
+  }
+
+  async function revoke() {
+    if (lock.current) return;
+    lock.current = true; setAction("revoke"); setError(null); setFeedback(null);
+    try {
+      await api.revokeInvitationShareLink(id);
+      queryClient.setQueryData(["invitation-share-link", id], null);
+      setRevokeOpen(false);
+      setFeedback("Lien désactivé.");
+    } catch (e) { setError(getErrorMessage(e)); }
+    finally { lock.current = false; setAction(null); }
   }
 
   return <View style={styles.panel}>
     <Text accessibilityRole="header" style={styles.title}>Inviter par lien</Text>
-    <Text style={styles.text}>Tes proches répondent sur le web avec leur prénom, sans installer Mates. Leurs prénoms ne sont pas vérifiés.</Text>
-    <Text style={styles.text}>Toute personne possédant le lien voit le lieu, l’heure et ton pseudo. L’adresse exacte est masquée par défaut ; le nom du lieu peut suffire à le reconnaître.</Text>
+    <Text style={styles.text}>{closed ? "Cette sortie ne reçoit plus de réponses." : "Tes proches répondent sans compte. Le lien inclut le lieu, l’adresse exacte et l’heure."}</Text>
     {link.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
     {link.isError ? <AppButton title="Réessayer le partage" variant="secondary" onPress={() => { void link.refetch(); }} /> : null}
-    {error !== null || link.isError ? <Text accessibilityRole="alert" style={styles.error}>{error ?? getErrorMessage(link.error)}</Text> : null}
-    {!closed && link.isSuccess ? <>
-      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: showAddress, disabled: busy }} disabled={busy} onPress={() => setShowAddress(v => !v)} style={styles.checkbox}>
-        <Text style={styles.text}>{showAddress ? "☑" : "☐"} Afficher l’adresse exacte dans le lien</Text>
-      </Pressable>
-      {link.data === null || showAddress !== link.data?.showAddress ? <AppButton title={link.data === null ? "Créer le lien d’invitation" : "Enregistrer la visibilité de l’adresse"} loading={busy} onPress={() => { void change(false); }} /> : null}
-    </> : null}
-    {url !== null && !link.isError ? <>
-      {dirty ? <Text style={styles.text}>Enregistre la visibilité de l’adresse avant de copier ou partager le lien. Le lien déjà envoyé conserve son réglage précédent jusque-là.</Text> : null}
-      <Text selectable style={styles.url}>{url}</Text>
-      <AppButton title="Copier le lien" variant="secondary" disabled={busy || dirty} onPress={() => { void Clipboard.setStringAsync(url).then(() => setFeedback("Lien copié !"), e => setError(getErrorMessage(e))); }} />
-      <AppButton title="Partager l’invitation" disabled={busy || dirty} onPress={() => { void Share.share({ message: `Tu viens ? Réponds à ma sortie Mates : ${url}` }).catch(e => setError(getErrorMessage(e))); }} />
-      <AppButton title="Désactiver le lien" variant="secondary" disabled={busy} onPress={() => { setError(null); setRevokeOpen(true); }} />
-    </> : null}
-    {closed ? <Text style={styles.text}>Cette sortie ne reçoit plus de réponses.</Text> : null}
+    {!revokeOpen && (error !== null || link.isError) ? <Text accessibilityRole="alert" style={styles.error}>{error ?? getErrorMessage(link.error)}</Text> : null}
+    {link.isSuccess && (!closed || link.data !== null) ? <View style={styles.actions}>
+      <View style={styles.action}><AppButton title="Partager" disabled={busy} loading={action === "share"} onPress={() => { void share("share"); }} /></View>
+      <View style={styles.action}><AppButton title="Copier le lien" variant="secondary" disabled={busy} loading={action === "copy"} onPress={() => { void share("copy"); }} /></View>
+    </View> : null}
+    {link.isSuccess && link.data !== null ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }}
+      disabled={busy} style={styles.revoke} onPress={() => { setError(null); setRevokeOpen(true); }}>
+      <Text style={styles.revokeText}>Désactiver le lien</Text>
+    </Pressable> : null}
     {feedback !== null ? <Text accessibilityLiveRegion="polite" style={styles.text}>{feedback}</Text> : null}
     <Modal transparent visible={revokeOpen} onRequestClose={() => { if (!busy) setRevokeOpen(false); }}>
       <View style={styles.scrim}><View accessibilityViewIsModal style={[styles.panel, { maxHeight: "90%" }]}>
         <Text accessibilityRole="header" style={styles.title}>Désactiver ce lien ?</Text>
-        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: spacing.md }}><Text style={styles.text}>Il ne permettra plus de voir la sortie ni de répondre. Les réponses déjà reçues sont conservées. Un nouveau partage créera un autre lien.</Text>
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: spacing.md }}><Text style={styles.text}>Ce lien ne fonctionnera plus. Les réponses sont conservées.</Text>
         {error !== null ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
         </ScrollView>
-        <AppButton title="Désactiver le lien" loading={busy} variant="danger" onPress={() => { void change(true); }} />
+        <AppButton title="Désactiver le lien" loading={busy} variant="danger" onPress={() => { void revoke(); }} />
         <AppButton title="Garder le lien" disabled={busy} variant="secondary" onPress={() => setRevokeOpen(false)} />
       </View></View>
     </Modal>
@@ -68,11 +82,13 @@ export function InvitationSharePanel({ id, closed }: { id: string; closed: boole
 }
 
 const styles = StyleSheet.create({
-  panel: { gap: spacing.md, padding: spacing.md, backgroundColor: colors.surfaceStrong, borderWidth: borders.regular, borderColor: colors.border, borderRadius: radii.md, maxWidth: 600, width: "100%" },
+  panel: { gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surfaceStrong, borderWidth: borders.regular, borderColor: colors.border, borderRadius: radii.md, maxWidth: 600, width: "100%" },
   title: { color: colors.text, fontSize: 19, fontWeight: "900" },
   text: { color: colors.text, fontSize: 14, lineHeight: 20 },
-  url: { color: colors.muted, fontSize: 12, lineHeight: 18 },
-  checkbox: { minHeight: 44, justifyContent: "center" },
+  actions: { flexDirection: "row", gap: spacing.xs },
+  action: { flex: 1 },
+  revoke: { minHeight: 44, alignItems: "center", justifyContent: "center" },
+  revokeText: { color: colors.muted, fontSize: 13, fontWeight: "700", textDecorationLine: "underline" },
   error: { color: colors.red, fontSize: 14 },
   scrim: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.md, backgroundColor: colors.scrim }
 });

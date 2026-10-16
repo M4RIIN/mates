@@ -25,7 +25,7 @@ export class InvitationSharingUseCase {
     return link === null || link.revokedAt !== null ? null : { token: link.token, showAddress: link.showAddress };
   }
 
-  async enable(invitationId: string, userId: string, showAddress: boolean) {
+  async enable(invitationId: string, userId: string, showAddress = true) {
     const invitation = await this.owner(invitationId, userId);
     if (!isInvitationOpen(invitation)) throw AppErrors.conflict("Cette sortie ne reçoit plus de réponses.");
     const link = await this.sharing.enable(invitationId, randomBytes(32).toString("hex"), showAddress);

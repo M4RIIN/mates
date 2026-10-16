@@ -36,7 +36,7 @@ export function registerSharedInvitationRoutes(app: Hono<AppBindings>, container
   });
   app.get("/invitations/:id/share-link", auth, async (c) => c.json(await container.useCases.invitationSharing.getLink(parseParam(idSchema, c.req.param("id")), c.get("currentUserId"))));
   app.post("/invitations/:id/share-link", auth, async (c) => {
-    const body = await parseJsonBody(z.object({ showAddress: z.boolean() }), c);
+    const body = await parseJsonBody(z.object({ showAddress: z.boolean().default(true) }), c);
     return c.json(await container.useCases.invitationSharing.enable(parseParam(idSchema, c.req.param("id")), c.get("currentUserId"), body.showAddress));
   });
   app.post("/invitations/:id/share-link/revoke", auth, async (c) => {

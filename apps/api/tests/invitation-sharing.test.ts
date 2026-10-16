@@ -50,7 +50,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("invitation sharing on PostgreSQ
     invitations = new PostgresInvitationRepository(db);
     repository = new PostgresInvitationSharingRepository(db);
     sharing = new InvitationSharingUseCase(invitations, repository, { publishToUsers: publish });
-    http = createHttpApp({ tokenService: { verify: async () => ownerId }, useCases: { invitationSharing: sharing } } as unknown as AppContainer);
+    http = createHttpApp({ tokenService: { verify: async () => ({ userId: ownerId }) }, useCases: { invitationSharing: sharing } } as unknown as AppContainer);
   });
   afterAll(async () => {
     await sql?.end();
@@ -59,6 +59,37 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("invitation sharing on PostgreSQ
   async function fixture() {
     return invitations.create({ creatorId: ownerId, friendGroupId: null, placeName: "Chez Alex", placeAddress: "Adresse privée", latitude: 48.8, longitude: 2.3, scheduledAt: new Date(Date.now() + 3600000) });
   }
+
+  it("creates an authenticated share link with the exact address by default", async () => {
+    const invitation = await fixture();
+    const request = (authorized: boolean, body: unknown) => http.request(`/invitations/${invitation.id}/share-link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(authorized ? { Authorization: "Bearer fixture" } : {}) },
+      body: JSON.stringify(body)
+    });
+    expect((await request(false, {})).status).toBe(401);
+    expect(await repository.findLink(invitation.id)).toBeNull();
+    const response = await request(true, {});
+    expect(response.status).toBe(200);
+    const link = await response.json() as { token: string; showAddress: boolean };
+    expect(link.showAddress).toBe(true);
+    expect((await repository.findLink(invitation.id))?.showAddress).toBe(true);
+    const publicResponse = await http.request(`/shared-invitations/${link.token}`);
+    const body = await publicResponse.json();
+    expect(body).toMatchObject({ placeName: "Chez Alex", placeAddress: "Adresse privée", showAddress: true });
+    for (const field of ["latitude", "longitude", "creator", "recipients", "guestResponses"]) expect(body).not.toHaveProperty(field);
+    expect((await request(true, { showAddress: "yes" })).status).toBe(400);
+  });
+
+  it("keeps old hidden-address links unchanged until the organizer shares again", async () => {
+    const invitation = await fixture();
+    const oldLink = await sharing.enable(invitation.id, ownerId, false);
+    expect(await sharing.getLink(invitation.id, ownerId)).toMatchObject({ showAddress: false });
+    expect((await sharing.getPublic(oldLink.token)).placeAddress).toBeNull();
+    const next = await sharing.enable(invitation.id, ownerId);
+    expect(next).toEqual({ token: oldLink.token, showAddress: true });
+    expect((await sharing.getPublic(oldLink.token)).placeAddress).toBe("Adresse privée");
+  });
 
   it("only the organizer controls links; public payload excludes address, GPS and participants", async () => {
     const invitation = await fixture();
