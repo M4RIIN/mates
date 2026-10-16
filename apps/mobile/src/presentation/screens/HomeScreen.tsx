@@ -21,6 +21,7 @@ import { TextField } from "@/presentation/components/TextField";
 import { getErrorMessage } from "@/presentation/hooks/useErrorMessage";
 import { useFriendGroups, useFriends } from "@/presentation/hooks/useFriends";
 import { useActiveCreatedInvitation, useCreateInvitation } from "@/presentation/hooks/useInvitations";
+import { useFeaturedPlaces } from "@/presentation/hooks/useFeaturedPlaces";
 import { usePlaceSearch } from "@/presentation/hooks/usePlaceSearch";
 import { useCurrentPosition } from "@/presentation/hooks/useCurrentPosition";
 import { syncCreatedInvitationLiveActivity } from "@/infrastructure/live-activities/invitation-live-activity";
@@ -61,6 +62,8 @@ export function HomeScreen() {
   const friends = useFriends();
   const currentPosition = useCurrentPosition();
   const placeSearch = usePlaceSearch(placeQuery, currentPosition.data ?? null);
+  const showFeatured = placeQuery.trim().length === 0 && selectedPlace === null && currentPosition.data != null;
+  const featuredPlaces = useFeaturedPlaces(currentPosition.data ?? null, showFeatured);
   const createInvitation = useCreateInvitation();
   const selectedFriends = useMemo(() => (friends.data ?? []).filter((friend) => selectedFriendIds.includes(friend.id)), [friends.data, selectedFriendIds]);
   const recipientKey = selectedFriends.map((friend) => friend.id).sort().join(",");
@@ -275,11 +278,15 @@ export function HomeScreen() {
             {!addressEditing ? <Text style={styles.helper}>{customAddress || "Adresse non renseignée"}</Text> : null}
           </View>}
           {placeError !== null ? <Text style={styles.helper}>{placeError}</Text> : null}
+          {showFeatured && !featuredPlaces.isError && (featuredPlaces.data?.length ?? 0) > 0 ? <View style={{ gap: spacing.sm }}>
+            <Text accessibilityRole="header" style={styles.helper}>Mis en avant près de toi</Text>
+            {featuredPlaces.data!.slice(0, 2).map(place => <PlaceResultRow key={place.id} title={place.name} subtitle={place.address ?? "Lieu"} onPress={() => selectPlace(place)} />)}
+          </View> : null}
           {activeInvitation.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
           {activeInvitation.isError ? <><Text accessibilityRole="alert" style={styles.error}>Impossible de vérifier si une sortie est déjà en cours.</Text><AppButton title="Réessayer pour les sorties" variant="secondary" onPress={() => { void activeInvitation.refetch(); }} /></> : null}
-          {placeSearch.isLoading && selectedPlace === null ? <ActivityIndicator accessibilityLabel="Recherche de lieux" color={colors.primary} /> : null}
-          {placeSearch.isError && selectedPlace === null ? <Text style={styles.helper}>La recherche de lieux est indisponible. Tu peux saisir le nom et l’adresse toi-même.</Text> : null}
-          {placeSearch.data !== undefined && placeSearch.data.length > 0 && selectedPlace === null ? (
+          {placeQuery.trim().length >= 3 && placeSearch.isLoading && selectedPlace === null ? <ActivityIndicator accessibilityLabel="Recherche de lieux" color={colors.primary} /> : null}
+          {placeQuery.trim().length >= 3 && placeSearch.isError && selectedPlace === null ? <Text style={styles.helper}>La recherche de lieux est indisponible. Tu peux saisir le nom et l’adresse toi-même.</Text> : null}
+          {placeQuery.trim().length >= 3 && placeSearch.data !== undefined && placeSearch.data.length > 0 && selectedPlace === null ? (
             <ScrollView
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}

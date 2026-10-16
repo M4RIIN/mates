@@ -1,5 +1,6 @@
 import { z } from "zod";
 export * from "./invitation-lifecycle.js";
+export * from "./place-results.js";
 
 export const publicTagSchema = z
   .string()
@@ -152,7 +153,20 @@ export const invitationFriendGroupSchema = z.object({
 });
 export type InvitationFriendGroupDto = z.infer<typeof invitationFriendGroupSchema>;
 
+export const placeReferenceSchema = z.object({
+  provider: z.enum(["photon", "mapbox", "mock"]),
+  externalId: z.string().trim().min(1).max(512)
+});
+export type PlaceReference = z.infer<typeof placeReferenceSchema>;
+
+export const featuredPlacesQuerySchema = z.object({
+  latitude: z.coerce.number().finite().min(-90).max(90),
+  longitude: z.coerce.number().finite().min(-180).max(180)
+});
+
 export const placeInputSchema = z.object({
+  establishmentId: z.string().uuid().optional(),
+  placeReference: placeReferenceSchema.optional(),
   placeName: z.string().trim().min(1).max(160),
   placeAddress: z.string().trim().max(240).optional(),
   latitude: z.number().min(-90).max(90).optional(),
@@ -161,6 +175,8 @@ export const placeInputSchema = z.object({
 export type PlaceInput = z.infer<typeof placeInputSchema>;
 
 export const placeCandidateSchema = z.object({
+  establishmentId: z.string().uuid().optional(),
+  reference: placeReferenceSchema.optional(),
   id: z.string().min(1),
   name: z.string().trim().min(1).max(160),
   address: z.string().trim().max(240).nullable(),
@@ -215,6 +231,7 @@ export type SharedInvitationDto = z.infer<typeof sharedInvitationSchema>;
 export const invitationShareLinkSchema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/), showAddress: z.boolean() });
 export const guestKeySchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const guestRespondRequestSchema = z.object({
+  analyticsBrowserId: z.string().uuid().optional(),
   guestKey: guestKeySchema, name: z.string().trim().min(2).max(40), status: z.enum(["yes", "no"])
 });
 export type GuestRespondRequest = z.infer<typeof guestRespondRequestSchema>;

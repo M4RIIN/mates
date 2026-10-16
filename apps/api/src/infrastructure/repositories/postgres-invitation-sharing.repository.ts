@@ -32,8 +32,8 @@ export class PostgresInvitationSharingRepository implements InvitationSharingRep
         .innerJoin(invitations, eq(links.invitationId, invitations.id)).where(eq(links.token, input.token)).for("update");
       if (!found || found.link.revokedAt) throw AppErrors.notFound("Ce lien n’est plus disponible.");
       if (!isInvitationOpen(found.invitation, new Date())) throw AppErrors.conflict("Cette sortie est annulée ou terminée.");
-      const [row] = await transaction.insert(guests).values({ invitationId: found.invitation.id, guestKeyHash: input.guestKeyHash, name: input.name, responseStatus: input.status, respondedAt: input.now })
-        .onConflictDoUpdate({ target: [guests.invitationId, guests.guestKeyHash], set: { name: input.name, responseStatus: input.status, respondedAt: input.now } }).returning();
+      const [row] = await transaction.insert(guests).values({ invitationId: found.invitation.id, guestKeyHash: input.guestKeyHash, analyticsBrowserIdHash: input.analyticsBrowserIdHash ?? null, name: input.name, responseStatus: input.status, respondedAt: input.now })
+        .onConflictDoUpdate({ target: [guests.invitationId, guests.guestKeyHash], set: { ...(input.analyticsBrowserIdHash !== undefined ? { analyticsBrowserIdHash: input.analyticsBrowserIdHash } : {}), name: input.name, responseStatus: input.status, respondedAt: input.now } }).returning();
       if (!row) throw new Error("Guest response failed");
       return response(row);
     });

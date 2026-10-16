@@ -121,6 +121,15 @@ export class ApiClient {
     );
   }
 
+  getFeaturedPlaces(position: { latitude: number; longitude: number }): Promise<PlaceCandidateDto[]> {
+    const params = new URLSearchParams({ latitude: String(position.latitude), longitude: String(position.longitude) });
+    return this.request("GET", `/places/featured?${params}`, placeSearchResponseSchema).then(response => response.places);
+  }
+
+  searchCatalogPlaces(query: string, limit = 8): Promise<PlaceCandidateDto[]> {
+    return this.request("GET", `/places/catalog?q=${encodeURIComponent(query)}&limit=${limit}`, placeSearchResponseSchema).then(response => response.places);
+  }
+
   searchPlaces(query: string, options: { countryCode?: string; limit?: number } = {}): Promise<PlaceCandidateDto[]> {
     const params = new URLSearchParams({ q: query });
     if (options.countryCode !== undefined) {

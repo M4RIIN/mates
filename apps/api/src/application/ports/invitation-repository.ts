@@ -1,5 +1,5 @@
 import type { GuestResponseRecord } from "./invitation-sharing-repository.js";
-import type { ResponseStatus } from "@mates/shared";
+import type { PlaceReference, ResponseStatus } from "@mates/shared";
 import type { PublicUserRecord } from "./user-repository.js";
 
 export type InvitationAuditAction = "uber_requested" | "reservation_requested";
@@ -10,6 +10,8 @@ export type InvitationFriendGroupRecord = {
 };
 
 export type CreateInvitationRecordInput = {
+  establishmentId?: string;
+  placeReference?: PlaceReference;
   creatorId: string;
   friendGroupId: string | null;
   placeName: string;

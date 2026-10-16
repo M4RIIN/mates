@@ -1,10 +1,5 @@
-export type PlaceCandidate = {
-  id: string;
-  name: string;
-  address: string | null;
-  latitude: number | null;
-  longitude: number | null;
-};
+import type { PlaceCandidateDto } from "@mates/shared";
+export type PlaceCandidate = PlaceCandidateDto;
 
 export type PlaceSearchOptions = {
   countryCode?: string;

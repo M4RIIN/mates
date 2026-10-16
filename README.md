@@ -223,6 +223,8 @@ Références : [Expo AppleAuthentication](https://docs.expo.dev/versions/latest/
 
 ## Architecture
 
+Le référentiel des établissements, les statistiques SQL et la gestion manuelle des lieux mis en avant sont décrits dans [docs/establishment-statistics.md](docs/establishment-statistics.md). La migration additive `0011_establishment_statistics.sql` sera appliquée au prochain démarrage API livré ; valider le déploiement avant toute application en production.
+
 Le backend sépare strictement :
 
 - `domain/` : règles métier pures, erreurs métier, génération du `publicTag`, règles d’invitation.

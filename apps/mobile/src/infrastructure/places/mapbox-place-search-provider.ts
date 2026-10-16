@@ -44,6 +44,7 @@ export class MapboxPlaceSearchProvider implements PlaceSearchProvider {
 
       return {
         id: feature.id,
+        reference: { provider: "mapbox" as const, externalId: feature.id },
         name: feature.properties?.name ?? "Lieu sans nom",
         address: feature.properties?.full_address ?? null,
         longitude: coordinates?.[0] ?? null,

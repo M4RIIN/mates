@@ -65,7 +65,7 @@ export class InvitationSharingUseCase {
   }
 
   async respond(token: string, input: GuestRespondRequest) {
-    const response = await this.sharing.respond({ token, guestKeyHash: createHash("sha256").update(input.guestKey).digest("hex"), name: input.name, status: input.status, now: new Date() });
+    const response = await this.sharing.respond({ ...(input.analyticsBrowserId !== undefined ? { analyticsBrowserIdHash: createHash("sha256").update(input.analyticsBrowserId.toLowerCase()).digest("hex") } : {}), token, guestKeyHash: createHash("sha256").update(input.guestKey).digest("hex"), name: input.name, status: input.status, now: new Date() });
     const invitation = await this.invitations.getDetails(response.invitationId);
     if (invitation !== null) await this.realtime.publishToUsers([invitation.creatorId], { type: "invitation.guests.updated", invitationId: invitation.id });
     logger.info("invitation.guest_response.saved", { invitationId: response.invitationId, responseStatus: response.responseStatus });

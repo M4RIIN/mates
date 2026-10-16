@@ -63,6 +63,7 @@ export class PhotonPlaceSearchAdapter implements PlaceSearchPort {
 
         return {
           id: toPlaceId(properties, index),
+          ...(properties?.osm_type !== undefined && properties.osm_id !== undefined ? { reference: { provider: "photon" as const, externalId: `${properties.osm_type}-${properties.osm_id}` } } : {}),
           name: truncate(properties?.name ?? toFallbackName(properties), 160),
           address: toNullableTruncatedValue(toAddress(properties), 240),
           longitude: coordinates?.[0] ?? null,

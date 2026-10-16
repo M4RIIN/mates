@@ -69,6 +69,7 @@ import { PhotonPlaceSearchAdapter } from "./places/photon-place-search.adapter.j
 import { InMemoryRealtimeGateway } from "./realtime/in-memory-realtime.gateway.js";
 import { PostgresFriendGroupRepository } from "./repositories/postgres-friend-group.repository.js";
 import { PostgresFriendshipRepository } from "./repositories/postgres-friendship.repository.js";
+import { PostgresEstablishmentRepository } from "./repositories/postgres-establishment.repository.js";
 import { PostgresInvitationRepository } from "./repositories/postgres-invitation.repository.js";
 import { PostgresPushTokenRepository } from "./repositories/postgres-push-token.repository.js";
 import { PostgresUserRepository } from "./repositories/postgres-user.repository.js";
@@ -278,7 +279,7 @@ export function createContainerFromEnv(env: NodeJS.ProcessEnv): AppContainer {
       listReceivedInvitations: new ListReceivedInvitations(invitations),
       listCreatedInvitations: new ListCreatedInvitations(invitations),
       registerPushToken: new RegisterPushToken(pushTokens),
-      searchPlaces: new SearchPlaces(placeSearch)
+      searchPlaces: new SearchPlaces(placeSearch, new PostgresEstablishmentRepository(db))
     }
   };
 }

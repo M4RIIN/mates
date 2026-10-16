@@ -15,6 +15,8 @@ export class CreateInvitationUseCase {
     assertInvitationScheduledToday(scheduledAt, input.now ?? new Date());
 
     return this.invitations.create({
+      ...(input.establishmentId !== undefined ? { establishmentId: input.establishmentId } : {}),
+      ...(input.placeReference !== undefined ? { placeReference: input.placeReference } : {}),
       creatorId: input.creatorId,
       friendGroupId: input.friendGroupId ?? null,
       placeName: input.placeName,

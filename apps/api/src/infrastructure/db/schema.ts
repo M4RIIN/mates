@@ -117,6 +117,43 @@ export const friendGroupMembers = pgTable(
   })
 );
 
+// Automatically captured venues are private to the statistical reference by default.
+export const establishments = pgTable("establishments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  address: text("address"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  countryCode: text("country_code"),
+  listingStatus: text("listing_status").notNull().default("unlisted"),
+  active: boolean("active").notNull().default(true),
+  priority: integer("priority").notNull().default(0),
+  featuredRadiusKm: doublePrecision("featured_radius_km").notNull().default(10),
+  identityKey: text("identity_key").generatedAlwaysAs(sql`public.mates_establishment_key(name, address, latitude, longitude)`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => ({
+  identityUnique: uniqueIndex("establishments_identity_unique_idx").on(table.identityKey),
+  publicationIdx: index("establishments_publication_idx").on(table.active, table.listingStatus),
+  validName: check("establishments_name", sql`char_length(btrim(${table.name})) BETWEEN 1 AND 160`),
+  validAddress: check("establishments_address", sql`${table.address} IS NULL OR char_length(${table.address}) <= 240`),
+  validListing: check("establishments_listing", sql`${table.listingStatus} IN ('unlisted', 'listed', 'featured')`),
+  validCountry: check("establishments_country", sql`${table.countryCode} IS NULL OR ${table.countryCode} ~ '^[A-Z]{2}$'`),
+  validCoordinates: check("establishments_coordinates", sql`(${table.latitude} IS NULL AND ${table.longitude} IS NULL) OR (${table.latitude} IS NOT NULL AND ${table.longitude} IS NOT NULL AND ${table.latitude} BETWEEN -90 AND 90 AND ${table.longitude} BETWEEN -180 AND 180)`),
+  validRadius: check("establishments_radius", sql`${table.featuredRadiusKm} > 0 AND ${table.featuredRadiusKm} < 'Infinity'::float8`),
+  featuredCoordinates: check("establishments_featured_coordinates", sql`${table.listingStatus} <> 'featured' OR (${table.latitude} IS NOT NULL AND ${table.longitude} IS NOT NULL)`)
+}));
+
+export const establishmentExternalRefs = pgTable("establishment_external_refs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  establishmentId: uuid("establishment_id").notNull().references(() => establishments.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  externalId: text("external_id").notNull()
+}, (table) => ({
+  referenceUnique: uniqueIndex("establishment_external_refs_unique_idx").on(table.provider, table.externalId),
+  establishmentIdx: index("establishment_external_refs_establishment_idx").on(table.establishmentId),
+  providerCheck: check("establishment_external_refs_provider", sql`${table.provider} IN ('photon', 'mapbox', 'mock')`)
+}));
+
 export const invitations = pgTable(
   "invitations",
   {
@@ -124,6 +161,7 @@ export const invitations = pgTable(
     creatorId: uuid("creator_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    establishmentId: uuid("establishment_id").references(() => establishments.id, { onDelete: "set null" }),
     friendGroupId: uuid("friend_group_id").references(() => friendGroups.id, { onDelete: "set null" }),
     placeName: text("place_name").notNull(),
     placeAddress: text("place_address"),
@@ -135,6 +173,8 @@ export const invitations = pgTable(
   },
   (table) => ({
     creatorIdx: index("invitations_creator_idx").on(table.creatorId),
+    establishmentCreatedIdx: index("invitations_establishment_created_idx").on(table.establishmentId, table.createdAt),
+    establishmentScheduledIdx: index("invitations_establishment_scheduled_idx").on(table.establishmentId, table.scheduledAt),
     friendGroupIdx: index("invitations_friend_group_idx").on(table.friendGroupId),
     scheduledAtIdx: index("invitations_scheduled_at_idx").on(table.scheduledAt)
   })
@@ -214,10 +254,12 @@ export const invitationGuestResponses = pgTable("invitation_guest_responses", {
   id: uuid("id").primaryKey().defaultRandom(),
   invitationId: uuid("invitation_id").notNull().references(() => invitations.id, { onDelete: "cascade" }),
   guestKeyHash: text("guest_key_hash").notNull(),
+  analyticsBrowserIdHash: text("analytics_browser_id_hash"),
   name: text("name").notNull(),
   responseStatus: responseStatusEnum("response_status").notNull(),
   respondedAt: timestamp("responded_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => ({
+  browserHashCheck: check("invitation_guest_responses_browser_hash", sql`${table.analyticsBrowserIdHash} IS NULL OR ${table.analyticsBrowserIdHash} ~ '^[a-f0-9]{64}$'`),
   guestUnique: uniqueIndex("invitation_guest_responses_identity_idx").on(table.invitationId, table.guestKeyHash),
   validStatus: check("invitation_guest_responses_status", sql`${table.responseStatus} IN ('yes', 'no')`)
 }));

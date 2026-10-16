@@ -39,6 +39,7 @@ describe("PhotonPlaceSearchAdapter", () => {
     expect(places).toEqual([
       {
         id: "photon-N-123",
+        reference: { provider: "photon", externalId: "N-123" },
         name: "Cafe Central",
         address: "12 Rue du Centre, 75001 Paris, France",
         longitude: 2.3522,

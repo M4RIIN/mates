@@ -1,3 +1,4 @@
+import { getAnalyticsBrowserId } from "@/infrastructure/storage/analytics-browser-id";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -72,7 +73,8 @@ function SharedInvitationContent({ token }: { token: string }) {
     if (guestKey === null || inFlight.current || name.trim().length < 2 || invitation.data === undefined || invitation.data.closed || !isInvitationOpen(invitation.data)) return;
     inFlight.current = true; setSaving(true); setError(null);
     try {
-      const saved = await api.respondAsGuest(token, { guestKey, name: name.trim(), status });
+      const analyticsBrowserId = await getAnalyticsBrowserId();
+      const saved = await api.respondAsGuest(token, { guestKey, name: name.trim(), status, ...(analyticsBrowserId !== undefined ? { analyticsBrowserId } : {}) });
       setResponse(saved); setName(saved.name); setEditing(false);
     } catch (e) { setError(getErrorMessage(e)); }
     finally { inFlight.current = false; setSaving(false); void invitation.refetch(); }
@@ -107,7 +109,7 @@ function SharedInvitationContent({ token }: { token: string }) {
         <AppButton title="Je viens" onPress={() => { void submit("yes"); }} disabled={saving || name.trim().length < 2} loading={saving} />
         <AppButton title="Je ne peux pas" variant="secondary" onPress={() => { void submit("no"); }} disabled={saving || name.trim().length < 2} />
       </View> : null}
-      <Text style={styles.muted}>Prénom non vérifié. Ta réponse est mémorisée sur ce navigateur. Sur un autre appareil, ou après effacement du stockage, tu pourrais apparaître deux fois.</Text>
+      <Text style={styles.muted}>Prénom non vérifié. Ta réponse est mémorisée sur ce navigateur. Un identifiant aléatoire permet aussi d’estimer les participations uniques entre sorties ; seul son hash est conservé en base. Sur un autre appareil, ou après effacement du stockage, tu pourrais apparaître deux fois.</Text>
       {response !== null ? <View style={styles.panel}><Text style={styles.text}>À toi de proposer la prochaine sortie ?</Text><AppButton title="Organiser ma prochaine sortie" variant="secondary" onPress={() => { if (authToken !== null) router.push("/home"); else setLogin(true); }} /></View> : null}
     </> : null}
   </Screen>;

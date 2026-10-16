@@ -1,3 +1,4 @@
+import { resolveEstablishment } from "./postgres-establishment.repository.js";
 import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { invitationCoordinationDurationMs, isInvitationOpen } from "@mates/shared";
 import { AppErrors } from "../../domain/shared/app-error.js";
@@ -21,6 +22,7 @@ import { invitationGuestResponses, friendGroups, invitationAuditEvents, invitati
 function toInvitationRecord(row: typeof invitations.$inferSelect): InvitationRecord {
   return {
     id: row.id,
+    ...(row.establishmentId !== null ? { establishmentId: row.establishmentId } : {}),
     creatorId: row.creatorId,
     friendGroupId: row.friendGroupId,
     placeName: row.placeName,
@@ -79,25 +81,29 @@ export class PostgresInvitationRepository implements InvitationRepository {
   constructor(private readonly db: AppDb) {}
 
   async create(input: CreateInvitationRecordInput): Promise<InvitationRecord> {
-    const [created] = await this.db
-      .insert(invitations)
-      .values({
-        creatorId: input.creatorId,
-        friendGroupId: input.friendGroupId,
-        placeName: input.placeName,
-        placeAddress: input.placeAddress,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        scheduledAt: input.scheduledAt,
-        canceledAt: null
-      })
-      .returning();
+    return this.db.transaction(async (transaction) => {
+      const establishmentId = await resolveEstablishment(transaction, input);
+      const [created] = await transaction
+        .insert(invitations)
+        .values({
+          establishmentId,
+          creatorId: input.creatorId,
+          friendGroupId: input.friendGroupId,
+          placeName: input.placeName,
+          placeAddress: input.placeAddress,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          scheduledAt: input.scheduledAt,
+          canceledAt: null
+        })
+        .returning();
 
-    if (created === undefined) {
-      throw new Error("Invitation creation failed");
-    }
+      if (created === undefined) {
+        throw new Error("Invitation creation failed");
+      }
 
-    return toInvitationRecord(created);
+      return toInvitationRecord(created);
+    });
   }
 
   async addRecipients(invitationId: string, userIds: string[]): Promise<void> {

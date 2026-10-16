@@ -4,6 +4,8 @@ export function buildInvitationPlaceInput(place: Place | null, query: string, ad
   const placeAddress = address.trim();
   const sameAddress = place !== null && placeAddress === (place.address ?? "").trim();
   return {
+    ...(sameAddress && place.establishmentId !== undefined ? { establishmentId: place.establishmentId } : {}),
+    ...(sameAddress && place.reference !== undefined ? { placeReference: place.reference } : {}),
     placeName: place?.name ?? query.trim(),
     ...(placeAddress ? { placeAddress } : {}),
     ...(sameAddress && place.latitude != null ? { latitude: place.latitude } : {}),

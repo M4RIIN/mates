@@ -44,6 +44,7 @@ export class MapboxPlaceSearchAdapter implements PlaceSearchPort {
 
       return {
         id: feature.id,
+        reference: { provider: "mapbox" as const, externalId: feature.id },
         name: truncate(feature.properties?.name ?? "Lieu sans nom", 160),
         address: toNullableTruncatedValue(feature.properties?.full_address ?? null, 240),
         longitude: coordinates?.[0] ?? null,

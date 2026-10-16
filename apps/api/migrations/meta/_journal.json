@@ -78,6 +78,13 @@
       "when": 1792151687851,
       "tag": "0010_advance_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792156141642,
+      "tag": "0011_establishment_statistics",
+      "breakpoints": true
     }
   ]
 }
