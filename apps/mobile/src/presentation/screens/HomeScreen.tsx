@@ -42,7 +42,6 @@ export function HomeScreen() {
   const [mapOpen, setMapOpen] = useState(false);
   const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
-  const [linkOnly, setLinkOnly] = useState(false);
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
   const [isArmed, setIsArmed] = useState(false);
   const [coverRevision, setCoverRevision] = useState(0);
@@ -70,12 +69,12 @@ export function HomeScreen() {
   const coordinatesMatchAddress = selectedPlace !== null && customAddress.trim() === (selectedPlace.address ?? "").trim();
   const canArm =
     placeError === null && timeError === null && addressError === null && !timePickerOpen &&
-    (linkOnly || (selectedFriends.length > 0 && selectedFriends.length <= 100 && friends.isSuccess && !friends.isFetching)) && !audienceModalOpen &&
+    selectedFriends.length > 0 && selectedFriends.length <= 100 && friends.isSuccess && !friends.isFetching && !audienceModalOpen &&
     !createInvitation.isPending && !isSending &&
     currentInvitation === null && activeInvitation.isSuccess;
   const canLaunch = canArm && isArmed;
-  useEffect(() => { resetSafety(); }, [linkOnly, recipientKey, canArm, placeQuery, customAddress, hourText, minuteText, now.toDateString()]);
-  useEffect(() => { setSendError(null); }, [linkOnly, recipientKey, placeQuery, customAddress, hourText, minuteText]);
+  useEffect(() => { resetSafety(); }, [recipientKey, canArm, placeQuery, customAddress, hourText, minuteText, now.toDateString()]);
+  useEffect(() => { setSendError(null); }, [recipientKey, placeQuery, customAddress, hourText, minuteText]);
   useFocusEffect(useCallback(() => () => { resetSafety(); setAccessibleConfirmOpen(false); }, []));
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -157,7 +156,7 @@ export function HomeScreen() {
       safetyGate.settle(); setIsSending(false); resetSafety();
       return;
     }
-    if (!linkOnly && (selectedFriends.length === 0 || selectedFriends.length > 100 || !friends.isSuccess || friends.isFetching || audienceModalOpen)) {
+    if (selectedFriends.length === 0 || selectedFriends.length > 100 || !friends.isSuccess || friends.isFetching || audienceModalOpen) {
       Alert.alert("Invités manquants", "Choisis entre 1 et 100 amis avant d’envoyer.");
       safetyGate.settle(); setIsSending(false); resetSafety();
       return;
@@ -174,7 +173,7 @@ export function HomeScreen() {
       const request: CreateInvitationRequest = {
         ...buildInvitationPlaceInput(selectedPlace, placeQuery, customAddress),
         scheduledAt,
-        ...(linkOnly ? { shareOnly: true } : { friendUserIds: selectedFriends.map((friend) => friend.id) })
+        friendUserIds: selectedFriends.map((friend) => friend.id)
       };
 
       const invitation = await createInvitation.mutateAsync(request);
@@ -317,8 +316,6 @@ export function HomeScreen() {
           {timeError !== null ? <Text accessibilityRole="alert" style={styles.error}>{timeError}</Text> : null}
           <View style={styles.audienceBlock}>
             <Text style={styles.limitSectionLabel}>Invités</Text>
-            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: linkOnly }} onPress={() => { resetSafety(); setLinkOnly(v => !v); }} style={styles.audienceButton}><Text style={styles.audienceButtonValue}>{linkOnly ? "☑" : "☐"} Inviter uniquement par lien</Text></Pressable>
-            {linkOnly ? <Text style={styles.helper}>Crée ta sortie puis partage son lien. Aucune invitation ne sera envoyée à tes amis automatiquement.</Text> : <>
             <Pressable accessibilityRole="button" onPress={() => { Keyboard.dismiss(); resetSafety(); setAudienceModalOpen(true); }} style={styles.audienceButton}>
               <View style={styles.audienceButtonIcon}>
                 <Users size={16} color={colors.ink} strokeWidth={3} />
@@ -336,12 +333,11 @@ export function HomeScreen() {
             {selectedFriends.length === 0 ? <Text style={styles.audienceButtonLabel}>Choisis au moins un ami pour pouvoir envoyer.</Text> : null}
             {friends.isFetching ? <Text style={styles.audienceButtonLabel}>Vérification des invités…</Text> : null}
             {friends.isError ? <><Text accessibilityRole="alert" style={styles.audienceButtonLabel}>Impossible de vérifier tes invités. Réessaie avant d’envoyer.</Text><AppButton title="Réessayer pour les invités" variant="secondary" onPress={() => { void friends.refetch(); }} /></> : null}
-            </>}
           </View>
         </View>
 
         <ProtectedInvitationButton
-          actionLabel={linkOnly ? "créer ma sortie à partager" : "inviter mes amis"}
+          actionLabel="inviter mes amis"
           revision={coverRevision}
           armed={isArmed}
           ready={canArm}
@@ -361,13 +357,13 @@ export function HomeScreen() {
       {sendError ? <View><Text accessibilityRole="alert" style={styles.error}>Envoi impossible : {sendError}</Text><Text style={styles.helper}>Le capot est refermé. Vérifie ta sortie puis ouvre-le pour réessayer.</Text></View> : null}
       <Modal transparent visible={accessibleConfirmOpen} animationType="fade" onRequestClose={() => setAccessibleConfirmOpen(false)}>
         <View style={styles.modalScrim}><View accessibilityViewIsModal style={styles.modalCard}>
-          <Text accessibilityRole="header" style={styles.placeName}>{linkOnly ? "Créer la sortie à partager" : "Confirmer l’invitation"}</Text>
+          <Text accessibilityRole="header" style={styles.placeName}>Confirmer l’invitation</Text>
           <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: spacing.sm }}>
             <Text style={styles.helper}>{placeQuery} · Aujourd’hui à {hourText}:{minuteText}</Text>
             {customAddress ? <Text style={styles.helper}>{customAddress}</Text> : null}
-            <Text style={styles.helper}>{linkOnly ? "Invitation par lien. Aucun envoi automatique." : `${selectedFriends.length} invité(s) : ${selectedFriends.map((friend) => friend.pseudo).join(", ")}`}</Text>
+            <Text style={styles.helper}>{`${selectedFriends.length} invité(s) : ${selectedFriends.map((friend) => friend.pseudo).join(", ")}`}</Text>
           </ScrollView>
-          <AppButton title={linkOnly ? "Confirmer et créer ma sortie" : "Confirmer et inviter mes amis"} disabled={!canLaunch} onPress={() => {
+          <AppButton title="Confirmer et inviter mes amis" disabled={!canLaunch} onPress={() => {
             if (canLaunch && safetyGate.confirmAccessible()) { setAccessibleConfirmOpen(false); setIsSending(true); void launchInvitation(); }
           }} />
           <AppButton title="Annuler" variant="secondary" onPress={() => { setAccessibleConfirmOpen(false); resetSafety(); }} />

@@ -47,6 +47,7 @@ Les tickets commerciaux peuvent avancer pendant le développement. Ne pas lancer
 | UX07 | Remonter les actions sur le détail invité | P1 | À vérifier |
 | UX08 | Simplifier les mots et la hiérarchie visuelle | P1 | À vérifier |
 | UX09 | Rendre les groupes existants plus accessibles | P2 | À vérifier |
+| UX10 | Retirer le mode de création uniquement par lien | P1 | À vérifier |
 
 ### UX01 Navigation visible
 
@@ -292,6 +293,24 @@ Récapitulatif de l’agent UI/UX `ux01_review` : hiérarchie, accès à la modi
 
 Restant avant clôture : clavier, marges de sécurité, caractères agrandis et lecteurs d’écran sur iOS/Android ; vérifier le déplacement vers une erreur longue sur appareil.
 
+### UX10 Création avec destinataires obligatoires
+
+Décision du 16 octobre 2026 : retirer « Inviter uniquement par lien » du formulaire. Le parcours de création utilise le lieu, l’heure et les amis ou membres d’un groupe explicitement sélectionnés. Le partage d’une sortie reste accessible dans son détail.
+
+- [x] Le formulaire ne propose plus le mode uniquement par lien.
+- [x] L’ouverture du capot et l’envoi exigent entre 1 et 100 amis disponibles, après chargement et vérification de la liste.
+- [x] La requête de création contient les identifiants des amis sélectionnés ; la confirmation accessible affiche leurs noms et leur nombre.
+- [x] Le glissement, le maintien, la fermeture du capot lors des modifications et les protections contre le double envoi sont conservés.
+- [x] Sans ami, le sélecteur propose Ajouter un ami ; les erreurs de vérification proposent Réessayer.
+- [x] Vérifier le typage, les tests existants et consigner la revue UI/UX.
+- [ ] Vérifier les gestes et la confirmation accessible sur iOS/Android.
+
+Réalisation : suppression de l’état et des branches `linkOnly` dans `HomeScreen`. La validation des destinataires s’applique au bouton et immédiatement avant l’envoi. Les liens déjà partagés et l’action de partage du détail sont conservés.
+
+Validation le 16 octobre 2026 : typecheck mobile réussi ; 9 tests existants de composition et de protection du bouton réussis ; contrôle du diff réussi. Aucun nouveau test ni essai visuel ou natif effectué.
+
+Revue de code UI/UX par l’agent `ux_review` : aucun défaut bloquant relevé. Parcours unique, libellés cohérents, sélection par groupe, pastilles nominatives et confirmation accessible conservés. Le sélecteur propose Ajouter un ami sans contacts ; chargement et erreur bloquent l’envoi ; les amis devenus indisponibles sont exclus et signalés. Restant avant clôture : rendu, gestes et lecteurs d’écran sur iOS/Android.
+
 ## Tickets de fonctionnalités
 
 | ID | Ticket | Priorité | Statut |
@@ -356,7 +375,7 @@ Un organisateur peut partager une sortie dans ses canaux habituels. Un invité p
 
 Dépendances : PR07, UX06, UX07 et ME01. Concevoir ensemble le partage, les réponses et la conversion.
 
-Implémenté le 9 octobre 2026. L’API héberge le parcours `/s/:token` → `/app/s/:token`. Le mode **Inviter uniquement par lien** crée une sortie sans envoi automatique, en conservant le capot et le maintien. L’adresse exacte reste masquée jusqu’à un choix explicite de l’organisateur ; les coordonnées GPS et listes de participants ne sont jamais exposées au visiteur. Le nom du lieu reste visible, ce qui peut déjà permettre de le reconnaître. Un lien réactivé après révocation reçoit un nouveau jeton ; les réponses existantes sont conservées. Les réponses sont fermées après annulation ou à l’heure de la sortie.
+Implémenté le 9 octobre 2026. L’API héberge le parcours `/s/:token` → `/app/s/:token`. Le mode **Inviter uniquement par lien**, initialement proposé à la création, est retiré du formulaire le 16 octobre 2026 (UX10). Le partage reste disponible depuis le détail d’une sortie créée avec des amis. L’adresse exacte reste masquée jusqu’à un choix explicite de l’organisateur ; les coordonnées GPS et listes de participants ne sont jamais exposées au visiteur. Le nom du lieu reste visible, ce qui peut déjà permettre de le reconnaître. Un lien réactivé après révocation reçoit un nouveau jeton ; les réponses existantes sont conservées. Les réponses sont fermées après annulation ou à la fin de la fenêtre de coordination, deux heures après le rendez-vous.
 
 Les invités web apparaissent dans une section **Invités par lien · prénom non vérifié** ; les compteurs de suivi et la Live Activity organisateur les prennent en compte. Actualisation de l’organisateur via événement temps réel, rechargement de la page publique toutes les 30 secondes. La clé de navigateur est transmise dans le corps des requêtes et stockée uniquement sous forme de hash en base. Les jetons des liens sont masqués dans les journaux HTTP ; pages et données partagées utilisent no-store et no-referrer.
 
@@ -424,15 +443,15 @@ Définir puis implémenter une règle permettant de préparer plusieurs rendez-v
 
 ### PR07 Aucun envoi vide
 
-L’envoi actuel peut produire une invitation sans destinataire.
+La création depuis le formulaire exige au moins un destinataire sélectionné.
 
-- [x] Sans invité sélectionné, l’envoi est bloqué et propose d’ajouter un ami ou de partager une sortie.
+- [x] Sans invité sélectionné, l’envoi est bloqué ; le sélecteur permet d’ajouter un ami.
 
-- [x] Avec PR02, une sortie par lien peut être créée sans ami existant, avec un état Partager pour inviter explicite.
+- [x] Depuis UX10, le formulaire exige entre 1 et 100 amis disponibles et transmet explicitement leurs identifiants, y compris lorsqu’ils sont sélectionnés via un groupe.
 
 - [x] La création d’un lien n’annonce jamais qu’une invitation a été envoyée à des personnes.
 
-Implémenté avec PR02 : aucune création à zéro destinataire sans le choix explicite shareOnly ; mode par lien accessible sans amis. Validation API et parcours de création, geste de protection conservé.
+Mis à jour avec UX10 le 16 octobre 2026 : retrait du mode uniquement par lien dans le formulaire et validation obligatoire des amis avant l’envoi. Le contrat API `shareOnly` est conservé pour compatibilité ; le formulaire ne l’utilise plus. Le partage depuis le détail et le geste de protection sont conservés.
 
 ### PR08 Lieux récents et favoris
 
